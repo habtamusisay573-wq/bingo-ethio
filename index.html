@@ -82,3 +82,11 @@
     </script>
 </body>
 </html>
+<p id="card-id" style="color: #94a3b8; font-weight: bold;"></p>
+
+<script>
+    // ልዩ የካርቴላ መለያ ቁጥር መፍጠሪያ
+    const cardID = Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('card-id').innerText = "Card ID: #" + cardID;
+</script>
+
