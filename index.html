@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BINGO ETHIO</title>
+    <style>
+        :root { --ethio-green: #009b3a; --ethio-yellow: #fed100; --ethio-red: #ef3340; --bg: #0f172a; }
+        body { background-color: var(--bg); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+        
+        /* አቀባበል (Splash Screen) */
+        #splash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .ethio-flag { display: flex; gap: 5px; margin-bottom: 15px; }
+        .flag-dot { width: 15px; height: 15px; border-radius: 50%; }
+        .logo-text { font-size: 3rem; font-weight: 900; letter-spacing: 2px; }
+        .logo-text span:nth-child(1) { color: var(--ethio-green); }
+        .logo-text span:nth-child(2) { color: var(--ethio-yellow); }
+        .logo-text span:nth-child(3) { color: var(--ethio-red); }
+
+        /* ጨዋታው ሲጀምር የሚታየው */
+        #main-content { display: none; padding: 20px; text-align: center; }
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: #1e293b; padding: 10px; border-radius: 15px; border: 3px solid var(--ethio-yellow); }
+        .cell { width: 55px; height: 55px; background: #334155; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .marked { background: var(--ethio-red) !important; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="splash">
+        <div class="ethio-flag">
+            <div class="flag-dot" style="background: var(--ethio-green);"></div>
+            <div class="flag-dot" style="background: var(--ethio-yellow);"></div>
+            <div class="flag-dot" style="background: var(--ethio-red);"></div>
+        </div>
+        <div class="logo-text">
+            <span>BINGO</span> <span>ETHIO</span>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <h2 style="color: var(--ethio-yellow);">🇪🇹 BINGO ETHIO</h2>
+        <div class="bingo-grid" id="board"></div>
+        <button onclick="alert('BINGO!')" style="margin-top:20px; padding:10px 40px; background:var(--ethio-green); color:white; border:none; border-radius:20px; font-weight:bold;">BINGO!</button>
+    </div>
+
+    <script>
+        // የአቀባበል አኒሜሽን ለ 2 ሰከንድ
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+        }, 2500);
+
+        // ካርዱን መፍጠር (ቀላል JS)
+        const board = document.getElementById('board');
+        for(let i=1; i<=25; i++) {
+            let div = document.createElement('div');
+            div.className = 'cell';
+            div.innerText = i == 13 ? "FREE" : Math.floor(Math.random()*75)+1;
+            if(i==13) div.classList.add('marked');
+            div.onclick = function() { this.classList.toggle('marked'); };
+            board.appendChild(div);
+        }
+    </script>
+</body>
+</html>
