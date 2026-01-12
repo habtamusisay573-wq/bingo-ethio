@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BINGO ETHIO Pro</title>
+    <style>
+        :root { --green: #009b3a; --yellow: #fed100; --red: #ef3340; --dark: #0f172a; }
+        body { background: var(--dark); color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; }
+        
+        /* ቁጥር ማሳያ */
+        .number-display { background: #1e293b; padding: 20px; border-bottom: 4px solid var(--yellow); margin-bottom: 15px; }
+        #current-num { font-size: 3.5rem; font-weight: 900; color: var(--yellow); display: block; }
+        .last-nums { font-size: 0.9rem; color: #94a3b8; }
+
+        /* ቢንጎ ካርድ */
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 350px; margin: 0 auto; background: #334155; padding: 10px; border-radius: 10px; }
+        .cell { aspect-ratio: 1; background: #1e293b; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: 1px solid #475569; }
+        .cell.marked { background: var(--red); border-color: white; }
+        .cell.called { border: 2px solid var(--green); } /* የወጣ ቁጥር ምልክት */
+
+        .bingo-btn { margin-top: 20px; background: var(--green); color: white; border: none; padding: 15px 50px; font-size: 1.4rem; border-radius: 30px; font-weight: bold; width: 80%; }
+    </style>
+</head>
+<body>
+
+    <div class="number-display">
+        <span id="current-num">--</span>
+        <div class="last-nums">ያለፉ ቁጥሮች: <span id="history"></span></div>
+    </div>
+
+    <div class="grid" id="board"></div>
+
+    <button class="bingo-btn" onclick="claimBingo()">BINGO!</button>
+
+    <script>
+        let calledNumbers = [];
+        let myBoard = [];
+
+        // ካርዱን መፍጠር
+        function createBoard() {
+            const boardDiv = document.getElementById('board');
+            const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
+            for(let r=0; r<5; r++){
+                myBoard[r] = [];
+                for(let c=0; c<5; c++){
+                    let min = ranges[c][0], max = ranges[c][1];
+                    let val = (r===2 && c===2) ? "FREE" : Math.floor(Math.random()*(max-min+1))+min;
+                    myBoard[r][c] = val;
+                    
+                    let div = document.createElement('div');
+                    div.className = 'cell' + (val==="FREE" ? " marked" : "");
+                    div.innerText = val;
+                    div.onclick = function() { if(calledNumbers.includes(parseInt(val)) || val==="FREE") this.classList.toggle('marked'); };
+                    boardDiv.appendChild(div);
+                }
+            }
+        }
+
+        // ቁጥር በየ 5 ሰከንዱ ማውጣት
+        function drawNumber() {
+            if (calledNumbers.length >= 75) return;
+            let n;
+            do { n = Math.floor(Math.random() * 75) + 1; } while (calledNumbers.includes(n));
+            
+            calledNumbers.push(n);
+            document.getElementById('current-num').innerText = n;
+            document.getElementById('history').innerText = calledNumbers.slice(-5).reverse().join(", ");
+            
+            // ድምጽ ማሰማት (ቢፕ)
+            let audio = new Audio('https://www.soundjay.com/button/beep-07.mp3');
+            audio.play();
+        }
+
+        function claimBingo() {
+            alert("ቢንጎ ተረጋግጧል! የካርድ ቁጥርዎን ለአድሚኑ ይላኩ።");
+            // እዚህ ጋር ወደ ቦቱ ዳታ መላክ ይቻላል
+        }
+
+        createBoard();
+        setInterval(drawNumber, 5000); // በየ 5 ሰከንዱ ቁጥር ይቀይራል
+    </script>
+</body>
+</html>
