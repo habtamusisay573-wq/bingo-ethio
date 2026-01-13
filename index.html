@@ -1,117 +1,102 @@
-
 <!DOCTYPE html>
 <html lang="am">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BINGO ETHIO - Super App</title>
+    <title>BINGO ETHIO - 200 CARDS</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --green: #009b3a; --yellow: #fed100; --red: #ef3340; --dark: #0f172a; --card: #1e293b; }
-        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; text-align: center; }
+        
+        /* Splash Screen */
+        #splash { position: fixed; width: 100%; height: 100%; background: var(--dark); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; }
+        .loader { width: 40px; height: 40px; border: 4px solid #334155; border-top-color: var(--yellow); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* 1. Splash Screen Style */
-        #splash {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--dark); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 9999;
-        }
-        .logo { font-size: 3rem; font-weight: 900; letter-spacing: -2px; }
-        .logo span:nth-child(1) { color: var(--green); }
-        .logo span:nth-child(2) { color: var(--yellow); }
-        .logo span:nth-child(3) { color: var(--red); }
-        .loader { width: 50px; height: 50px; border: 5px solid #334155; border-top: 5px solid var(--yellow); border-radius: 50%; animation: spin 1s linear infinite; margin-top: 20px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Card Selector Grid */
+        #card-selector { display: none; padding: 20px; }
+        .selector-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; }
+        .select-btn { background: var(--card); border: 1px solid var(--yellow); color: white; padding: 15px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .select-btn:hover { background: var(--yellow); color: black; }
 
-        /* 2. Main UI Style */
-        #main-ui { display: none; }
-        .nav { display: flex; justify-content: space-around; background: var(--card); padding: 10px; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--yellow); }
-        .nav-item { cursor: pointer; padding: 10px; font-weight: bold; color: #94a3b8; font-size: 0.9rem; }
-        .nav-item.active { color: var(--yellow); border-bottom: 2px solid var(--yellow); }
-        .tab-content { display: none; padding: 20px; animation: fadeIn 0.4s; }
-        .tab-content.active { display: block; }
-        .wallet-box { background: linear-gradient(135deg, #1e293b, #334155); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid var(--green); }
+        /* Game UI */
+        #main-ui { display: none; padding: 15px; }
+        .nav { display: flex; justify-content: space-around; background: var(--card); padding: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--yellow); }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 350px; margin: 0 auto; background: #334155; padding: 10px; border-radius: 10px; }
         .cell { aspect-ratio: 1; background: var(--dark); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #475569; font-weight: bold; }
-        .cell.marked { background: var(--red); color: white; border-color: white; }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #334155; color: white; margin: 10px 0; box-sizing: border-box; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        .btn-green { background: var(--green); color: white; }
-        .btn-yellow { background: var(--yellow); color: #000; margin-top: 10px; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .cell.marked { background: var(--red); border-color: white; }
+        .btn { width: 80%; padding: 15px; border: none; border-radius: 30px; font-weight: bold; margin-top: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div id="splash">
-        <div class="logo"><span>BINGO</span><span> ETHIO</span></div>
+        <h1 style="color: var(--yellow);">BINGO ETHIO</h1>
         <div class="loader"></div>
-        <p style="margin-top: 20px; color: #94a3b8;">በመጫን ላይ...</p>
+        <p>ካርቴላዎችን በማዘጋጀት ላይ...</p>
+    </div>
+
+    <div id="card-selector">
+        <h3>ካርቴላ ይምረጡ (1 - 200)</h3>
+        <div class="selector-grid" id="selector-btns"></div>
     </div>
 
     <div id="main-ui">
         <div class="nav">
-            <div class="nav-item active" onclick="showTab('game')">🎮 ጌም</div>
-            <div class="nav-item" onclick="showTab('deposit')">📥 ብር አስገባ</div>
-            <div class="nav-item" onclick="showTab('withdraw')">📤 ብር አውጣ</div>
+            <span id="active-card-title" style="color: var(--yellow); font-weight: bold;">Card #--</span>
+            <span onclick="location.reload()" style="cursor: pointer; color: #94a3b8;">🔄 ቀይር</span>
         </div>
-
-        <div id="game" class="tab-content active">
-            <div class="wallet-box">
-                <small style="color: #94a3b8;">ያለዎት ቀሪ ሂሳብ</small>
-                <h2 id="balance-view" style="margin: 5px 0;">0.00 ETB</h2>
-                <small id="card-id" style="color: var(--yellow);">Card: #----</small>
-            </div>
-            <div class="grid" id="board"></div>
-            <button class="btn btn-green" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
-        </div>
-
-        <div id="deposit" class="tab-content">
-            <h3>ገንዘብ ያስገቡ</h3>
-            <div class="wallet-box">
-                <p>ቴሌብር ቁጥር: <b style="color: var(--yellow);">0912345678</b></p>
-                <p>ስም: <b>ዳጊ ቢንጎ</b></p>
-            </div>
-            <label>የግብይት ቁጥር (Transaction ID)</label>
-            <input type="text" id="tid" placeholder="ለምሳሌ: 8JH76G54">
-            <button class="btn btn-yellow" onclick="sendAction('DEPOSIT')">ደረሰኝ አረጋግጥ</button>
-        </div>
-
-        <div id="withdraw" class="tab-content">
-            <h3>ገንዘብ ያውጡ</h3>
-            <input type="number" id="w-amount" placeholder="የብር መጠን">
-            <input type="tel" id="w-phone" placeholder="የቴሌብር ስልክ ቁጥር">
-            <button class="btn btn-green" onclick="sendAction('WITHDRAW')">ብር አውጣ</button>
-        </div>
+        <div class="grid" id="board"></div>
+        <button class="btn" style="background: var(--green); color: white;" onclick="claimBingo()">BINGO!</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // 3 ሰከንድ Splash አሳይቶ UIውን መክፈት
+        // 1. Splash ለ 3 ሰከንድ
         setTimeout(() => {
             document.getElementById('splash').style.display = 'none';
-            document.getElementById('main-ui').style.display = 'block';
+            document.getElementById('card-selector').style.display = 'block';
+            generateSelector();
         }, 3000);
 
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
+        // 2. 200 ቁልፎችን መፍጠር
+        function generateSelector() {
+            const container = document.getElementById('selector-btns');
+            for (let i = 1; i <= 200; i++) {
+                let btn = document.createElement('button');
+                btn.className = 'select-btn';
+                btn.innerText = i;
+                btn.onclick = () => startGame(i);
+                container.appendChild(btn);
+            }
         }
 
-        function createBoard() {
+        // 3. ጨዋታ መጀመር
+        function startGame(cardNum) {
+            document.getElementById('card-selector').style.display = 'none';
+            document.getElementById('main-ui').style.display = 'block';
+            document.getElementById('active-card-title').innerText = "የተመረጠው ካርቴላ: #" + cardNum;
+            createBoard(cardNum);
+        }
+
+        function createBoard(seed) {
             const boardDiv = document.getElementById('board');
-            const cardID = Math.floor(1000 + Math.random() * 9000);
-            document.getElementById('card-id').innerText = "Card: #" + cardID;
+            boardDiv.innerHTML = ""; // Clear old board
             
+            // Seeded Random (ቁጥሩ እንዳይቀያየር ለዛ ካርቴላ)
+            let random = (min, max) => {
+                seed = (seed * 9301 + 49297) % 233280;
+                return min + Math.floor((seed / 233280) * (max - min));
+            };
+
             const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
             for(let r=0; r<5; r++){
                 for(let c=0; c<5; c++){
                     let min = ranges[c][0], max = ranges[c][1];
-                    let val = (r===2 && c===2) ? "FREE" : Math.floor(Math.random()*(max-min+1))+min;
+                    let val = (r===2 && c===2) ? "FREE" : random(min, max + 1);
                     let div = document.createElement('div');
                     div.className = 'cell' + (val==="FREE" ? " marked" : "");
                     div.innerText = val;
@@ -121,25 +106,10 @@
             }
         }
 
-        function sendAction(type) {
-            let data = { action: type };
-            if(type === 'DEPOSIT') data.tid = document.getElementById('tid').value;
-            if(type === 'WITHDRAW') {
-                data.amount = document.getElementById('w-amount').value;
-                data.phone = document.getElementById('w-phone').value;
-            }
-            tg.sendData(JSON.stringify(data));
-            tg.close(); // መረጃውን ልኮ አፑን ይዘጋል
-        }
-
         function claimBingo() {
-            alert("ቢንጎ ተረጋግጧል! መረጃው ለአድሚኑ ደርሷል።");
+            alert("ቢንጎ! መረጃው ተልኳል።");
             tg.sendData(JSON.stringify({action: "BINGO_CLAIM"}));
         }
-
-        createBoard();
     </script>
 </body>
 </html>
-
-
