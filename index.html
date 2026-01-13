@@ -1,93 +1,143 @@
+
 <!DOCTYPE html>
 <html lang="am">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BINGO ETHIO MASTER</title>
+    <title>BINGO ETHIO - Super App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --green: #009b3a; --yellow: #fed100; --red: #ef3340; --dark: #0f172a; }
-        body { background: var(--dark); color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; }
-        
-        .header { background: #1e293b; padding: 15px; border-bottom: 4px solid var(--yellow); }
-        #current-num { font-size: 3rem; font-weight: 900; color: var(--yellow); display: block; }
-        #card-info { color: #94a3b8; font-size: 0.8rem; margin-top: 5px; }
+        :root { --green: #009b3a; --yellow: #fed100; --red: #ef3340; --dark: #0f172a; --card: #1e293b; }
+        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
 
-        .bingo-header { display: grid; grid-template-columns: repeat(5, 1fr); max-width: 350px; margin: 10px auto 0; font-weight: 900; font-size: 1.5rem; color: var(--yellow); }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 350px; margin: 0 auto; background: #334155; padding: 10px; border-radius: 0 0 10px 10px; }
-        .cell { aspect-ratio: 1; background: #1e293b; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: 1px solid #475569; }
-        .cell.marked { background: var(--red); border-color: white; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
-        
-        .bingo-btn { margin-top: 20px; background: var(--green); color: white; border: none; padding: 15px 50px; font-size: 1.4rem; border-radius: 30px; font-weight: bold; width: 80%; cursor: pointer; }
+        /* 1. Splash Screen Style */
+        #splash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--dark); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 9999;
+        }
+        .logo { font-size: 3rem; font-weight: 900; letter-spacing: -2px; }
+        .logo span:nth-child(1) { color: var(--green); }
+        .logo span:nth-child(2) { color: var(--yellow); }
+        .logo span:nth-child(3) { color: var(--red); }
+        .loader { width: 50px; height: 50px; border: 5px solid #334155; border-top: 5px solid var(--yellow); border-radius: 50%; animation: spin 1s linear infinite; margin-top: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 2. Main UI Style */
+        #main-ui { display: none; }
+        .nav { display: flex; justify-content: space-around; background: var(--card); padding: 10px; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--yellow); }
+        .nav-item { cursor: pointer; padding: 10px; font-weight: bold; color: #94a3b8; font-size: 0.9rem; }
+        .nav-item.active { color: var(--yellow); border-bottom: 2px solid var(--yellow); }
+        .tab-content { display: none; padding: 20px; animation: fadeIn 0.4s; }
+        .tab-content.active { display: block; }
+        .wallet-box { background: linear-gradient(135deg, #1e293b, #334155); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid var(--green); }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 350px; margin: 0 auto; background: #334155; padding: 10px; border-radius: 10px; }
+        .cell { aspect-ratio: 1; background: var(--dark); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #475569; font-weight: bold; }
+        .cell.marked { background: var(--red); color: white; border-color: white; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #334155; color: white; margin: 10px 0; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        .btn-green { background: var(--green); color: white; }
+        .btn-yellow { background: var(--yellow); color: #000; margin-top: 10px; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <span id="current-num">--</span>
-        <div id="card-info">Card ID: <span id="card-id">#0000</span> | ያመለጡ ቁጥሮች: <span id="history"></span></div>
+    <div id="splash">
+        <div class="logo"><span>BINGO</span><span> ETHIO</span></div>
+        <div class="loader"></div>
+        <p style="margin-top: 20px; color: #94a3b8;">በመጫን ላይ...</p>
     </div>
 
-    <div class="bingo-header">
-        <span>B</span><span>I</span><span>N</span><span>G</span><span>O</span>
-    </div>
-    <div class="grid" id="board"></div>
+    <div id="main-ui">
+        <div class="nav">
+            <div class="nav-item active" onclick="showTab('game')">🎮 ጌም</div>
+            <div class="nav-item" onclick="showTab('deposit')">📥 ብር አስገባ</div>
+            <div class="nav-item" onclick="showTab('withdraw')">📤 ብር አውጣ</div>
+        </div>
 
-    <button class="bingo-btn" onclick="claimBingo()">BINGO!</button>
+        <div id="game" class="tab-content active">
+            <div class="wallet-box">
+                <small style="color: #94a3b8;">ያለዎት ቀሪ ሂሳብ</small>
+                <h2 id="balance-view" style="margin: 5px 0;">0.00 ETB</h2>
+                <small id="card-id" style="color: var(--yellow);">Card: #----</small>
+            </div>
+            <div class="grid" id="board"></div>
+            <button class="btn btn-green" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
+        </div>
+
+        <div id="deposit" class="tab-content">
+            <h3>ገንዘብ ያስገቡ</h3>
+            <div class="wallet-box">
+                <p>ቴሌብር ቁጥር: <b style="color: var(--yellow);">0912345678</b></p>
+                <p>ስም: <b>ዳጊ ቢንጎ</b></p>
+            </div>
+            <label>የግብይት ቁጥር (Transaction ID)</label>
+            <input type="text" id="tid" placeholder="ለምሳሌ: 8JH76G54">
+            <button class="btn btn-yellow" onclick="sendAction('DEPOSIT')">ደረሰኝ አረጋግጥ</button>
+        </div>
+
+        <div id="withdraw" class="tab-content">
+            <h3>ገንዘብ ያውጡ</h3>
+            <input type="number" id="w-amount" placeholder="የብር መጠን">
+            <input type="tel" id="w-phone" placeholder="የቴሌብር ስልክ ቁጥር">
+            <button class="btn btn-green" onclick="sendAction('WITHDRAW')">ብር አውጣ</button>
+        </div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // ገጹን ሙሉ እንዲሆን ያደርገዋል
+        tg.expand();
 
-        let calledNumbers = [];
-        let markedNumbers = [];
-        const cardID = Math.floor(1000 + Math.random() * 9000);
-        document.getElementById('card-id').innerText = "#" + cardID;
+        // 3 ሰከንድ Splash አሳይቶ UIውን መክፈት
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('main-ui').style.display = 'block';
+        }, 3000);
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
 
         function createBoard() {
             const boardDiv = document.getElementById('board');
-            const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
+            const cardID = Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('card-id').innerText = "Card: #" + cardID;
             
+            const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
             for(let r=0; r<5; r++){
                 for(let c=0; c<5; c++){
                     let min = ranges[c][0], max = ranges[c][1];
                     let val = (r===2 && c===2) ? "FREE" : Math.floor(Math.random()*(max-min+1))+min;
-                    
                     let div = document.createElement('div');
                     div.className = 'cell' + (val==="FREE" ? " marked" : "");
                     div.innerText = val;
-                    div.onclick = function() {
-                        if(calledNumbers.includes(parseInt(val)) || val==="FREE") {
-                            this.classList.toggle('marked');
-                            if(this.classList.contains('marked')) markedNumbers.push(val);
-                        }
-                    };
+                    div.onclick = function() { this.classList.toggle('marked'); };
                     boardDiv.appendChild(div);
                 }
             }
         }
 
-        function drawNumber() {
-            if (calledNumbers.length >= 75) return;
-            let n;
-            do { n = Math.floor(Math.random() * 75) + 1; } while (calledNumbers.includes(n));
-            calledNumbers.push(n);
-            document.getElementById('current-num').innerText = n;
-            document.getElementById('history').innerText = calledNumbers.slice(-3).reverse().join(", ");
+        function sendAction(type) {
+            let data = { action: type };
+            if(type === 'DEPOSIT') data.tid = document.getElementById('tid').value;
+            if(type === 'WITHDRAW') {
+                data.amount = document.getElementById('w-amount').value;
+                data.phone = document.getElementById('w-phone').value;
+            }
+            tg.sendData(JSON.stringify(data));
+            tg.close(); // መረጃውን ልኮ አፑን ይዘጋል
         }
 
         function claimBingo() {
-            const data = {
-                action: "BINGO_CLAIM",
-                card_id: cardID,
-                marked: markedNumbers
-            };
-            tg.sendData(JSON.stringify(data)); // መረጃውን ወደ ቦቱ ይልካል
-            alert("BINGO! መረጃው ለዳኛው ተልኳል።");
+            alert("ቢንጎ ተረጋግጧል! መረጃው ለአድሚኑ ደርሷል።");
+            tg.sendData(JSON.stringify({action: "BINGO_CLAIM"}));
         }
 
         createBoard();
-        setInterval(drawNumber, 5000);
     </script>
 </body>
 </html>
