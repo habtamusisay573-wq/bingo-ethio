@@ -3,20 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BINGO ETHIO GOLD - ADMIN CONTROL</title>
+    <title>BINGO ETHIO GOLD - OFFICIAL</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
     <style>
         :root { --green: #22c55e; --yellow: #facc15; --red: #ef4444; --dark: #0f172a; --card: #1e293b; }
-        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; padding: 0; }
+        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; padding: 0; touch-action: manipulation; }
         .top-nav { display: flex; background: #1e293b; padding: 10px; justify-content: space-around; border-bottom: 2px solid var(--yellow); position: sticky; top: 0; z-index: 1000; }
-        .nav-btn { color: #94a3b8; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 8px; font-size: 0.8rem; }
+        .nav-btn { color: #94a3b8; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 8px; font-size: 0.7rem; }
         .nav-btn.active { color: var(--yellow); background: #334155; }
         .page { display: none; padding: 15px; text-align: center; }
         .page.active { display: block; }
-        .admin-box { background: var(--card); padding: 15px; border-radius: 12px; margin-top: 15px; border: 1px solid #444; text-align: left; }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; margin: 8px 0; box-sizing: border-box; }
+        .ball { width: 85px; height: 85px; background: radial-gradient(circle at 30% 30%, var(--yellow), #a16207); border-radius: 50%; margin: 15px auto; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: #000; box-shadow: 0 0 15px var(--yellow); border: 3px solid #fff; }
+        .admin-box { background: var(--card); padding: 15px; border-radius: 12px; margin-top: 15px; border: 1px solid #334155; text-align: left; }
         .main-btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        .request-item { background: #0f172a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--red); font-size: 0.9rem; }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; margin: 8px 0; box-sizing: border-box; }
+        .request-card { background: #0f172a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--green); }
     </style>
 </head>
 <body>
@@ -28,48 +32,128 @@
     </div>
 
     <div id="play" class="page active">
-        <h3>ካርቴላ ይምረጡ</h3>
-        <div id="picker" style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px;"></div>
+        <div style="background:var(--card); padding:10px; border-radius:10px; margin-bottom:15px; display:flex; justify-content:space-between;">
+            <span>ባላንስ: <b id="user-balance" style="color:var(--green)">0.00</b> ETB</span>
+        </div>
+        <div id="selector">
+            <h4 style="color:var(--yellow)">ካርቴላ ይምረጡ (10 ብር)</h4>
+            <div id="picker" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div>
+        </div>
+        <div id="game" style="display:none;">
+            <div class="ball" id="live-ball">?</div>
+            <div id="board-container" style="background:white; padding:10px; border-radius:12px; color:black;">
+                <div id="bingo-grid" style="display:grid; grid-template-columns:repeat(5,1fr); gap:4px;"></div>
+            </div>
+            <button class="main-btn" style="background:var(--green); color:white; margin-top:20px;" onclick="claimBingo()">BINGO!</button>
+        </div>
     </div>
 
     <div id="admin" class="page">
-        <h2 style="color:var(--yellow)">የዳኛ መቆጣጠሪያ</h2>
+        <h2 style="color:var(--yellow)">አድሚን ዳሽቦርድ</h2>
+        <div class="ball" id="admin-ball">?</div>
         
         <div class="admin-box">
-            <label style="color:var(--yellow);">የመቀበያ ስልክ ቁጥር፡</label>
-            <input type="tel" id="admin-phone-input" value="0991243423">
-            <button class="main-btn" style="background:var(--green); color:white;" onclick="updatePhone()">ቁጥሩን ቀይር</button>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Auto Draw (3s)</span>
+                <input type="checkbox" id="auto-check" onchange="toggleAuto()" style="width:22px; height:22px;">
+            </div>
         </div>
 
         <div class="admin-box">
-            <h4 style="color:var(--red); margin:0 0 10px 0;">📥 አዲስ የማውጫ ጥያቄዎች</h4>
-            <div id="admin-requests">የለም...</div>
+            <h4 style="color:var(--green)">የብር ማስገቢያ ጥያቄዎች</h4>
+            <div id="deposit-list">ጥያቄ የለም...</div>
+        </div>
+
+        <div class="admin-box">
+            <h4 style="color:var(--red)">የብር ማውጫ ጥያቄዎች</h4>
+            <div id="withdraw-list">ጥያቄ የለም...</div>
         </div>
     </div>
 
     <div id="wallet" class="page">
-        <div class="admin-box" style="border-left: 5px solid var(--red);">
-            <h4 style="color:var(--red); margin:0 0 10px 0;">💸 ብር ማውጫ (Withdraw)</h4>
-            <input type="number" id="user-w-amount" placeholder="የብር መጠን">
-            <input type="tel" id="user-w-phone" placeholder="የቴሌብር ስልክ ቁጥር">
-            <button class="main-btn" style="background:var(--red); color:white;" onclick="submitWithdraw()">አሁን አውጣ</button>
-        </div>
-        
-        <div class="admin-box" style="border-left: 5px solid var(--yellow); margin-top:20px;">
-            <h4 style="color:var(--yellow); margin:0;">📥 ብር ማስገቢያ (Deposit)</h4>
-            <p>ቴሌብር: <b id="display-phone" style="color:var(--green);">0991243423</b></p>
-            <input type="text" placeholder="Transaction ID አስገባ">
-            <button class="main-btn" style="background:var(--yellow); color:black;">አረጋግጥ</button>
+        <h3>ባላንስና ማውጫ</h3>
+        <div class="admin-box" style="border-left: 5px solid var(--yellow);">
+            <p>ቴሌብር መቀበያ: <b id="pay-phone">0991243423</b></p>
+            <input type="text" id="dep-tid" placeholder="የግብይት ቁጥር (TID) ያስገቡ">
+            <button class="main-btn" style="background:var(--yellow);" onclick="requestDep()">ብር ጨምርልኝ</button>
         </div>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        const MY_ADMIN_ID = 123456789; // ያንተን ID እዚህ ጋር ተካ!
+        // --- Firebase Config (ዳጊ! እዚህ ጋር ከ Firebase ፕሮጀክትህ የምታገኘውን ቁጥር ተካው) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSy...", 
+            databaseURL: "https://your-bingo-default-rtdb.firebaseio.com",
+            projectId: "your-bingo-id"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        // ዳታዎችን ለጊዜው እዚህ እናስቀምጣለን
-        let withdrawRequests = [];
+        const tg = window.Telegram.WebApp;
+        const MY_ADMIN_ID = 123456789; // ያንተ ID
+        let currentBalance = 0;
+        let autoInt = null;
+
+        // 1. Real-time ቁጥር ማመሳሰል
+        db.ref('game/currentNum').on('value', (s) => {
+            const n = s.val() || "?";
+            document.getElementById('live-ball').innerText = n;
+            document.getElementById('admin-ball').innerText = n;
+        });
+
+        // 2. ባላንስ መከታተል
+        if(tg.initDataUnsafe.user) {
+            const uid = tg.initDataUnsafe.user.id;
+            db.ref('users/' + uid + '/balance').on('value', (s) => {
+                currentBalance = s.val() || 0;
+                document.getElementById('user-balance').innerText = currentBalance.toFixed(2);
+            });
+        }
+
+        // 3. አድሚን - አውቶማቲክ ማውጫ
+        function toggleAuto() {
+            if(document.getElementById('auto-check').checked) {
+                autoInt = setInterval(() => {
+                    let n = Math.floor(Math.random() * 75) + 1;
+                    db.ref('game/currentNum').set(n);
+                }, 3000);
+            } else { clearInterval(autoInt); }
+        }
+
+        // 4. ብር ማስገቢያ ጥያቄ
+        function requestDep() {
+            const tid = document.getElementById('dep-tid').value;
+            if(!tid) return alert("ID ያስገቡ");
+            db.ref('requests/deposits').push({
+                uid: tg.initDataUnsafe.user.id,
+                name: tg.initDataUnsafe.user.first_name,
+                tid: tid,
+                time: new Date().toLocaleTimeString()
+            });
+            alert("ጥያቄ ተልኳል!");
+        }
+
+        // 5. ካርቴላ መግዛት
+        function buyCard(seed) {
+            if(currentBalance < 10) return alert("በቂ ብር የለም! እባክዎ ብር ያስገቡ።");
+            const uid = tg.initDataUnsafe.user.id;
+            db.ref('users/' + uid).update({ balance: currentBalance - 10 });
+            document.getElementById('selector').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            generateBoard(seed);
+        }
+
+        function generateBoard(seed) {
+            const grid = document.getElementById('bingo-grid');
+            grid.innerHTML = "";
+            for(let i=0; i<25; i++) {
+                let cell = document.createElement('div');
+                cell.style.cssText = "aspect-ratio:1; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-weight:bold; border:1px solid #ccc; border-radius:5px;";
+                cell.innerText = Math.floor(Math.random()*75)+1;
+                cell.onclick = function() { this.style.background = "red"; this.style.color = "white"; };
+                grid.appendChild(cell);
+            }
+        }
 
         function showPage(id, btn) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -78,70 +162,16 @@
             btn.classList.add('active');
         }
 
-        // --- የተጫዋች ስራ ---
-        function submitWithdraw() {
-            const amt = document.getElementById('user-w-amount').value;
-            const ph = document.getElementById('user-w-phone').value;
-            const user = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "ተጫዋች";
-
-            if(!amt || !ph) return alert("እባክዎ መረጃውን በትክክል ይሙሉ!");
-
-            const newReq = { name: user, amount: amt, phone: ph, time: new Date().toLocaleTimeString() };
-            withdrawRequests.push(newReq);
-            
-            // አድሚን ገጽ ላይ ወዲያው እንዲታይ
-            updateAdminRequests();
-            alert("ጥያቄዎ ተልኳል! ዳኛው ብሩን በቴሌብር ይልክልዎታል።");
-            
-            // ፎርሙን ባዶ ማድረግ
-            document.getElementById('user-w-amount').value = "";
-            document.getElementById('user-w-phone').value = "";
-        }
-
-        // --- የአድሚን ስራ ---
-        function updateAdminRequests() {
-            const container = document.getElementById('admin-requests');
-            if(withdrawRequests.length === 0) {
-                container.innerHTML = "የለም...";
-                return;
-            }
-            container.innerHTML = "";
-            withdrawRequests.forEach((req, index) => {
-                const div = document.createElement('div');
-                div.className = 'request-item';
-                div.innerHTML = `
-                    <b>${req.name}</b> - <span style="color:var(--green)">${req.amount} ETB</span><br>
-                    ስልክ: ${req.phone} <br>
-                    <small>${req.time}</small>
-                    <button onclick="removeReq(${index})" style="background:var(--green); color:white; border:none; border-radius:5px; padding:5px 10px; float:right; cursor:pointer;">ከፈልኩ</button>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function removeReq(index) {
-            withdrawRequests.splice(index, 1);
-            updateAdminRequests();
-            tg.HapticFeedback.notificationOccurred('success');
-        }
-
-        function updatePhone() {
-            const newPhone = document.getElementById('admin-phone-input').value;
-            document.getElementById('display-phone').innerText = newPhone;
-            alert("የመቀበያ ስልክ ቁጥር ተቀይሯል!");
-        }
-
         window.onload = () => {
-            // ካርቴላዎች መደርደሪያ
-            const p = document.getElementById('picker');
+            const picker = document.getElementById('picker');
             for(let i=1; i<=200; i++) {
                 let d = document.createElement('div');
-                d.style.cssText = "background:var(--card); padding:15px; border-radius:8px; font-weight:bold; border:1px solid #334155; text-align:center;";
+                d.style.cssText = "background:var(--card); padding:12px; border-radius:8px; cursor:pointer;";
                 d.innerText = i;
-                p.appendChild(d);
+                d.onclick = () => buyCard(i);
+                picker.appendChild(d);
             }
-            // አድሚን ቼክ
-            if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.id === MY_ADMIN_ID) {
+            if(tg.initDataUnsafe.user && tg.initDataUnsafe.user.id === MY_ADMIN_ID) {
                 document.getElementById('admin-nav').style.display = 'block';
             }
         };
