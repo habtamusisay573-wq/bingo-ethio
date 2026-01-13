@@ -3,162 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BINGO ETHIO SUPER APP</title>
+    <title>BINGO ETHIO GOLD</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --green: #009b3a; --yellow: #fed100; --red: #ef3340; --dark: #0f172a; --card: #1e293b; }
-        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; padding: 0; }
+        :root { --green: #22c55e; --yellow: #eab308; --red: #ef4444; --dark: #0f172a; --card: #1e293b; --accent: #38bdf8; }
+        body { background: var(--dark); color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 0; user-select: none; }
         
-        /* 1. Splash Screen */
+        /* Splash Screen */
         #splash { position: fixed; width: 100%; height: 100%; background: var(--dark); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; }
-        .loader { width: 50px; height: 50px; border: 5px solid #334155; border-top-color: var(--yellow); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .logo-text { font-size: 3rem; font-weight: 900; background: linear-gradient(to right, var(--green), var(--yellow), var(--red)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        /* 2. Navigation */
-        .nav { display: none; justify-content: space-around; background: var(--card); padding: 10px; position: sticky; top: 0; z-index: 100; border-bottom: 2px solid var(--yellow); }
-        .nav-item { cursor: pointer; padding: 10px; font-weight: bold; color: #94a3b8; font-size: 0.8rem; }
-        .nav-item.active { color: var(--yellow); border-bottom: 2px solid var(--yellow); }
+        /* Navigation */
+        .nav-bar { display: none; justify-content: space-around; background: var(--card); padding: 12px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .nav-item { cursor: pointer; padding: 8px 16px; font-weight: 600; color: #94a3b8; border-radius: 20px; transition: 0.3s; font-size: 0.9rem; }
+        .nav-item.active { background: #334155; color: var(--yellow); }
 
-        /* 3. Card Selection */
-        #card-selector { display: none; padding: 15px; text-align: center; }
-        .selector-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
-        .select-btn { background: var(--card); border: 1px solid var(--yellow); color: white; padding: 15px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
-        /* 4. Game UI */
-        #game-ui { display: none; padding: 10px; text-align: center; }
-        .card-frame { background: white; padding: 10px; border-radius: 15px; max-width: 350px; margin: 0 auto; color: #333; }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: #cbd5e1; padding: 4px; border-radius: 8px; }
-        .cell { aspect-ratio: 1; background: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; border-radius: 4px; }
-        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; }
-
-        /* 5. Wallet & Forms */
-        .tab-content { display: none; padding: 20px; }
+        /* Dashboard */
+        .tab-content { display: none; padding: 15px; animation: slideUp 0.4s ease; }
         .tab-content.active { display: block; }
-        .wallet-box { background: linear-gradient(135deg, #1e293b, #334155); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid var(--green); text-align: left; }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #334155; color: white; margin: 10px 0; box-sizing: border-box; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .wallet-stat { background: linear-gradient(135deg, #1e293b, #0f172a); padding: 15px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 200 Card Selector Grid */
+        .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; max-height: 400px; overflow-y: auto; padding: 5px; }
+        .card-node { background: var(--card); border: 1px solid #334155; padding: 15px 5px; border-radius: 10px; font-weight: bold; cursor: pointer; text-align: center; }
+        .card-node:hover { border-color: var(--yellow); background: #334155; }
+
+        /* Actual Bingo Game View */
+        #game-view { display: none; text-align: center; }
+        .game-header { background: #334155; padding: 10px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .bingo-card { background: white; padding: 8px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4); margin: 0 auto; max-width: 350px; }
+        .bingo-letters { display: grid; grid-template-columns: repeat(5, 1fr); color: var(--dark); font-size: 1.8rem; font-weight: 900; margin-bottom: 5px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+        .cell { aspect-ratio: 1; background: #f1f5f9; color: var(--dark); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; border-radius: 6px; }
+        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+
+        /* Forms */
+        .input-field { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: white; margin: 10px 0; font-size: 1rem; }
+        .main-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
+        .main-btn:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
 
     <div id="splash">
-        <h1 style="color: var(--yellow);">BINGO ETHIO</h1>
-        <div class="loader"></div>
+        <div class="logo-text">BINGO ETHIO</div>
+        <div style="margin-top: 20px; width: 30px; height: 30px; border: 3px solid #334155; border-top-color: var(--yellow); border-radius: 50%; animation: spin 1s linear infinite;"></div>
     </div>
 
-    <div class="nav" id="main-nav">
-        <div class="nav-item active" onclick="showTab('card-selector')">🎮 መጫወቻ</div>
-        <div class="nav-item" onclick="showTab('deposit')">📥 ብር አስገባ</div>
-        <div class="nav-item" onclick="showTab('withdraw')">📤 ብር አውጣ</div>
-    </div>
+    <nav class="nav-bar" id="top-nav">
+        <div class="nav-item active" onclick="switchTab('play')">🕹 መጫወቻ</div>
+        <div class="nav-item" onclick="switchTab('deposit')">💰 ብር አስገባ</div>
+        <div class="nav-item" onclick="switchTab('withdraw')">💸 ማውጫ</div>
+    </nav>
 
-    <div id="card-selector" class="tab-content active">
-        <div class="wallet-box">
-            <small>ያለዎት ሂሳብ</small>
-            <h2 id="balance-view">0.00 ETB</h2>
-        </div>
-        <h3>ካርቴላ ይምረጡ (1-200)</h3>
-        <div class="selector-grid" id="selector-btns"></div>
-    </div>
-
-    <div id="game-ui">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <b id="card-label">Card #--</b>
-            <button onclick="backToSelector()" style="background:none; color:var(--yellow); border:1px solid; border-radius:10px; padding:2px 10px;">ቀይር 🔄</button>
-        </div>
-        <div class="card-frame">
-            <div class="grid" id="board"></div>
-        </div>
-        <button class="btn" style="background:var(--green); color:white; margin-top:20px;" onclick="claimBingo()">BINGO!</button>
-    </div>
-
-    <div id="deposit" class="tab-content">
-        <h3>ገንዘብ ያስገቡ</h3>
-        <div class="wallet-box">
-            <p>ቴሌብር: <b>09XXXXXXXX</b></p>
-            <p>ስም: <b>የእርስዎ ስም</b></p>
-        </div>
-        <input type="text" id="tid" placeholder="የግብይት ቁጥር (Transaction ID)">
-        <button class="btn" style="background:var(--yellow);" onclick="sendData('DEPOSIT')">ደረሰኝ አረጋግጥ</button>
-    </div>
-
-    <div id="withdraw" class="tab-content">
-        <h3>ገንዘብ ያውጡ</h3>
-        <input type="number" id="w-amount" placeholder="የብር መጠን">
-        <input type="tel" id="w-phone" placeholder="የቴሌብር ስልክ ቁጥር">
-        <button class="btn" style="background:var(--green); color:white;" onclick="sendData('WITHDRAW')">ጥያቄ ላክ</button>
-    </div>
-
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        // Splash screen logic
-        setTimeout(() => {
-            document.getElementById('splash').style.display = 'none';
-            document.getElementById('main-nav').style.display = 'flex';
-        }, 2500);
-
-        function showTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
-            document.getElementById('game-ui').style.display = 'none';
-        }
-
-        // Generate 200 buttons
-        const container = document.getElementById('selector-btns');
-        for (let i = 1; i <= 200; i++) {
-            let btn = document.createElement('button');
-            btn.className = 'select-btn';
-            btn.innerText = i;
-            btn.onclick = () => startGame(i);
-            container.appendChild(btn);
-        }
-
-        function startGame(cardNum) {
-            document.getElementById('card-selector').classList.remove('active');
-            document.getElementById('game-ui').style.display = 'block';
-            document.getElementById('card-label').innerText = "Card #" + cardNum;
-            createBoard(cardNum);
-        }
-
-        function backToSelector() {
-            document.getElementById('game-ui').style.display = 'none';
-            document.getElementById('card-selector').classList.add('active');
-        }
-
-        function createBoard(seed) {
-            const boardDiv = document.getElementById('board');
-            boardDiv.innerHTML = "";
-            const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
-            
-            for(let r=0; r<5; r++){
-                for(let c=0; c<5; c++){
-                    let min = ranges[c][0], max = ranges[c][1];
-                    // Seeded random for consistent cards
-                    let val = (r===2 && c===2) ? "FREE" : Math.floor((Math.abs(Math.sin(seed + r + c * 10)) * (max - min + 1)) + min);
-                    let div = document.createElement('div');
-                    div.className = 'cell' + (val==="FREE" ? " marked" : "");
-                    div.innerText = val;
-                    div.onclick = function() { this.classList.toggle('marked'); tg.HapticFeedback.impactOccurred('light'); };
-                    boardDiv.appendChild(div);
-                }
-            }
-        }
-
-        function sendData(type) {
-            let info = { action: type };
-            if(type === 'DEPOSIT') info.tid = document.getElementById('tid').value;
-            tg.sendData(JSON.stringify(info));
-            alert("ጥያቄዎ ተልኳል!");
-        }
-
-        function claimBingo() {
-            tg.sendData(JSON.stringify({action: "BINGO_CLAIM"}));
-            alert("BINGO! መረጃው ተልኳል።");
-        }
-    </script>
-</body>
-</html>
+    <div id="play" class="tab-content active">
+        <div class="wallet-stat">
+            <div><small style="color: #94a3b8;">ቀሪ ሂሳብ</small><div style="font-size: 1.5rem; font-weight: bold;">0.0
