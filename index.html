@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BINGO ETHIO - MASTER</title>
+    <title>BINGO ETHIO - FULL VERSION</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --green: #22c55e; --yellow: #facc15; --red: #ef4444; --dark: #0f172a; --card: #1e293b; }
@@ -11,150 +11,120 @@
 
         /* Navigation */
         .top-nav { display: flex; background: #1e293b; padding: 10px; justify-content: space-around; border-bottom: 2px solid var(--yellow); position: sticky; top: 0; z-index: 1000; }
-        .nav-btn { color: #94a3b8; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 8px; font-size: 0.9rem; }
+        .nav-btn { color: #94a3b8; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 8px; font-size: 0.8rem; }
         .nav-btn.active { color: var(--yellow); background: #334155; }
 
         /* Pages */
-        .page { display: none; padding: 15px; text-align: center; animation: fadeIn 0.3s ease; }
+        .page { display: none; padding: 15px; text-align: center; }
         .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Admin/Live Ball */
-        .ball-display { width: 90px; height: 90px; background: radial-gradient(circle at 30% 30%, var(--yellow), #a16207); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; margin: 15px auto; box-shadow: 0 0 20px rgba(250, 204, 21, 0.4); }
-
-        /* Bingo Board */
-        .bingo-card { background: white; padding: 8px; border-radius: 12px; max-width: 320px; margin: 15px auto; color: #000; }
+        /* Wallet Boxes */
+        .wallet-card { background: var(--card); padding: 15px; border-radius: 12px; text-align: left; margin-bottom: 20px; border-left: 5px solid var(--green); }
+        input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; margin-bottom: 10px; box-sizing: border-box; }
+        
+        .main-btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+        
+        /* Ball & Board */
+        .ball { width: 80px; height: 80px; background: radial-gradient(circle at 30% 30%, var(--yellow), #a16207); border-radius: 50%; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 900; color: #000; }
+        .bingo-card { background: white; padding: 8px; border-radius: 10px; max-width: 320px; margin: 0 auto; color: #000; }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-        .cell { aspect-ratio: 1; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 800; border-radius: 5px; border: 1px solid #cbd5e1; }
-        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; }
-
-        /* Cards Picker */
-        .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 15px; }
-        .card-node { background: var(--card); border: 1px solid #334155; padding: 12px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-
-        .main-btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 10px; }
+        .cell { aspect-ratio: 1; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: bold; border: 1px solid #ccc; }
+        .cell.marked { background: var(--red) !important; color: white; border-radius: 50%; }
+        
+        .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .card-node { background: var(--card); padding: 15px 5px; border-radius: 8px; font-weight: bold; border: 1px solid #334155; }
     </style>
 </head>
 <body>
 
     <div class="top-nav">
-        <div class="nav-btn active" onclick="showPage('play-page', this)">🕹 መጫወቻ</div>
-        <div class="nav-btn" id="admin-nav" onclick="showPage('admin-page', this)">🔑 አድሚን</div>
-        <div class="nav-btn" onclick="showPage('wallet-page', this)">💰 ብር</div>
+        <div class="nav-btn active" onclick="showPage('play', this)">🕹 መጫወቻ</div>
+        <div class="nav-btn" onclick="showPage('admin', this)">🔑 አድሚን</div>
+        <div class="nav-btn" onclick="showPage('wallet', this)">💰 ብር ማውጫ</div>
     </div>
 
-    <div id="play-page" class="page active">
-        <div id="selector-zone">
-            <h3>ካርቴላ ይምረጡ (1-200)</h3>
+    <div id="play" class="page active">
+        <div id="selector">
+            <h3>ካርቴላ ይምረጡ</h3>
             <div class="card-grid" id="picker"></div>
         </div>
-        <div id="game-view" style="display:none;">
-            <div class="ball-display" id="user-ball">?</div>
-            <p style="color: var(--yellow);">የወጣው ቁጥር</p>
+        <div id="game" style="display:none;">
+            <div class="ball" id="live-ball">?</div>
             <div class="bingo-card"><div class="grid" id="board"></div></div>
-            <button class="main-btn" style="background: var(--green); color: white;" onclick="claimBingo()">BINGO!</button>
-            <button class="main-btn" style="background: none; border: 1px solid #444; color: white;" onclick="exitGame()">ካርቴላ ቀይር</button>
+            <button class="main-btn" style="background:var(--green); color:white; margin-top:15px;" onclick="alert('ቢንጎ ተልኳል!')">BINGO!</button>
+            <button onclick="document.getElementById('game').style.display='none'; document.getElementById('selector').style.display='block';" style="background:none; color:white; border:none; margin-top:10px;">ተመለስ</button>
         </div>
     </div>
 
-    <div id="admin-page" class="page">
+    <div id="admin" class="page">
         <h2>የዳኛ መቆጣጠሪያ</h2>
-        <div class="ball-display" id="admin-ball">?</div>
-        <button class="main-btn" style="background: var(--yellow); color: black;" onclick="drawNumber()">ቁጥር አውጣ (DRAW)</button>
-        <p style="margin-top: 20px;">የወጡ ቁጥሮች ታሪክ</p>
-        <div id="history" style="font-size: 0.8rem; color: #94a3b8; word-wrap: break-word;"></div>
-        <button onclick="resetGame()" style="margin-top: 20px; color: var(--red); background: none; border: none;">ጌሙን አዲስ ጀምር</button>
+        <div class="ball" id="admin-ball">?</div>
+        <button class="main-btn" style="background:var(--yellow); color:black;" onclick="draw()">ቁጥር አውጣ</button>
     </div>
 
-    <div id="wallet-page" class="page">
-        <h3>የኪስ ቦርሳ</h3>
-        <div style="background: var(--card); padding: 20px; border-radius: 12px; text-align: left;">
-            <p>ቀሪ ሂሳብ: <b style="color: var(--green);">0.00 ETB</b></p>
-            <hr style="border: 0.1px solid #334155;">
-            <p>ቴሌብር: 09XXXXXXXX</p>
-            <button class="main-btn" style="background: var(--yellow); color: black;">ብር አስገባ</button>
+    <div id="wallet" class="page">
+        <h3>የኪስ ቦርሳና ማውጫ</h3>
+        
+        <div class="wallet-card">
+            <small>ያለዎት ቀሪ ሂሳብ</small>
+            <div style="font-size: 1.5rem; font-weight: bold; color: var(--green);">0.00 ETB</div>
+        </div>
+
+        <div class="wallet-card" style="border-left: 5px solid var(--red);">
+            <h4 style="margin:0 0 10px 0; color:var(--red);">💸 ብር ማውጫ (Withdraw)</h4>
+            <input type="number" placeholder="የብር መጠን">
+            <input type="tel" placeholder="የቴሌብር ስልክ ቁጥር">
+            <button class="main-btn" style="background:var(--red); color:white;">አሁን አውጣ</button>
+        </div>
+
+        <div class="wallet-card" style="border-left: 5px solid var(--yellow);">
+            <h4 style="margin:0 0 10px 0; color:var(--yellow);">📥 ብር ማስገቢያ (Deposit)</h4>
+            <p style="font-size: 0.9rem;">ቴሌብር: <b>09XXXXXXXX</b></p>
+            <input type="text" placeholder="የግብይት ቁጥር (Transaction ID)">
+            <button class="main-btn" style="background:var(--yellow); color:black;">ደረሰኝ አረጋግጥ</button>
         </div>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        let drawnNumbers = [];
-
-        function showPage(pageId, btn) {
+        function showPage(id, btn) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
+            document.getElementById(id).classList.add('active');
             btn.classList.add('active');
         }
 
-        // --- Admin Logic ---
-        function drawNumber() {
-            if (drawnNumbers.length >= 75) return alert("ሁሉም ቁጥሮች አልቀዋል!");
-            let num;
-            do { num = Math.floor(Math.random() * 75) + 1; } while (drawnNumbers.includes(num));
-            drawnNumbers.push(num);
-            document.getElementById('admin-ball').innerText = num;
-            document.getElementById('user-ball').innerText = num; // ተጫዋቹ ጋር እንዲታይ
-            document.getElementById('history').innerText = drawnNumbers.join(", ");
-            tg.HapticFeedback.notificationOccurred('success');
+        function draw() {
+            let n = Math.floor(Math.random() * 75) + 1;
+            document.getElementById('admin-ball').innerText = n;
+            document.getElementById('live-ball').innerText = n;
         }
 
-        function resetGame() {
-            if(confirm("ጌሙን ላጥፋው?")) {
-                drawnNumbers = [];
-                document.getElementById('admin-ball').innerText = "?";
-                document.getElementById('user-ball').innerText = "?";
-                document.getElementById('history').innerText = "";
-            }
-        }
-
-        // --- Picker Logic ---
-        function initPicker() {
-            const picker = document.getElementById('picker');
-            picker.innerHTML = "";
-            for (let i = 1; i <= 200; i++) {
-                let div = document.createElement('div');
-                div.className = 'card-node';
-                div.innerText = i;
-                div.onclick = () => {
-                    document.getElementById('selector-zone').style.display = 'none';
-                    document.getElementById('game-view').style.display = 'block';
+        function init() {
+            const p = document.getElementById('picker');
+            for(let i=1; i<=200; i++) {
+                let d = document.createElement('div');
+                d.className = 'card-node';
+                d.innerText = i;
+                d.onclick = () => {
+                    document.getElementById('selector').style.display='none';
+                    document.getElementById('game').style.display='block';
                     drawBoard(i);
                 };
-                picker.appendChild(div);
+                p.appendChild(d);
             }
         }
 
-        function exitGame() {
-            document.getElementById('game-view').style.display = 'none';
-            document.getElementById('selector-zone').style.display = 'block';
-        }
-
-        function drawBoard(seed) {
-            const board = document.getElementById('board');
-            board.innerHTML = "";
-            const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
-            for(let r=0; r<5; r++){
-                for(let c=0; c<5; c++){
-                    let min = ranges[c][0], max = ranges[c][1];
-                    let val = (r===2 && c===2) ? "FREE" : Math.floor((Math.abs(Math.sin(seed * (c+1) + r)) * (max - min + 1)) + min);
-                    let cell = document.createElement('div');
-                    cell.className = 'cell' + (val==="FREE" ? " marked" : "");
-                    cell.innerText = val;
-                    cell.onclick = function() { this.classList.toggle('marked'); tg.HapticFeedback.impactOccurred('light'); };
-                    board.appendChild(cell);
-                }
+        function drawBoard(s) {
+            const b = document.getElementById('board'); b.innerHTML = "";
+            for(let i=0; i<25; i++) {
+                let c = document.createElement('div');
+                c.className = 'cell';
+                c.innerText = Math.floor(Math.random() * 75) + 1;
+                c.onclick = function() { this.classList.toggle('marked'); };
+                b.appendChild(c);
             }
         }
-
-        function claimBingo() {
-            tg.sendData(JSON.stringify({action: "BINGO_CLAIM"}));
-            alert("ቢንጎ! ዳኛው እያረጋገጠ ነው...");
-        }
-
-        window.onload = initPicker;
+        window.onload = init;
     </script>
 </body>
 </html>
