@@ -61,4 +61,116 @@
 
     <div id="play" class="tab-content active">
         <div class="wallet-stat">
-            <div><small style="color: #94a3b8;">ቀሪ ሂሳብ</small><div style="font-size: 1.5rem; font-weight: bold;">0.0
+            <div><small style="color: #94a3b8;">ቀሪ ሂሳብ</small><div style="font-size: 1.5rem; font-weight: bold;">0.00 ETB</div></div>
+            <div style="background: var(--green); padding: 5px 12px; border-radius: 10px; font-size: 0.8rem;">ONLINE</div>
+        </div>
+
+        <div id="selector-zone">
+            <h3 style="margin-bottom: 5px;">ካርቴላ ይምረጡ</h3>
+            <p style="color: #94a3b8; font-size: 0.8rem; margin-top: 0;">ከ 200 አማራጮች ውስጥ አንዱን ይጫኑ</p>
+            <div class="card-grid" id="picker"></div>
+        </div>
+
+        <div id="game-view">
+            <div class="game-header">
+                <span id="active-card-id" style="font-weight: bold; color: var(--yellow);">#000</span>
+                <button onclick="exitGame()" style="background:none; border:1px solid #475569; color:white; border-radius:8px; padding:4px 12px; font-size: 0.8rem;">ቀይር 🔄</button>
+            </div>
+            <div class="bingo-card">
+                <div class="bingo-letters"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
+                <div class="grid" id="bingo-board"></div>
+            </div>
+            <button class="main-btn" style="background: var(--green); color: white; margin-top: 25px; box-shadow: 0 10px 15px -3px rgba(34,197,94,0.4);" onclick="submitBingo()">BINGO!</button>
+        </div>
+    </div>
+
+    <div id="deposit" class="tab-content">
+        <h3>ገንዘብ ያስገቡ</h3>
+        <div class="wallet-stat" style="display: block;">
+            <p style="margin: 0; font-size: 0.9rem;">ቴሌብር ቁጥር: <b style="color: var(--yellow);">09XXXXXXXX</b></p>
+            <p style="margin: 5px 0 0; font-size: 0.9rem;">ስም: <b>የእርስዎ ስም</b></p>
+        </div>
+        <input type="text" id="tx-id" class="input-field" placeholder="የግብይት ቁጥር (Transaction ID)">
+        <button class="main-btn" style="background: var(--yellow); color: black;" onclick="action('DEPOSIT')">ደረሰኝ አረጋግጥ</button>
+    </div>
+
+    <div id="withdraw" class="tab-content">
+        <h3>ገንዘብ ማውጫ</h3>
+        <input type="number" class="input-field" placeholder="የብር መጠን">
+        <input type="tel" class="input-field" placeholder="የቴሌብር ስልክ ቁጥር">
+        <button class="main-btn" style="background: var(--accent); color: white;" onclick="action('WITHDRAW')">አሁን አውጣ</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('top-nav').style.display = 'flex';
+        }, 2000);
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // Create 200 Cards
+        const picker = document.getElementById('picker');
+        for (let i = 1; i <= 200; i++) {
+            let div = document.createElement('div');
+            div.className = 'card-node';
+            div.innerText = i;
+            div.onclick = () => launchBingo(i);
+            picker.appendChild(div);
+        }
+
+        function launchBingo(num) {
+            document.getElementById('selector-zone').style.display = 'none';
+            document.getElementById('game-view').style.display = 'block';
+            document.getElementById('active-card-id').innerText = "የተመረጠ ካርቴላ #" + num;
+            drawBoard(num);
+        }
+
+        function exitGame() {
+            document.getElementById('game-view').style.display = 'none';
+            document.getElementById('selector-zone').style.display = 'block';
+        }
+
+        function drawBoard(seed) {
+            const board = document.getElementById('bingo-board');
+            board.innerHTML = "";
+            const ranges = [[1,15],[16,30],[31,45],[46,60],[61,75]];
+            
+            for(let r=0; r<5; r++){
+                for(let c=0; c<5; c++){
+                    let min = ranges[c][0], max = ranges[c][1];
+                    let val = (r===2 && c===2) ? "FREE" : Math.floor((Math.abs(Math.sin(seed * (c+1) + r)) * (max - min + 1)) + min);
+                    let cell = document.createElement('div');
+                    cell.className = 'cell' + (val==="FREE" ? " marked" : "");
+                    cell.innerText = val;
+                    cell.onclick = function() { 
+                        this.classList.toggle('marked'); 
+                        tg.HapticFeedback.impactOccurred('medium'); 
+                    };
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function submitBingo() {
+            tg.sendData(JSON.stringify({action: "BINGO_CLAIM"}));
+            tg.HapticFeedback.notificationOccurred('success');
+            alert("ቢንጎ! መረጃው ተልኳል።");
+        }
+
+        function action(type) {
+            tg.sendData(JSON.stringify({action: type}));
+            alert("ጥያቄዎ ተልኳል!");
+        }
+    </script>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+</body>
+</html>
