@@ -213,3 +213,89 @@
     </script>
 </body>
 </html>
+
+<div id="home-page" class="page active">
+    <div style="margin-top:20px; background:var(--card); padding:15px; border-radius:15px;">
+        <h4 style="color:var(--gold); margin:0;">📤 ብር ለማውጣት (Withdraw)</h4>
+        <input type="number" id="wd-amt" placeholder="የብር መጠን">
+        <input type="text" id="wd-phone" placeholder="የቴሌብር ስልክ ቁጥር">
+        <button class="btn" style="background:var(--red); color:white;" onclick="requestWithdraw()">የመውጫ ጥያቄ ላክ</button>
+    </div>
+</div>
+
+<div id="admin-page" class="page">
+    <h3 style="margin-top:25px; color:var(--red); text-align:left;">📤 የብር ማውጫ ጥያቄዎች</h3>
+    <div id="wd-list">ጥያቄ የለም...</div>
+</div>
+
+<script>
+    // 1. ተጫዋቹ የብር ማውጫ ጥያቄ ሲልክ
+    function requestWithdraw() {
+        const amt = parseFloat(document.getElementById('wd-amt').value);
+        const phone = document.getElementById('wd-phone').value;
+
+        if(!amt || amt < 50) return alert("ቢያንስ 50 ብር ማውጣት ይችላሉ!");
+        if(!phone) return alert("እባክዎ ስልክ ቁጥር ያስገቡ!");
+        if(myBal < amt) return alert("በቂ ባላንስ የለዎትም!");
+
+        // መጀመሪያ ባላንሱን ቀንሥ
+        db.ref('users/' + uid + '/bal').set(myBal - amt).then(() => {
+            // ለዳኛው ጥያቄ ላክ
+            db.ref('withdraw_requests').push({
+                uid: uid,
+                name: tg.initDataUnsafe.user.first_name,
+                amount: amt,
+                phone: phone,
+                status: 'pending'
+            });
+            alert("የማውጫ ጥያቄዎ ተልኳል! ዳኛው በቅርቡ ይልክልዎታል።");
+            document.getElementById('wd-amt').value = "";
+            document.getElementById('wd-phone').value = "";
+        });
+    }
+
+    // 2. አድሚን ገጽ ላይ ጥያቄዎችን ማሳያ (showAdmin function ውስጥ ይጨመራል)
+    function loadWithdrawRequests() {
+        db.ref('withdraw_requests').on('value', s => {
+            const list = document.getElementById('wd-list');
+            list.innerHTML = "";
+            s.forEach(child => {
+                const r = child.val();
+                if(r.status == 'pending') {
+                    let div = document.createElement('div');
+                    div.style = "background:#1e293b; padding:10px; margin-bottom:10px; border-left:4px solid var(--red); text-align:left;";
+                    div.innerHTML = `
+                        <b>ስም:</b> ${r.name} <br>
+                        <b>መጠን:</b> ${r.amount} ETB <br>
+                        <b>ስልክ:</b> ${r.phone} <br>
+                        <button onclick="approveWithdraw('${child.key}')" style="background:var(--green); color:white; border:none; padding:5px 10px; border-radius:4px; margin-top:5px;">ተከፍሏል (Paid)</button>
+                    `;
+                    list.appendChild(div);
+                }
+            });
+        });
+    }
+
+    function approveWithdraw(key) {
+        if(confirm("ለዚህ ተጫዋች መክፈልዎን አረጋግጠዋል?")) {
+            db.ref('withdraw_requests/' + key).update({ status: 'paid' });
+            alert("ተከፍሏል ተብሎ ተመዝግቧል።");
+        }
+    }
+    
+    // showAdmin function ሲጠራ loadWithdrawRequests() እንዲጨምር ማድረግ አትርሳ
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
