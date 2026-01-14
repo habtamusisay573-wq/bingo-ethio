@@ -180,6 +180,33 @@
                 b.innerText = i;
                 b.onclick = () => startGame(i);
                 list.appendChild(b);
+                <div id="game-page" class="page">
+    <div style="display: flex; justify-content: flex-start; margin-bottom: 10px;">
+        <button onclick="confirmExit()" style="background: var(--red); color: white; border: none; padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+            ⬅ ውጣ (Exit)
+        </button>
+    </div>
+
+    <div id="active-card-label" style="color:var(--gold); font-weight:bold; margin-bottom:10px; font-size: 1.2rem;"></div>
+    
+    <div class="ball" id="live-ball">?</div>
+    <div class="bingo-grid" id="board"></div>
+    
+    <button class="btn btn-gold" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
+</div>
+
+<script>
+    // ጨዋታው ላይ ሆኖ በስህተት እንዳይወጣ ማረጋገጫ
+    function confirmExit() {
+        if(confirm("ከጨዋታው መውጣት ትፈልጋለህ? የከፈልከው ብር አይመለስም።")) {
+            showPage('home-page');
+        }
+    }
+
+    // በካርቴላ መምረጫ ገጽ ላይ የነበረው 'ተመለስ' አዝራር አስቀድሞ አለ፡
+    // <button class="btn" style="background:#444; color:white;" onclick="showPage('home-page')">ተመለስ</button>
+</script>
+
             }
         }
 
