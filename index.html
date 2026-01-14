@@ -141,3 +141,293 @@
     </script>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ETHIO BINGO - PAYMENT</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; }
+        .header { display: flex; justify-content: space-between; padding: 15px; background: #111827; }
+        .page { display: none; padding: 15px; animation: fadeIn 0.5s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
+        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-green { background: var(--green); color: white; }
+        .btn-gold { background: var(--gold); color: black; }
+        
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #0f172a; color: white; box-sizing: border-box; }
+        
+        /* Admin Badge */
+        .admin-section { border-top: 2px solid var(--gold); margin-top: 20px; padding-top: 20px; }
+        .request-item { background: #111827; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.8rem; border-left: 4px solid var(--gold); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>ሰላም፣ <b id="p-name">...</b></div>
+        <div id="u-bal" style="color:var(--green); font-weight:bold;">0.00 ETB</div>
+    </div>
+
+    <div id="home" class="page active">
+        <div class="card">
+            <h3 style="color:var(--gold); margin-top:0;">💰 ሂሳብ ይሙሉ</h3>
+            <p style="font-size: 0.8rem;">በቴሌብር (0991243423) ብር ያስገቡና ከስር ያለውን ቅጽ ይሙሉ</p>
+            <input type="text" id="dep-tid" placeholder="የግብይት ቁጥር (TID/Transaction ID)">
+            <textarea id="dep-sms" placeholder="የደረሰኝ SMS እዚህ ይለጥፉ (Optional)"></textarea>
+            <button class="btn btn-gold" onclick="submitDeposit()">የክፍያ ማረጋገጫ ላክ</button>
+        </div>
+
+        <div id="admin-panel" style="display:none;" class="admin-section">
+            <h3 style="color:var(--gold)">🔑 የአድሚን ገጽ (የክፍያ ጥያቄዎች)</h3>
+            <div id="request-list">ጥያቄ እየተጠበቀ ነው...</div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_ID = 8431270634; // ያንተ ID
+        const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let currentUid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
+        // 1. Load User Data & Admin Check
+        if(currentUid) {
+            document.getElementById('p-name').innerText = tg.initDataUnsafe.user.first_name;
+            
+            // የአድሚን ገጽ እንዲታይ
+            if(currentUid == ADMIN_ID) {
+                document.getElementById('admin-panel').style.display = 'block';
+                loadRequests();
+            }
+
+            // ባላንስን ተከታተል
+            db.ref('users/' + currentUid + '/bal').on('value', (s) => {
+                document.getElementById('u-bal').innerText = (s.val() || 0).toFixed(2) + " ETB";
+            });
+        }
+
+        // 2. ተጫዋቹ የክፍያ ጥያቄ ሲልክ
+        function submitDeposit() {
+            const tid = document.getElementById('dep-tid').value;
+            const sms = document.getElementById('dep-sms').value;
+
+            if(!tid) return alert("እባክዎ የግብይት ቁጥር (TID) ያስገቡ!");
+
+            const requestData = {
+                uid: currentUid,
+                name: tg.initDataUnsafe.user.first_name,
+                tid: tid,
+                sms: sms,
+                status: 'pending',
+                time: new Date().toLocaleString()
+            };
+
+            db.ref('deposit_requests').push(requestData).then(() => {
+                alert("የክፍያ ጥያቄዎ ተልኳል። አድሚኑ ሲያረጋግጥ ባላንስዎ ላይ ይጨመራል!");
+                document.getElementById('dep-tid').value = "";
+                document.getElementById('dep-sms').value = "";
+            });
+        }
+
+        // 3. አድሚኑ ጥያቄዎችን እንዲያይ (ለአንተ ብቻ)
+        function loadRequests() {
+            db.ref('deposit_requests').on('value', (s) => {
+                const list = document.getElementById('request-list');
+                list.innerHTML = "";
+                
+                s.forEach((child) => {
+                    const req = child.val();
+                    if(req.status === 'pending') {
+                        const div = document.createElement('div');
+                        div.className = 'request-item';
+                        div.innerHTML = `
+                            <b>ስም:</b> ${req.name} <br>
+                            <b>TID:</b> ${req.tid} <br>
+                            <b>SMS:</b> ${req.sms} <br>
+                            <small>${req.time}</small> <br>
+                            <input type="number" id="amt-${child.key}" placeholder="የብር መጠን (ምሳሌ: 200)">
+                            <button class="btn btn-green" style="padding:5px; margin-top:5px;" onclick="approvePayment('${child.key}', '${req.uid}')">አጽድቅ (Approve)</button>
+                        `;
+                        list.appendChild(div);
+                    }
+                });
+            });
+        }
+
+        // 4. ብር ለመጨመር (Approve)
+        function approvePayment(reqKey, userUid) {
+            const amount = parseFloat(document.getElementById('amt-' + reqKey).value);
+            if(!amount || amount <= 0) return alert("እባክዎ ትክክለኛ የብር መጠን ያስገቡ!");
+
+            // የተጠቃሚውን ባላንስ አዘምን
+            db.ref('users/' + userUid + '/bal').transaction((current) => {
+                return (current || 0) + amount;
+            }).then(() => {
+                // ጥያቄውን ከዝርዝር ውስጥ አስወግድ ወይም Status ቀይር
+                db.ref('deposit_requests/' + reqKey).update({ status: 'approved', approvedAmount: amount });
+                alert("ክፍያው ጸድቋል! " + amount + " ብር ተጨምሯል።");
+            });
+        }
+    </script>
+</body>
+</html>
+
+
+
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ETHIO BINGO - PAYMENT</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; }
+        .header { display: flex; justify-content: space-between; padding: 15px; background: #111827; }
+        .page { display: none; padding: 15px; animation: fadeIn 0.5s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
+        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-green { background: var(--green); color: white; }
+        .btn-gold { background: var(--gold); color: black; }
+        
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #0f172a; color: white; box-sizing: border-box; }
+        
+        /* Admin Badge */
+        .admin-section { border-top: 2px solid var(--gold); margin-top: 20px; padding-top: 20px; }
+        .request-item { background: #111827; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.8rem; border-left: 4px solid var(--gold); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>ሰላም፣ <b id="p-name">...</b></div>
+        <div id="u-bal" style="color:var(--green); font-weight:bold;">0.00 ETB</div>
+    </div>
+
+    <div id="home" class="page active">
+        <div class="card">
+            <h3 style="color:var(--gold); margin-top:0;">💰 ሂሳብ ይሙሉ</h3>
+            <p style="font-size: 0.8rem;">በቴሌብር (0991243423) ብር ያስገቡና ከስር ያለውን ቅጽ ይሙሉ</p>
+            <input type="text" id="dep-tid" placeholder="የግብይት ቁጥር (TID/Transaction ID)">
+            <textarea id="dep-sms" placeholder="የደረሰኝ SMS እዚህ ይለጥፉ (Optional)"></textarea>
+            <button class="btn btn-gold" onclick="submitDeposit()">የክፍያ ማረጋገጫ ላክ</button>
+        </div>
+
+        <div id="admin-panel" style="display:none;" class="admin-section">
+            <h3 style="color:var(--gold)">🔑 የአድሚን ገጽ (የክፍያ ጥያቄዎች)</h3>
+            <div id="request-list">ጥያቄ እየተጠበቀ ነው...</div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_ID = 8431270634; // ያንተ ID
+        const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let currentUid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
+        // 1. Load User Data & Admin Check
+        if(currentUid) {
+            document.getElementById('p-name').innerText = tg.initDataUnsafe.user.first_name;
+            
+            // የአድሚን ገጽ እንዲታይ
+            if(currentUid == ADMIN_ID) {
+                document.getElementById('admin-panel').style.display = 'block';
+                loadRequests();
+            }
+
+            // ባላንስን ተከታተል
+            db.ref('users/' + currentUid + '/bal').on('value', (s) => {
+                document.getElementById('u-bal').innerText = (s.val() || 0).toFixed(2) + " ETB";
+            });
+        }
+
+        // 2. ተጫዋቹ የክፍያ ጥያቄ ሲልክ
+        function submitDeposit() {
+            const tid = document.getElementById('dep-tid').value;
+            const sms = document.getElementById('dep-sms').value;
+
+            if(!tid) return alert("እባክዎ የግብይት ቁጥር (TID) ያስገቡ!");
+
+            const requestData = {
+                uid: currentUid,
+                name: tg.initDataUnsafe.user.first_name,
+                tid: tid,
+                sms: sms,
+                status: 'pending',
+                time: new Date().toLocaleString()
+            };
+
+            db.ref('deposit_requests').push(requestData).then(() => {
+                alert("የክፍያ ጥያቄዎ ተልኳል። አድሚኑ ሲያረጋግጥ ባላንስዎ ላይ ይጨመራል!");
+                document.getElementById('dep-tid').value = "";
+                document.getElementById('dep-sms').value = "";
+            });
+        }
+
+        // 3. አድሚኑ ጥያቄዎችን እንዲያይ (ለአንተ ብቻ)
+        function loadRequests() {
+            db.ref('deposit_requests').on('value', (s) => {
+                const list = document.getElementById('request-list');
+                list.innerHTML = "";
+                
+                s.forEach((child) => {
+                    const req = child.val();
+                    if(req.status === 'pending') {
+                        const div = document.createElement('div');
+                        div.className = 'request-item';
+                        div.innerHTML = `
+                            <b>ስም:</b> ${req.name} <br>
+                            <b>TID:</b> ${req.tid} <br>
+                            <b>SMS:</b> ${req.sms} <br>
+                            <small>${req.time}</small> <br>
+                            <input type="number" id="amt-${child.key}" placeholder="የብር መጠን (ምሳሌ: 200)">
+                            <button class="btn btn-green" style="padding:5px; margin-top:5px;" onclick="approvePayment('${child.key}', '${req.uid}')">አጽድቅ (Approve)</button>
+                        `;
+                        list.appendChild(div);
+                    }
+                });
+            });
+        }
+
+        // 4. ብር ለመጨመር (Approve)
+        function approvePayment(reqKey, userUid) {
+            const amount = parseFloat(document.getElementById('amt-' + reqKey).value);
+            if(!amount || amount <= 0) return alert("እባክዎ ትክክለኛ የብር መጠን ያስገቡ!");
+
+            // የተጠቃሚውን ባላንስ አዘምን
+            db.ref('users/' + userUid + '/bal').transaction((current) => {
+                return (current || 0) + amount;
+            }).then(() => {
+                // ጥያቄውን ከዝርዝር ውስጥ አስወግድ ወይም Status ቀይር
+                db.ref('deposit_requests/' + reqKey).update({ status: 'approved', approvedAmount: amount });
+                alert("ክፍያው ጸድቋል! " + amount + " ብር ተጨምሯል።");
+            });
+        }
+    </script>
+</body>
+</html>
