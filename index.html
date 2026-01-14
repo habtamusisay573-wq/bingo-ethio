@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="am">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - PRO</title>
+    <title>ETHIO BINGO GOLD - VIBRATE & HINT</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -19,14 +18,30 @@
         
         .ball { width: 75px; height: 75px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #000; margin: 15px auto; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
         .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #cbd5e1; padding: 10px; border-radius: 12px; max-width: 320px; margin: auto; }
-        .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
+        
+        /* ተራ የካርቴላ ሳጥን */
+        .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.3s; position: relative; }
+        
+        /* የተጫነ (Marked) ቁጥር */
         .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); box-shadow: 0 0 10px var(--red); }
+        
+        /* ቁጥሩ ወጥቶ ገና ያልተጫነ (Hint Shadow) */
+        .cell.hint { 
+            box-shadow: inset 0 0 15px var(--gold), 0 0 10px var(--gold); 
+            background: #fef08a;
+            animation: pulse-gold 1.5s infinite;
+        }
+
+        @keyframes pulse-gold { 
+            0% { transform: scale(1); } 
+            50% { transform: scale(1.05); } 
+            100% { transform: scale(1); } 
+        }
 
         .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 8px; }
         .btn-gold { background: var(--gold); color: black; }
         .tx-card { background: var(--card); padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 4px solid var(--gold); text-align: left; }
         .online-tag { background: rgba(34, 197, 94, 0.2); color: var(--green); padding: 3px 10px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; }
-        .winner-ticker { background: rgba(250, 204, 21, 0.1); padding: 10px; border-radius: 10px; border: 1px dashed var(--gold); margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -44,7 +59,7 @@
 
     <div id="app-content">
         <div id="home-page" class="page active">
-            <div class="winner-ticker">
+            <div style="background: rgba(250, 204, 21, 0.1); padding: 10px; border-radius: 10px; border: 1px dashed var(--gold); margin-bottom: 15px;">
                 <small style="color:var(--gold)">🏆 የቅርብ ጊዜ አሸናፊ፦</small>
                 <div id="winners-list" style="font-weight: bold; font-size: 0.9rem;">ተጫዋች በመጠበቅ ላይ...</div>
             </div>
@@ -70,18 +85,16 @@
                 <input type="text" id="tid" placeholder="ቴሌብር TID">
                 <button class="btn btn-gold" onclick="sendPayment()">ላክ</button>
             </div>
-
             <div id="wd-form" style="display:none; background:var(--card); padding:15px; border-radius:12px; margin-top:10px;">
                 <input type="number" id="wd-amt" placeholder="መጠን">
                 <input type="text" id="wd-phone" placeholder="ስልክ">
                 <button class="btn btn-gold" onclick="requestWithdraw()">ጠይቅ</button>
             </div>
-            
             <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
         </div>
 
         <div id="picker-page" class="page">
-            <h3 style="color:var(--gold)">ካርቴላ ይምረጡ</h3>
+            <h3>ካርቴላ ይምረጡ</h3>
             <div id="card-list" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div>
             <button class="btn" style="background:#444; color:white; margin-top:10px;" onclick="showPage('home-page')">ተመለስ</button>
         </div>
@@ -98,7 +111,7 @@
 
         <div id="rules-page" class="page">
             <h3>ደንቦች</h3>
-            <div class="tx-card">1. 20% ኮሚሽን ይቀነሳል | 2. ቢንጎ እንደወጣ መጫን አለበት | 3. ያልወጣን ቁጥር መምታት አይቻልም።</div>
+            <div class="tx-card">1. 20% ኮሚሽን ይቀነሳል | 2. ቢንጎ እንደወጣ መጫን አለበት | 3. የወጡ ቁጥሮች በካርቴላዎ ላይ ሲገኙ በቢጫ ጥላ ይጠቁማሉ።</div>
             <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
         </div>
 
@@ -145,13 +158,32 @@
         });
 
         db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
+        
+        // የቁጥር መውጣቱን የሚከታተል ክፍል
         db.ref('game/drawn').on('value', s => { 
             const newDrawn = s.val()||[]; 
-            if(newDrawn.length > drawn.length) playSfx('sound-pop');
+            if(newDrawn.length > drawn.length) {
+                const lastNum = newDrawn[newDrawn.length - 1];
+                playSfx('sound-pop');
+                checkAndHint(lastNum); // ቁጥሩ ካለ Hint ያደርጋል
+            }
             drawn = newDrawn;
             document.getElementById('live-ball').innerText = drawn[drawn.length-1]||"?"; 
             document.getElementById('admin-ball').innerText = drawn[drawn.length-1]||"?"; 
         });
+
+        // ቁጥሩ ካለ Hint የሚያደርግ ፈንክሽን
+        function checkAndHint(num) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                if (parseInt(cell.innerText) === num) {
+                    cell.classList.add('hint');
+                    if (navigator.vibrate) {
+                        navigator.vibrate(200); // ስልኩን ይንቀጠቀጣል
+                    }
+                }
+            });
+        }
 
         function showPage(p) { document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active')); document.getElementById(p).classList.add('active'); }
         function showForm(id) { document.getElementById('dep-form').style.display='none'; document.getElementById('wd-form').style.display='none'; document.getElementById(id).style.display='block'; }
@@ -185,10 +217,16 @@
             let p = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5); 
             for(let i=0; i<25; i++) { 
                 let c = document.createElement('div'); c.className='cell'; c.innerText=p[i]; 
+                
+                // ቁጥሩ አስቀድሞ ወጥቶ ከሆነ Hint እንዲኖረው
+                if (drawn.includes(p[i])) { c.classList.add('hint'); }
+
                 c.onclick = function() {
                     let num = parseInt(this.innerText);
                     if (drawn.includes(num)) {
-                        this.classList.toggle('marked'); playSfx('sound-pop');
+                        this.classList.remove('hint'); // Hint ይጠፋል
+                        this.classList.toggle('marked'); // ምልክት ይደረጋል
+                        playSfx('sound-pop');
                     } else {
                         tg.showAlert("ይህ ቁጥር ገና አልወጣም!");
                     }
