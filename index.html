@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - VIBRATE & HINT</title>
+    <title>ETHIO BINGO GOLD - ADMIN FIXED</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -18,25 +18,10 @@
         
         .ball { width: 75px; height: 75px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #000; margin: 15px auto; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
         .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #cbd5e1; padding: 10px; border-radius: 12px; max-width: 320px; margin: auto; }
-        
-        /* ተራ የካርቴላ ሳጥን */
         .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.3s; position: relative; }
-        
-        /* የተጫነ (Marked) ቁጥር */
         .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); box-shadow: 0 0 10px var(--red); }
-        
-        /* ቁጥሩ ወጥቶ ገና ያልተጫነ (Hint Shadow) */
-        .cell.hint { 
-            box-shadow: inset 0 0 15px var(--gold), 0 0 10px var(--gold); 
-            background: #fef08a;
-            animation: pulse-gold 1.5s infinite;
-        }
-
-        @keyframes pulse-gold { 
-            0% { transform: scale(1); } 
-            50% { transform: scale(1.05); } 
-            100% { transform: scale(1); } 
-        }
+        .cell.hint { box-shadow: inset 0 0 15px var(--gold), 0 0 10px var(--gold); background: #fef08a; animation: pulse-gold 1.5s infinite; }
+        @keyframes pulse-gold { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 
         .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 8px; }
         .btn-gold { background: var(--gold); color: black; }
@@ -93,41 +78,48 @@
             <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
         </div>
 
+        <div id="admin-page" class="page">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin:0; color:var(--gold)">ዳኛ መቆጣጠሪያ</h3>
+                <button onclick="showPage('home-page')" style="background:#444; color:white; border:none; padding:8px 15px; border-radius:8px; font-weight:bold;">🏠 ተመለስ</button>
+            </div>
+            
+            <div class="ball" id="admin-ball">?</div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
+                <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto ጀምር</button>
+            </div>
+
+            <button class="btn btn-red" onclick="resetGame()" style="margin-top:10px;">RESET GAME</button>
+
+            <h4 style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top:20px;">የተጫዋቾች ጥያቄ</h4>
+            <div id="admin-req-list">ጥያቄ የለም...</div>
+        </div>
+
         <div id="picker-page" class="page">
             <h3>ካርቴላ ይምረጡ</h3>
             <div id="card-list" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div>
-            <button class="btn" style="background:#444; color:white; margin-top:10px;" onclick="showPage('home-page')">ተመለስ</button>
+            <button class="btn" style="background:#444; color:white;" onclick="showPage('home-page')">ተመለስ</button>
         </div>
-
         <div id="game-page" class="page">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <button onclick="confirmExit()" style="background:var(--red); color:white; border:none; padding:8px 15px; border-radius:8px;">❌ ውጣ</button>
-                <span id="card-label" style="color:var(--gold); font-weight:bold;"></span>
+                <span id="card-label"></span>
             </div>
             <div class="ball" id="live-ball">?</div>
             <div class="bingo-grid" id="board"></div>
             <button class="btn btn-gold" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
         </div>
-
         <div id="rules-page" class="page">
             <h3>ደንቦች</h3>
-            <div class="tx-card">1. 20% ኮሚሽን ይቀነሳል | 2. ቢንጎ እንደወጣ መጫን አለበት | 3. የወጡ ቁጥሮች በካርቴላዎ ላይ ሲገኙ በቢጫ ጥላ ይጠቁማሉ።</div>
+            <div class="tx-card">1. 20% ኮሚሽን ይቀነሳል | 2. ቢንጎ እንደወጣ መጫን አለበት | 3. የቢጫ ጥላ የሚጠሩ ቁጥሮችን ይጠቁማል።</div>
             <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
         </div>
-
         <div id="tx-page" class="page">
             <h3>ታሪክ</h3>
             <div id="tx-list"></div>
             <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
-        </div>
-
-        <div id="admin-page" class="page">
-            <h3>ዳኛ መቆጣጠሪያ</h3>
-            <div class="ball" id="admin-ball">?</div>
-            <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
-            <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto ጀምር</button>
-            <div id="admin-req-list" style="margin-top:20px;"></div>
-            <button class="btn btn-red" onclick="resetGame()">RESET</button>
         </div>
     </div>
 
@@ -159,28 +151,23 @@
 
         db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
         
-        // የቁጥር መውጣቱን የሚከታተል ክፍል
         db.ref('game/drawn').on('value', s => { 
             const newDrawn = s.val()||[]; 
             if(newDrawn.length > drawn.length) {
                 const lastNum = newDrawn[newDrawn.length - 1];
                 playSfx('sound-pop');
-                checkAndHint(lastNum); // ቁጥሩ ካለ Hint ያደርጋል
+                checkAndHint(lastNum);
             }
             drawn = newDrawn;
             document.getElementById('live-ball').innerText = drawn[drawn.length-1]||"?"; 
             document.getElementById('admin-ball').innerText = drawn[drawn.length-1]||"?"; 
         });
 
-        // ቁጥሩ ካለ Hint የሚያደርግ ፈንክሽን
         function checkAndHint(num) {
-            const cells = document.querySelectorAll('.cell');
-            cells.forEach(cell => {
+            document.querySelectorAll('.cell').forEach(cell => {
                 if (parseInt(cell.innerText) === num) {
                     cell.classList.add('hint');
-                    if (navigator.vibrate) {
-                        navigator.vibrate(200); // ስልኩን ይንቀጠቀጣል
-                    }
+                    if (navigator.vibrate) navigator.vibrate(200);
                 }
             });
         }
@@ -217,19 +204,11 @@
             let p = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5); 
             for(let i=0; i<25; i++) { 
                 let c = document.createElement('div'); c.className='cell'; c.innerText=p[i]; 
-                
-                // ቁጥሩ አስቀድሞ ወጥቶ ከሆነ Hint እንዲኖረው
-                if (drawn.includes(p[i])) { c.classList.add('hint'); }
-
+                if (drawn.includes(p[i])) c.classList.add('hint');
                 c.onclick = function() {
-                    let num = parseInt(this.innerText);
-                    if (drawn.includes(num)) {
-                        this.classList.remove('hint'); // Hint ይጠፋል
-                        this.classList.toggle('marked'); // ምልክት ይደረጋል
-                        playSfx('sound-pop');
-                    } else {
-                        tg.showAlert("ይህ ቁጥር ገና አልወጣም!");
-                    }
+                    if (drawn.includes(parseInt(this.innerText))) {
+                        this.classList.remove('hint'); this.classList.toggle('marked'); playSfx('sound-pop');
+                    } else tg.showAlert("ይህ ቁጥር ገና አልወጣም!");
                 }; 
                 board.appendChild(c); 
             } 
@@ -246,18 +225,19 @@
             showPage('admin-page');
             db.ref('all_requests').on('value', s => {
                 const list = document.getElementById('admin-req-list'); list.innerHTML = "";
+                if(!s.exists()) list.innerHTML = "ጥያቄ የለም...";
                 s.forEach(c => {
                     let r = c.val(); if(r.status == 'pending') {
                         let d = document.createElement('div'); d.className = 'tx-card';
-                        d.innerHTML = `${r.type}: ${r.name} | ${r.tid || r.amount || r.card} <br> <button onclick="approve('${c.key}','${r.uid}','${r.type}')" class="btn btn-gold">አጽድቅ</button>`;
+                        d.innerHTML = `<b>${r.type}</b>: ${r.name} | ${r.tid || r.amount || 'ካርቴላ #'+r.card} <br> <button onclick="approve('${c.key}','${r.uid}','${r.type}')" class="btn btn-gold">አጽድቅ</button>`;
                         list.appendChild(d);
                     }
                 });
             });
         }
 
-        function approve(k,u,t) { if(t=='DEP') { let a = prompt("መጠን:"); db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); } db.ref('all_requests/'+k).update({status:'ok'}); }
-        function drawSingle() { let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n)); drawn.push(n); db.ref('game/drawn').set(drawn); }
+        function approve(k,u,t) { if(t=='DEP') { let a = prompt("መጠን:"); if(a) db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); } db.ref('all_requests/'+k).update({status:'ok'}); }
+        function drawSingle() { if(drawn.length >= 75) return; let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n)); drawn.push(n); db.ref('game/drawn').set(drawn); }
         function toggleAuto() { const b = document.getElementById('auto-btn'); if(autoInterval) { clearInterval(autoInterval); autoInterval=null; b.innerText="Auto ጀምር"; b.style.background="var(--green)"; } else { autoInterval = setInterval(drawSingle, 4000); b.innerText="አቁም"; b.style.background="var(--red)"; } }
         function resetGame() { if(confirm("RESET?")) db.ref('game/drawn').set([]); }
         function confirmExit() { if(confirm("መውጣት ትፈልጋለህ?")) showPage('home-page'); }
