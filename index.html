@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - 200 CARDS</title>
+    <title>ETHIO BINGO GOLD - ADMIN PANEL</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -22,15 +22,17 @@
         .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.2rem; cursor: pointer; }
         .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; }
 
-        /* Card Picker Grid */
-        .card-picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; background: #111827; border-radius: 10px; margin-top: 15px; }
-        .card-num-btn { background: var(--card); border: 1px solid #334155; color: white; padding: 15px 5px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .card-num-btn:active { background: var(--gold); color: black; }
-
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-gold { background: var(--gold); color: black; }
-        .price-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-        .tab { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; cursor: pointer; }
+        .btn-green { background: var(--green); color: white; }
+        
+        /* Admin Request Box */
+        .req-box { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 5px solid var(--gold); text-align: left; font-size: 0.9rem; }
+        .req-box b { color: var(--gold); }
+        .id-badge { background: #0f172a; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #94a3b8; }
+
+        .card-picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 400px; overflow-y: auto; padding: 10px; }
+        .card-num-btn { background: var(--card); border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; }
     </style>
 </head>
 <body>
@@ -42,46 +44,52 @@
 
     <div id="home-page" class="page active">
         <h3 style="color:var(--gold)">የመወራረጃ መጠን ይምረጡ</h3>
-        <div class="price-tabs">
-            <div class="tab" onclick="goToCardPicker(10)"><b>10</b><br><small>ETB</small></div>
-            <div class="tab" onclick="goToCardPicker(20)"><b>20</b><br><small>ETB</small></div>
-            <div class="tab" onclick="goToCardPicker(50)"><b>50</b><br><small>ETB</small></div>
-            <div class="tab" onclick="goToCardPicker(100)"><b>100</b><br><small>ETB</small></div>
-            <div class="tab" onclick="goToCardPicker(500)"><b>500</b><br><small>ETB</small></div>
-            <div class="tab" onclick="goToCardPicker(1000)"><b>1000</b><br><small>ETB</small></div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div onclick="goToCardPicker(10)" style="background:var(--card); padding:15px; border-radius:12px;">10</div>
+            <div onclick="goToCardPicker(20)" style="background:var(--card); padding:15px; border-radius:12px;">20</div>
+            <div onclick="goToCardPicker(50)" style="background:var(--card); padding:15px; border-radius:12px;">50</div>
+            <div onclick="goToCardPicker(100)" style="background:var(--card); padding:15px; border-radius:12px;">100</div>
+            <div onclick="goToCardPicker(500)" style="background:var(--card); padding:15px; border-radius:12px;">500</div>
+            <div onclick="goToCardPicker(1000)" style="background:var(--card); padding:15px; border-radius:12px;">1000</div>
         </div>
-        <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
+
+        <div style="margin-top:20px; background:var(--card); padding:15px; border-radius:15px;">
+            <p>ቴሌብር: <b>0991243423</b></p>
+            <input type="text" id="tid" placeholder="TID ያስገቡ" style="width:100%; padding:12px; border-radius:8px; border:none; margin-bottom:10px;">
+            <button class="btn btn-gold" onclick="sendPayment()">ብር አስገባ</button>
+        </div>
+        
+        <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showAdmin()">🔧 የዳኛ ገጽ (Admin)</button>
     </div>
 
     <div id="picker-page" class="page">
-        <h3 style="color:var(--gold)">ካርቴላ ይምረጡ (1 - 200)</h3>
-        <p id="selected-price-info" style="font-size:0.9rem"></p>
+        <h3 style="color:var(--gold)">ካርቴላ ይምረጡ (1-200)</h3>
         <div class="card-picker-grid" id="card-list"></div>
         <button class="btn" style="background:#444; color:white;" onclick="showPage('home-page')">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
-        <div style="background:var(--card); padding:5px; border-radius:5px; margin-bottom:10px;">
-            <span id="active-card-label" style="color:var(--gold); font-weight:bold;"></span>
-        </div>
+        <div id="active-card-label" style="color:var(--gold); font-weight:bold; margin-bottom:10px;"></div>
         <div class="ball" id="live-ball">?</div>
         <div class="bingo-grid" id="board"></div>
-        <button class="btn btn-gold" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
+        <button class="btn btn-gold" onclick="alert('ቢንጎ ተልኳል!')">BINGO!</button>
     </div>
 
     <div id="admin-page" class="page">
         <h2 style="color:var(--gold)">የዳኛ መቆጣጠሪያ</h2>
         <div class="ball" id="admin-ball">?</div>
         <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
-        <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto ጀምር</button>
-        <h3 style="margin-top:20px; color:var(--gold)">የክፍያ ጥያቄዎች</h3>
-        <div id="req-list">ጥያቄ የለም...</div>
-        <button class="btn btn-red" style="margin-top:20px; background:var(--red); color:white;" onclick="resetGame()">RESET</button>
-        <button class="btn" style="background:#444; color:white;" onclick="showPage('home-page')">መነሻ</button>
+        <button id="auto-btn" class="btn btn-green" onclick="toggleAuto()">Auto ጀምር</button>
+        
+        <h3 style="margin-top:25px; color:var(--gold); text-align:left;">📩 የክፍያ ጥያቄዎች</h3>
+        <div id="req-list">ጥያቄ እየተጠበቀ ነው...</div>
+        
+        <button class="btn btn-red" onclick="resetGame()">RESET GAME</button>
+        <button class="btn" style="background:#444; color:white;" onclick="showPage('home-page')">ወደ መነሻ</button>
     </div>
 
     <script>
-        const ADMIN_ID = 8431270634;
+        const ADMIN_ID = 8431270634; // ያንተ ID
         const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -94,9 +102,11 @@
         let selectedPrice = 0;
         const uid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 0;
 
+        // የአድሚን ገጽ ፍቃድ
         if(uid == ADMIN_ID) document.getElementById('admin-btn').style.display = 'block';
         document.getElementById('u-name').innerText = tg.initDataUnsafe.user ? "ሰላም " + tg.initDataUnsafe.user.first_name : "ሰላም";
 
+        // ዳታ ማመሳሰል
         db.ref('users/' + uid + '/bal').on('value', s => {
             myBal = s.val() || 0;
             document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
@@ -109,13 +119,59 @@
             document.getElementById('admin-ball').innerText = last;
         });
 
-        // 1. ካርቴላ ዝርዝር መፍጠሪያ
+        // የክፍያ ጥያቄ መላኪያ
+        function sendPayment() {
+            const t = document.getElementById('tid').value;
+            if(!t) return alert("እባክዎ TID ያስገቡ");
+            db.ref('deposit_requests').push({
+                uid: uid,
+                name: tg.initDataUnsafe.user.first_name,
+                tid: t,
+                status: 'pending'
+            }).then(() => {
+                alert("ጥያቄው ለዳኛው ተልኳል!");
+                document.getElementById('tid').value = "";
+            });
+        }
+
+        // የአድሚን ገጽ ማሳያ
+        function showAdmin() {
+            showPage('admin-page');
+            db.ref('deposit_requests').on('value', s => {
+                const list = document.getElementById('req-list');
+                list.innerHTML = "";
+                s.forEach(child => {
+                    const r = child.val();
+                    if(r.status == 'pending') {
+                        let div = document.createElement('div');
+                        div.className = 'req-box';
+                        div.innerHTML = `
+                            <b>ስም:</b> ${r.name} <br>
+                            <b>ID:</b> <span class="id-badge">${r.uid}</span> <br>
+                            <b>TID:</b> <code>${r.tid}</code> <br>
+                            <button onclick="approve('${child.key}','${r.uid}')" style="background:var(--green); color:white; border:none; padding:8px 15px; border-radius:6px; margin-top:8px; cursor:pointer; font-weight:bold;">ብር ጨምር (Approve)</button>
+                        `;
+                        list.appendChild(div);
+                    }
+                });
+            });
+        }
+
+        // ብር ማጽደቂያ
+        function approve(key, userUid) {
+            let amount = prompt("ለዚህ ተጫዋች ስንት ብር መጨመር ይፈልጋሉ?", "200");
+            if(amount) {
+                db.ref('users/' + userUid + '/bal').transaction(current => (current || 0) + parseFloat(amount));
+                db.ref('deposit_requests/' + key).update({ status: 'approved' });
+                alert("ተሳክቷል! " + amount + " ብር ተጨምሯል።");
+            }
+        }
+
+        // ጨዋታ ማስጀመሪያ
         function goToCardPicker(price) {
             if(myBal < price) return alert("በቂ ሂሳብ የለም!");
             selectedPrice = price;
-            document.getElementById('selected-price-info').innerText = "ዋጋ: " + price + " ETB";
             showPage('picker-page');
-            
             const list = document.getElementById('card-list');
             list.innerHTML = "";
             for(let i=1; i<=200; i++) {
@@ -127,29 +183,25 @@
             }
         }
 
-        // 2. ጌሙን ማስጀመሪያ
-        function startGame(cardNum) {
+        function startGame(num) {
             db.ref('users/' + uid + '/bal').set(myBal - selectedPrice);
-            document.getElementById('active-card-label').innerText = "ካርቴላ #" + cardNum;
+            document.getElementById('active-card-label').innerText = "ካርቴላ #" + num;
             showPage('game-page');
-            
             const board = document.getElementById('board');
             board.innerHTML = "";
-            let pool = Array.from({length: 75}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+            let nums = Array.from({length: 75}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
             for(let i=0; i<25; i++) {
-                let c = document.createElement('div');
-                c.className = 'cell';
-                c.innerText = pool[i];
-                c.onclick = function() { this.classList.toggle('marked'); };
-                board.appendChild(c);
+                let cell = document.createElement('div');
+                cell.className = 'cell'; cell.innerText = nums[i];
+                cell.onclick = function() { this.classList.toggle('marked'); };
+                board.appendChild(cell);
             }
         }
 
         function drawSingle() {
-            if(drawn.length >= 75) return alert("ቁጥር አልቋል!");
+            if(drawn.length >= 75) return alert("አልቋል!");
             let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n));
-            drawn.push(n);
-            db.ref('game/drawn').set(drawn);
+            drawn.push(n); db.ref('game/drawn').set(drawn);
         }
 
         function toggleAuto() {
@@ -163,37 +215,11 @@
             }
         }
 
-        function showAdmin() {
-            showPage('admin-page');
-            db.ref('deposit_requests').on('value', s => {
-                const list = document.getElementById('req-list');
-                list.innerHTML = "";
-                s.forEach(child => {
-                    const r = child.val();
-                    if(r.status == 'pending') {
-                        let d = document.createElement('div');
-                        d.style = "background:#111827; padding:10px; margin-bottom:5px; border-radius:8px; border-left:4px solid var(--gold); text-align:left;";
-                        d.innerHTML = `${r.name} (TID: ${r.tid}) <br> <button onclick="approve('${child.key}','${r.uid}')" style="background:var(--green); color:white; border:none; padding:5px 10px; border-radius:4px; margin-top:5px;">አጽድቅ</button>`;
-                        list.appendChild(d);
-                    }
-                });
-            });
-        }
-
-        function approve(key, u) {
-            let a = prompt("መጠን:", "200");
-            if(a) {
-                db.ref('users/'+u+'/bal').transaction(b => (b||0) + parseFloat(a));
-                db.ref('deposit_requests/'+key).update({status:'approved'});
-            }
-        }
-
-        function resetGame() { if(confirm("RESET?")) db.ref('game/drawn').set([]); }
+        function resetGame() { if(confirm("ሁሉንም ዳታ ላጥፋ?")) db.ref('game/drawn').set([]); }
         function showPage(p) {
             document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
             document.getElementById(p).classList.add('active');
         }
-        function claimBingo() { alert("ቢንጎ ለዳኛው ተልኳል!"); }
     </script>
 </body>
 </html>
