@@ -12,12 +12,10 @@
         :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; --indigo: #6366f1; }
         body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; overflow-x: hidden; }
         
-        /* Splash Screen */
         #splash { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; transition: 0.8s; }
         .logo-text { font-size: 3rem; font-weight: 900; color: var(--gold); text-shadow: 0 0 20px rgba(250, 204, 21, 0.5); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 
-        /* UI Elements */
         .header { display: flex; justify-content: space-between; padding: 12px; background: #111827; border-bottom: 2px solid var(--gold); position: sticky; top:0; z-index:100; }
         .page { display: none; padding: 15px; animation: fadeIn 0.4s; min-height: 90vh; }
         .page.active { display: block; }
@@ -28,8 +26,7 @@
         .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
         .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); }
 
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
-        .btn:active { transform: scale(0.98); }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-gold { background: var(--gold); color: black; }
         
         .card-picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-height: 400px; overflow-y: auto; padding: 5px; }
@@ -55,9 +52,12 @@
         <div id="home-page" class="page active">
             <h3 style="color:var(--gold)">የመወራረጃ መጠን ይምረጡ</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                <div onclick="goToCardPicker(10)" style="background:var(--card); padding:20px 10px; border-radius:12px; border:1px solid #334155;"><b>10</b><br><small>ETB</small></div>
-                <div onclick="goToCardPicker(50)" style="background:var(--card); padding:20px 10px; border-radius:12px; border:1px solid #334155;"><b>50</b><br><small>ETB</small></div>
-                <div onclick="goToCardPicker(100)" style="background:var(--card); padding:20px 10px; border-radius:12px; border:1px solid #334155;"><b>100</b><br><small>ETB</small></div>
+                <div onclick="goToCardPicker(10)" style="background:var(--card); padding:15px 5px; border-radius:12px; border:1px solid #334155;"><b>10</b><br><small>ETB</small></div>
+                <div onclick="goToCardPicker(20)" style="background:var(--card); padding:15px 5px; border-radius:12px; border:1px solid #334155;"><b>20</b><br><small>ETB</small></div>
+                <div onclick="goToCardPicker(50)" style="background:var(--card); padding:15px 5px; border-radius:12px; border:1px solid #334155;"><b>50</b><br><small>ETB</small></div>
+                <div onclick="goToCardPicker(100)" style="background:var(--card); padding:15px 5px; border-radius:12px; border:1px solid #334155;"><b>100</b><br><small>ETB</small></div>
+                <div onclick="goToCardPicker(500)" style="background:var(--card); padding:15px 5px; border-radius:12px; border:1px solid #334155;"><b>500</b><br><small>ETB</small></div>
+                <div onclick="goToCardPicker(1000)" style="background:var(--card); padding:15px 5px; border-radius:12px; border:1px solid #334155;"><b>1000</b><br><small>ETB</small></div>
             </div>
 
             <div style="margin-top:20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -112,11 +112,11 @@
         <div id="game-page" class="page">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
                 <button onclick="confirmExit()" style="background:var(--red); color:white; border:none; padding:8px 15px; border-radius:8px; font-weight:bold;">⬅ ውጣ</button>
-                <span id="active-card-label" style="color:var(--gold); font-weight:bold; font-size:1.1rem;"></span>
+                <span id="active-card-label" style="color:var(--gold); font-weight:bold;"></span>
             </div>
             <div class="ball" id="live-ball">?</div>
             <div class="bingo-grid" id="board"></div>
-            <button class="btn btn-gold" style="margin-top:25px; font-size:1.2rem;" onclick="claimBingo()">BINGO!</button>
+            <button class="btn btn-gold" style="margin-top:25px;" onclick="claimBingo()">BINGO!</button>
         </div>
 
         <div id="admin-page" class="page">
@@ -124,11 +124,8 @@
             <div id="admin-ball" class="ball">?</div>
             <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
             <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto ጀምር</button>
-            
-            <h4 style="color:var(--gold); margin-top:20px; text-align:left;">📩 ገቢ/ወጪ ጥያቄዎች</h4>
-            <div id="admin-req-list"></div>
-            
-            <button class="btn btn-red" onclick="resetGame()" style="margin-top:30px;">RESET GAME</button>
+            <div id="admin-req-list" style="margin-top:20px;"></div>
+            <button class="btn btn-red" onclick="resetGame()" style="margin-top:20px;">RESET GAME</button>
             <button class="btn" onclick="showPage('home-page')">ወደ መነሻ</button>
         </div>
     </div>
@@ -141,13 +138,9 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // SplashScreen Logic
         setTimeout(() => {
-            document.getElementById('splash').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('splash').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
-            }, 800);
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
         }, 2000);
 
         let myBal = 0, drawn = [], autoInterval = null, selectedPrice = 0, currentCard = 0;
@@ -164,19 +157,14 @@
 
         db.ref('game/drawn').on('value', s => { 
             drawn = s.val() || []; 
-            const last = drawn[drawn.length-1] || "?";
-            document.getElementById('live-ball').innerText = last; 
-            document.getElementById('admin-ball').innerText = last; 
+            document.getElementById('live-ball').innerText = drawn[drawn.length-1] || "?"; 
+            document.getElementById('admin-ball').innerText = drawn[drawn.length-1] || "?"; 
         });
 
         function showForm(id) { 
             document.getElementById('dep-form').style.display = 'none'; 
             document.getElementById('wd-form').style.display = 'none'; 
             document.getElementById(id).style.display = 'block'; 
-        }
-
-        function addTx(type, amt, desc) {
-            db.ref('users/'+uid+'/tx').push({ type, amt, desc, time: new Date().toLocaleTimeString() });
         }
 
         function sendPayment() {
@@ -190,16 +178,16 @@
         function requestWithdraw() {
             const amt = parseFloat(document.getElementById('wd-amt').value);
             const ph = document.getElementById('wd-phone').value;
-            if(amt < 50 || myBal < amt) return alert("ስህተት አለ! ባላንስዎን ወይም መጠንዎን ያረጋግጡ (Min 50)");
+            if(amt < 50 || myBal < amt) return alert("ስህተት አለ! ባላንስዎን ያረጋግጡ");
             db.ref('users/'+uid+'/bal').set(myBal - amt);
             db.ref('all_requests').push({ uid, name: uName, amount: amt, phone: ph, type: 'WD', status: 'pending' });
-            addTx('WITHDRAW', amt, 'የወጪ ጥያቄ');
+            db.ref('users/'+uid+'/tx').push({ type: 'WITHDRAW', amt: amt, desc: 'የወጪ ጥያቄ', time: new Date().toLocaleTimeString() });
             alert("ጥያቄ ተልኳል!");
         }
 
         function showTransactions() {
             showPage('tx-page');
-            db.ref('users/'+uid+'/tx').limitToLast(15).on('value', s => {
+            db.ref('users/'+uid+'/tx').limitToLast(10).on('value', s => {
                 const list = document.getElementById('tx-list'); list.innerHTML = "";
                 s.forEach(c => {
                     let r = c.val();
@@ -224,7 +212,7 @@
         function startGame(n) {
             currentCard = n;
             db.ref('users/'+uid+'/bal').set(myBal - selectedPrice);
-            addTx('PLAY', selectedPrice, 'ካርቴላ #' + n);
+            db.ref('users/'+uid+'/tx').push({ type:'PLAY', amt:selectedPrice, desc:'ካርቴላ #' + n, time:new Date().toLocaleTimeString() });
             document.getElementById('active-card-label').innerText = "ካርቴላ #" + n;
             showPage('game-page');
             const board = document.getElementById('board'); board.innerHTML = "";
@@ -237,7 +225,7 @@
 
         function claimBingo() {
             db.ref('all_requests').push({ uid, name: uName, card: currentCard, price: selectedPrice, type: 'BINGO', status: 'pending' });
-            alert("ቢንጎ ለዳኛው ተልኳል! እባክዎ ካርቴላውን Screenshot አንስተው ግሩፑ ላይ ይላኩ።");
+            alert("ቢንጎ ለዳኛው ተልኳል!");
         }
 
         function showAdmin() {
@@ -247,40 +235,23 @@
                 s.forEach(c => {
                     let r = c.val(); if(r.status == 'pending') {
                         let d = document.createElement('div'); d.className = 'tx-card';
-                        if(r.type == 'DEP') d.innerHTML = `💰 DEP: ${r.name} | TID: ${r.tid} <br> <button onclick="approveDep('${c.key}','${r.uid}')" class="btn btn-gold">አጽድቅ</button>`;
-                        else if(r.type == 'WD') d.innerHTML = `📤 WD: ${r.name} | ${r.amount} ETB | ${r.phone} <br> <button onclick="approveWd('${c.key}')" class="btn" style="background:var(--red); color:white;">ተከፈለ</button>`;
-                        else if(r.type == 'BINGO') d.innerHTML = `🏆 BINGO: ${r.name} | #${r.card} | ${r.price} ETB <br> <button onclick="approveBingo('${c.key}')" class="btn btn-gold">ተረጋገጠ</button>`;
+                        if(r.type == 'DEP') d.innerHTML = `DEP: ${r.name} | TID: ${r.tid} <br> <button onclick="approveDep('${c.key}','${r.uid}')" class="btn btn-gold">አጽድቅ</button>`;
+                        else if(r.type == 'WD') d.innerHTML = `WD: ${r.name} | ${r.amount} ETB <br> <button onclick="approveWd('${c.key}')" class="btn btn-red">ተከፈለ</button>`;
+                        else if(r.type == 'BINGO') d.innerHTML = `BINGO: ${r.name} | #${r.card} | ${r.price} ETB <br> <button onclick="approveBingo('${c.key}')" class="btn btn-gold">አሸናፊ</button>`;
                         list.appendChild(d);
                     }
                 });
             });
         }
 
-        function approveDep(k,u) { 
-            let a = prompt("መጠን ያስገቡ:"); 
-            if(a) { 
-                db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); 
-                db.ref('all_requests/'+k).update({status:'ok'}); 
-                db.ref('users/'+u+'/tx').push({type:'DEPOSIT', amt:a, desc:'ተቀባይነት አግኝቷል', time:new Date().toLocaleTimeString()});
-            } 
-        }
+        function approveDep(k,u) { let a = prompt("መጠን:"); if(a) { db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); db.ref('all_requests/'+k).update({status:'ok'}); db.ref('users/'+u+'/tx').push({type:'DEPOSIT', amt:a, desc:'የገባ', time:new Date().toLocaleTimeString()}); } }
         function approveWd(k) { db.ref('all_requests/'+k).update({status:'ok'}); alert("ተከፈለ!"); }
-        function approveBingo(k) { db.ref('all_requests/'+k).update({status:'ok'}); alert("አሸናፊ ተረጋግጧል!"); }
+        function approveBingo(k) { db.ref('all_requests/'+k).update({status:'ok'}); alert("ተረጋገጠ!"); }
 
-        function drawSingle() { 
-            if(drawn.length >= 75) return alert("ቁጥሮች አልቀዋል!");
-            let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n));
-            drawn.push(n); db.ref('game/drawn').set(drawn); 
-        }
-
-        function toggleAuto() { 
-            const b = document.getElementById('auto-btn'); 
-            if(autoInterval) { clearInterval(autoInterval); autoInterval = null; b.innerText = "Auto ጀምር"; b.style.background = "var(--green)"; } 
-            else { autoInterval = setInterval(drawSingle, 4000); b.innerText = "አቁም"; b.style.background = "var(--red)"; } 
-        }
-
-        function resetGame() { if(confirm("ሁሉንም ቁጥሮች ላጥፋ?")) db.ref('game/drawn').set([]); }
-        function confirmExit() { if(confirm("መውጣት ትፈልጋለህ? የቆረጥከው ብር አይመለስም።")) showPage('home-page'); }
+        function drawSingle() { let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n)); drawn.push(n); db.ref('game/drawn').set(drawn); }
+        function toggleAuto() { const b = document.getElementById('auto-btn'); if(autoInterval) { clearInterval(autoInterval); autoInterval = null; b.innerText = "Auto ጀምር"; b.style.background = "var(--green)"; } else { autoInterval = setInterval(drawSingle, 4000); b.innerText = "አቁም"; b.style.background = "var(--red)"; } }
+        function resetGame() { if(confirm("RESET?")) db.ref('game/drawn').set([]); }
+        function confirmExit() { if(confirm("መውጣት ትፈልጋለህ?")) showPage('home-page'); }
         function showPage(p) { document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active')); document.getElementById(p).classList.add('active'); }
     </script>
 </body>
