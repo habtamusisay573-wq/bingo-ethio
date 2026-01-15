@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BINGO ETHIO</title>
+    <title>ETHIO BINGO GOLD</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -12,113 +12,111 @@
         :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
 
-        /* 1. መጀመሪያ BINGO ETHIO የሚለው ስም */
-        .app-title {
-            text-align: center;
-            padding: 20px 10px;
-            background: linear-gradient(to bottom, #1e293b, #0f172a);
+        /* Splash Screen */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            animation: fadeOut 2.5s forwards; animation-delay: 2s;
         }
-        .app-title h1 {
-            margin: 0;
-            font-size: 2.2rem;
-            color: var(--gold);
-            font-weight: 900;
-            letter-spacing: 1px;
-            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
-        }
+        #splash-screen h1 { font-size: 3rem; color: var(--gold); font-weight: 900; animation: zoomIn 1.2s; }
+        @keyframes zoomIn { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 
-        /* 2. የፕሮፋይል እና ባላንስ መስመር */
-        .user-line {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 20px;
-            background: rgba(255,255,255,0.05);
-            border-top: 1px solid rgba(250, 204, 21, 0.2);
-            border-bottom: 1px solid rgba(250, 204, 21, 0.2);
-        }
-        .u-name { font-weight: bold; font-size: 1rem; }
+        /* Main Content */
+        #main-wrapper { opacity: 0; animation: fadeInMain 1s forwards; animation-delay: 2.2s; height: 100vh; overflow-y: auto; }
+        @keyframes fadeInMain { to { opacity: 1; } }
+
+        .header { text-align: center; padding: 15px; background: #111827; border-bottom: 2px solid var(--gold); }
+        .user-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: rgba(255,255,255,0.05); }
         .u-bal { color: var(--green); font-weight: 900; }
 
-        .page { display: none; padding: 15px; animation: fadeIn 0.3s ease; }
+        .page { display: none; padding: 15px; }
         .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* የብር መምረጫ ቁልፎች */
-        .price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 20px 0; }
-        .btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-price { background: var(--card); color: white; border: 1px solid #475569; font-size: 1.1rem; }
-        .btn-gold { background: var(--gold); color: black; box-shadow: 0 4px 0 #a16207; margin-top: 10px; }
-        .btn-gold:active { transform: translateY(2px); box-shadow: none; }
+        /* Buttons & Grid */
+        .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 15px 0; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-price { background: var(--card); color: white; border: 1px solid rgba(250, 204, 21, 0.3); }
+        .btn-gold { background: var(--gold); color: black; box-shadow: 0 4px 0 #a16207; }
+        .btn-red { background: var(--red); color: white; margin-top: 10px; }
 
-        /* 3. ተጫዋች በመጠበቅ ላይ (ከታች) */
-        .bottom-status {
-            margin-top: 30px;
-            padding: 15px;
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 15px;
-            border: 1px dashed var(--gold);
-            text-align: center;
+        /* Forms */
+        .form-box { display: none; background: var(--card); padding: 15px; border-radius: 15px; margin-top: 10px; border: 1px solid var(--gold); }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: none; background: #0f172a; color: white; box-sizing: border-box; }
+
+        /* Bottom Status */
+        .status-footer {
+            margin-top: 25px; padding: 15px; background: rgba(30, 41, 59, 0.5);
+            border-radius: 18px; text-align: center;
         }
-        .progress-container { background: #0f172a; height: 6px; border-radius: 3px; margin-top: 10px; overflow: hidden; }
-        .progress-bar { width: 0%; height: 100%; background: var(--gold); transition: width 1s linear; }
+        .progress-bg { background: #0f172a; height: 6px; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: var(--gold); transition: width 1s linear; }
 
-        /* የካርቴላ ዲዛይን */
-        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: #334155; padding: 10px; border-radius: 15px; max-width: 320px; margin: 15px auto; }
-        .cell { aspect-ratio: 1; background: white; color: #0f172a; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 8px; font-size: 1.1rem; box-shadow: 0 3px 0 #cbd5e1; }
-        .cell.marked { background: var(--red) !important; color: white !important; transform: scale(0.85); border-radius: 50%; }
-        .cell.hint { background: #fef08a; box-shadow: 0 0 12px var(--gold); animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .ball { width: 75px; height: 75px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 900; color: #000; margin: 15px auto; border: 4px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #334155; padding: 10px; border-radius: 15px; }
+        .cell { aspect-ratio: 1; background: white; color: #0f172a; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 6px; }
+        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; }
+        .cell.hint { background: #fef08a; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
     </style>
 </head>
 <body>
 
-    <div class="app-title">
-        <h1>BINGO ETHIO</h1>
-    </div>
+    <div id="splash-screen"><h1>ETHIO BINGO</h1></div>
 
-    <div class="user-line">
-        <div>
-            <span class="u-name" id="u-name">...</span><br>
-            <button onclick="toggleMute()" id="mute-btn" style="background:none; border:1px solid var(--gold); color:var(--gold); font-size:0.7rem; border-radius:5px; margin-top:4px;">🔊 ድምፅ በርቷል</button>
-        </div>
-        <div style="text-align:right;">
-            <span class="u-bal" id="u-bal">0.00 ETB</span><br>
-            <small id="online-count" style="font-size:0.7rem; color:#94a3b8;">🟢 0 ተጫዋች</small>
-        </div>
-    </div>
-
-    <div id="app-content">
-        <div id="home-page" class="page active">
-            <div class="price-grid">
-                <button onclick="pickPrice(10)" class="btn btn-price">10</button>
-                <button onclick="pickPrice(20)" class="btn btn-price">20</button>
-                <button onclick="pickPrice(50)" class="btn btn-price">50</button>
-            </div>
-
-            <button class="btn btn-gold" onclick="document.getElementById('dep-form').style.display='block'">📥 ብር አስገባ</button>
-            <div id="dep-form" style="display:none; margin-top:10px;">
-                <input type="text" id="tid" placeholder="ቴሌብር TID" style="width:100%; padding:12px; border-radius:10px; border:none; background:var(--card); color:white; box-sizing:border-box;">
-                <button class="btn btn-gold" onclick="sendDep()">አረጋግጥ</button>
-            </div>
-
-            <div class="bottom-status">
-                <small id="wait-msg" style="color:var(--gold)">ተጫዋቾችን በመጠበቅ ላይ...</small>
-                <h2 id="players-count" style="margin:5px 0;">0 / 5</h2>
-                <div class="progress-container"><div class="progress-bar" id="p-bar"></div></div>
-            </div>
-
-            <button id="admin-btn" class="btn" style="background:var(--green); color:white; display:none; margin-top:20px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
+    <div id="main-wrapper">
+        <div class="header"><h2>ETHIO BINGO</h2></div>
+        <div class="user-bar">
+            <div><b id="u-name">ተጫዋች</b></div>
+            <div><b class="u-bal" id="u-bal">0.00 ETB</b></div>
         </div>
 
-        <div id="game-page" class="page">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <button onclick="if(confirm('መውጣት ትፈልጋለህ?')) location.reload()" style="background:var(--red); color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold;">❌ ውጣ</button>
-                <b id="game-info" style="color:var(--gold)"></b>
+        <div id="app-content">
+            <div id="home-page" class="page active">
+                <div class="price-grid">
+                    <button onclick="pickPrice(10)" class="btn btn-price">10</button>
+                    <button onclick="pickPrice(20)" class="btn btn-price">20</button>
+                    <button onclick="pickPrice(50)" class="btn btn-price">50</button>
+                    <button onclick="pickPrice(100)" class="btn btn-price">100</button>
+                    <button onclick="pickPrice(500)" class="btn btn-price">500</button>
+                    <button onclick="pickPrice(1000)" class="btn btn-price">1000</button>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-gold" onclick="toggleForm('dep-form')">📥 ብር አስገባ</button>
+                    <button class="btn btn-red" onclick="toggleForm('with-form')">📤 ብር አውጣ</button>
+                </div>
+
+                <div id="dep-form" class="form-box">
+                    <input type="text" id="tid" placeholder="ቴሌብር TID ያስገቡ">
+                    <button class="btn btn-gold" onclick="sendRequest('DEP')">ማስገቢያ ጠይቅ</button>
+                </div>
+
+                <div id="with-form" class="form-box">
+                    <input type="number" id="w-amount" placeholder="የብር መጠን">
+                    <input type="text" id="w-phone" placeholder="የቴሌብር ስልክ ቁጥር">
+                    <button class="btn btn-red" onclick="sendRequest('WITH')">ማውጫ ጠይቅ</button>
+                </div>
+
+                <div class="status-footer">
+                    <small style="color:var(--gold)">ተጫዋቾችን በመጠበቅ ላይ...</small>
+                    <h2 id="players-count">0 / 5</h2>
+                    <div class="progress-bg"><div class="progress-fill" id="p-bar"></div></div>
+                </div>
+                
+                <button id="admin-btn" class="btn" style="background:var(--green); color:white; display:none; margin-top:15px;" onclick="alert('ዳኛ ሆይ! ጥያቄዎችን በ Firebase Console ማየት ትችላለህ።')">🔧 ዳኛ ገጽ</button>
             </div>
-            <div id="live-ball" style="width:75px; height:75px; background:radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.5rem; font-weight:900; color:#000; margin:15px auto; border:4px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.5);">?</div>
-            <div class="bingo-grid" id="board"></div>
-            <button class="btn btn-gold" style="font-size: 1.5rem; padding: 18px;" onclick="validateBingo()">BINGO!</button>
+
+            <div id="game-page" class="page">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <button onclick="location.reload()" style="background:var(--red); border:none; color:white; padding:8px 15px; border-radius:10px;">❌ ውጣ</button>
+                    <b id="game-info" style="color:var(--gold)"></b>
+                </div>
+                <div class="ball" id="live-ball">?</div>
+                <div class="bingo-grid" id="board"></div>
+                <button class="btn btn-gold" style="font-size:1.5rem; margin-top:20px;" onclick="validateBingo()">BINGO!</button>
+            </div>
         </div>
     </div>
 
@@ -130,32 +128,18 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        let uName = "ተጫዋች", uid = Date.now();
-        if (tg.initDataUnsafe?.user) {
-            uName = tg.initDataUnsafe.user.first_name;
-            uid = tg.initDataUnsafe.user.id;
-        }
+        let uName = "ተጫዋች", uid = Date.now(), myBal = 0, drawn = [], selectedPrice = 0;
+        if (tg.initDataUnsafe?.user) { uName = tg.initDataUnsafe.user.first_name; uid = tg.initDataUnsafe.user.id; }
         document.getElementById('u-name').innerText = uName;
-
-        let myBal = 0, drawn = [], isMuted = false, selectedPrice = 0;
         if(uid == ADMIN_ID) document.getElementById('admin-btn').style.display = 'block';
-
-        function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇 ድምፅ ጠፍቷል" : "🔊 ድምፅ በርቷል"; }
-        function playSfx(id) { if(!isMuted) { const s = document.getElementById(id); s.currentTime = 0; s.play().catch(()=>{}); } }
 
         db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
         
         db.ref('game/players').on('value', s => {
             const count = s.numChildren();
             document.getElementById('players-count').innerText = `${count} / 5`;
-            if(count >= 5) {
-                document.getElementById('wait-msg').innerText = "ጨዋታው በ 10 ሰከንድ ውስጥ ይጀምራል...";
-                document.getElementById('p-bar').style.width = "100%";
-                if(uid == ADMIN_ID) setTimeout(startAuto, 10000);
-            } else {
-                document.getElementById('wait-msg').innerText = "ተጫዋቾችን በመጠበቅ ላይ...";
-                document.getElementById('p-bar').style.width = "0%";
-            }
+            document.getElementById('p-bar').style.width = (count >= 5) ? "100%" : "0%";
+            if(count >= 5 && uid == ADMIN_ID) setTimeout(startAuto, 10000);
         });
 
         db.ref('game/drawn').on('value', s => {
@@ -163,10 +147,31 @@
             if(drawn.length > 0) {
                 const last = drawn[drawn.length-1];
                 document.getElementById('live-ball').innerText = last;
-                playSfx('sound-pop');
                 document.querySelectorAll('.cell').forEach(c => { if(parseInt(c.innerText) === last) c.classList.add('hint'); });
             }
         });
+
+        function toggleForm(id) {
+            const f = document.getElementById(id);
+            f.style.display = (f.style.display === 'block') ? 'none' : 'block';
+        }
+
+        function sendRequest(type) {
+            let data = { uid, name: uName, type, status: 'pending', time: Date.now() };
+            if(type === 'DEP') {
+                data.tid = document.getElementById('tid').value;
+                if(!data.tid) return alert("እባክህ TID አስገባ!");
+            } else {
+                data.amount = parseFloat(document.getElementById('w-amount').value);
+                data.phone = document.getElementById('w-phone').value;
+                if(!data.amount || !data.phone) return alert("ሁሉንም መረጃ ሙላ!");
+                if(data.amount > myBal) return alert("በቂ ባላንስ የለህም!");
+            }
+            db.ref('all_requests').push(data);
+            alert("ጥያቄህ ተልኳል! በቅርቡ ይስተካከላል።");
+            document.getElementById('dep-form').style.display = 'none';
+            document.getElementById('with-form').style.display = 'none';
+        }
 
         function pickPrice(p) {
             if(myBal < p) return alert("ባላንስ የለም!");
@@ -191,15 +196,15 @@
 
         function validateBingo() {
             const marked = document.querySelectorAll('.cell.marked');
-            if(marked.length < 5) return alert("ቢያንስ 5 ቁጥር መምታት አለብህ!");
+            if(marked.length < 5) return alert("ቢያንስ 5 ቁጥር መርጠህ ቢንጎ በል!");
             let win = true;
             marked.forEach(c => { if(!drawn.includes(parseInt(c.innerText))) win = false; });
             if(win) {
                 const prize = (selectedPrice * 5) * 0.8;
                 db.ref('users/'+uid+'/bal').transaction(b => (b||0) + prize);
                 db.ref('game/drawn').set([]); db.ref('game/players').remove();
-                playSfx('sound-win'); alert(`🎉 ቢንጎ! ${prize} ETB ገብቷል።`); location.reload();
-            } else alert("ያልወጣ ቁጥር መርጠሃል!");
+                alert(`🎉 ቢንጎ! ${prize} ETB ገብቷል።`); location.reload();
+            } else alert("ያልወጣ ቁጥር አለህ!");
         }
 
         function startAuto() {
@@ -210,17 +215,6 @@
                 if(gameSet.length >= 75 || gameSet.length == 0) clearInterval(iv);
             }, 4000);
         }
-
-        function sendDep() {
-            const t = document.getElementById('tid').value;
-            if(!t) return;
-            db.ref('all_requests').push({uid, name:uName, tid:t, type:'DEP', status:'pending'});
-            alert("ተልኳል!");
-            document.getElementById('dep-form').style.display='none';
-        }
     </script>
-
-    <audio id="sound-pop" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
-    <audio id="sound-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
 </body>
 </html>
