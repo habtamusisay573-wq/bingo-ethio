@@ -26,6 +26,11 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         .ball { width: 75px; height: 75px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #000; margin: 15px auto; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        
+        /* ያለፉ 5 ቁጥሮች ስታይል */
+        .recent-numbers { display: flex; justify-content: center; gap: 8px; margin-bottom: 15px; }
+        .recent-ball { width: 35px; height: 35px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; border: 1px solid var(--gold); color: var(--gold); }
+
         .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #cbd5e1; padding: 10px; border-radius: 12px; max-width: 320px; margin: auto; }
         .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.3s; position: relative; }
         .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); box-shadow: 0 0 10px var(--red); }
@@ -62,12 +67,10 @@
                 <button onclick="goToCardPicker(500)" class="btn" style="background:var(--card); color:white;">500</button>
                 <button onclick="goToCardPicker(1000)" class="btn" style="background:var(--card); color:white;">1000</button>
             </div>
-
             <div style="margin-top:20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <button class="btn btn-gold" onclick="showForm('dep-form')">📥 አስገባ</button>
                 <button class="btn" style="background:var(--red); color:white;" onclick="showForm('wd-form')">📤 አውጣ</button>
             </div>
-            
             <button class="btn" style="background:var(--indigo); color:white;" onclick="showTransactions()">📜 ታሪክ</button>
             <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
 
@@ -85,6 +88,7 @@
         <div id="admin-page" class="page">
             <h3 style="color:var(--gold)">ዳኛ መቆጣጠሪያ</h3>
             <div class="ball" id="admin-ball">?</div>
+            <div class="recent-numbers" id="admin-recent"></div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
                 <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto ጀምር</button>
@@ -106,6 +110,7 @@
                 <span id="card-label"></span>
             </div>
             <div class="ball" id="live-ball">?</div>
+            <div class="recent-numbers" id="live-recent"></div>
             <div class="bingo-grid" id="board"></div>
             <button class="btn btn-gold" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
         </div>
@@ -144,9 +149,20 @@
                 checkAndHint(lastNum);
             }
             drawn = newDrawn;
-            document.getElementById('live-ball').innerText = drawn[drawn.length-1]||"?"; 
-            document.getElementById('admin-ball').innerText = drawn[drawn.length-1]||"?"; 
+            updateBalls();
         });
+
+        function updateBalls() {
+            const last = drawn[drawn.length-1] || "?";
+            document.getElementById('live-ball').innerText = last;
+            document.getElementById('admin-ball').innerText = last;
+
+            // ያለፉ 5 ቁጥሮች (ከመጨረሻው ቁጥር በፊት ያሉትን 5)
+            const recent = drawn.slice(-6, -1).reverse(); 
+            const recentHtml = recent.map(n => `<div class="recent-ball">${n}</div>`).join('');
+            document.getElementById('live-recent').innerHTML = recentHtml;
+            document.getElementById('admin-recent').innerHTML = recentHtml;
+        }
 
         function checkAndHint(num) {
             document.querySelectorAll('.cell').forEach(cell => {
@@ -179,15 +195,15 @@
                 c.onclick = function() { if (drawn.includes(parseInt(this.innerText))) this.classList.toggle('marked'); }; 
                 board.appendChild(c); 
             } 
+            updateBalls();
         }
 
         function requestWithdraw() { 
             const amt = parseFloat(document.getElementById('wd-amt').value);
             if(amt > myBal) return alert("ባላንስ የለም!");
-            // ወዲያውኑ ብር ይቀንሳል
             db.ref('users/'+uid+'/bal').set(myBal - amt);
             db.ref('all_requests').push({ uid, name: uName, amount: amt, phone: document.getElementById('wd-phone').value, type: 'WD', status: 'pending' }); 
-            alert("የወጪ ጥያቄ ተልኳል! ብር ቀንሰናል::"); 
+            alert("የወጪ ጥያቄ ተልኳል!"); 
         }
 
         function showAdmin() {
@@ -206,16 +222,10 @@
 
         function approve(k,u,t) { if(t=='DEP') { let a = prompt("መጠን:"); if(a) db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); } db.ref('all_requests/'+k).update({status:'ok'}); }
         function drawSingle() { let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n)); drawn.push(n); db.ref('game/drawn').set(drawn); }
-        
-        // በየ 2 ሰከንድ እንዲሆን ተስተካክሏል
         function toggleAuto() { 
             const b = document.getElementById('auto-btn'); 
-            if(autoInterval) { 
-                clearInterval(autoInterval); autoInterval=null; b.innerText="Auto ጀምር"; 
-            } else { 
-                autoInterval = setInterval(drawSingle, 2000); 
-                b.innerText="አቁም"; 
-            } 
+            if(autoInterval) { clearInterval(autoInterval); autoInterval=null; b.innerText="Auto ጀምር"; } 
+            else { autoInterval = setInterval(drawSingle, 2000); b.innerText="አቁም"; } 
         }
 
         function resetGame() { if(confirm("RESET?")) db.ref('game/drawn').set([]); }
