@@ -12,13 +12,13 @@
         :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; }
         body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
 
-        /* 1. Splash Screen Transition */
+        /* Splash Transition */
         #splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg); display: flex; justify-content: center; align-items: center;
             z-index: 9999; animation: fadeOut 1s forwards; animation-delay: 2s;
         }
-        #splash-screen h1 { font-size: 3.5rem; color: var(--gold); font-weight: 900; text-shadow: 0 0 20px var(--gold); }
+        #splash-screen h1 { font-size: 3.5rem; color: var(--gold); font-weight: 900; }
         @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 
         /* Main UI */
@@ -26,41 +26,32 @@
         @keyframes fadeInMain { to { opacity: 1; } }
 
         .app-title { text-align: center; padding: 20px 0; }
-        .app-title h2 { margin: 0; font-size: 2.8rem; color: var(--gold); font-weight: 900; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .app-title h2 { margin: 0; font-size: 2.5rem; color: var(--gold); font-weight: 900; }
 
-        .user-line { display: flex; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; border: 1px solid rgba(250, 204, 21, 0.2); margin-bottom: 20px; }
-        .u-bal { color: var(--green); font-weight: 900; font-size: 1.2rem; }
+        .user-line { display: flex; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 15px; }
+        .u-bal { color: var(--green); font-weight: 900; }
 
-        /* 2. All Price List (ሁሉም እንዲታዩ) */
-        .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        /* Price Grid */
+        .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
         .btn-price { 
             background: var(--card); color: white; border: 1px solid var(--gold); 
-            padding: 18px 5px; border-radius: 15px; font-weight: bold; font-size: 1.3rem;
-            cursor: pointer; box-shadow: 0 5px 0 #000; transition: 0.1s;
+            padding: 15px 5px; border-radius: 12px; font-weight: bold; font-size: 1.2rem;
+            cursor: pointer; box-shadow: 0 4px 0 #000;
         }
-        .btn-price:active { transform: translateY(3px); box-shadow: none; }
 
-        .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px; }
-        .btn-act { padding: 14px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-size: 1rem; }
-        .btn-dep { background: var(--gold); color: black; }
-        .btn-with { background: var(--red); color: white; }
+        /* Status Box */
+        .status-box { padding: 15px; background: rgba(30, 41, 59, 0.9); border-radius: 15px; border: 1px dashed var(--gold); text-align: center; }
+        .progress-bar { width: 100%; background: #000; height: 8px; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: var(--gold); transition: width 0.5s; }
 
-        /* 3. ተጫዋች በመጠበቅ ላይ (ከታች) */
-        .status-box { 
-            padding: 20px; background: rgba(30, 41, 59, 0.9); 
-            border-radius: 20px; border: 2px dashed var(--gold); text-align: center; 
-        }
-        .progress-bar { width: 100%; background: #000; height: 10px; border-radius: 5px; margin-top: 15px; overflow: hidden; }
-        .progress-fill { width: 0%; height: 100%; background: var(--gold); transition: width 0.5s linear; }
-
-        /* Game UI */
-        #game-page { display: none; }
-        .ball { width: 80px; height: 80px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 900; color: #000; margin: 20px auto; border: 4px solid white; box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
-        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: #334155; padding: 12px; border-radius: 15px; }
-        .cell { aspect-ratio: 1; background: white; color: black; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
-        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); }
-        .cell.hint { background: #fef08a; animation: pulse 1s infinite; box-shadow: 0 0 15px var(--gold); }
+        /* Bingo Board */
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #334155; padding: 10px; border-radius: 10px; }
+        .cell { aspect-ratio: 1; background: white; color: black; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 5px; font-size: 1.1rem; }
+        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; }
+        .cell.hint { background: #fef08a; animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        .mute-btn { background: none; border: 1px solid var(--gold); color: var(--gold); padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; }
     </style>
 </head>
 <body>
@@ -72,8 +63,13 @@
             <div class="app-title"><h2>ETHIO BINGO</h2></div>
 
             <div class="user-line">
-                <span id="u-name">...</span>
-                <span class="u-bal" id="u-bal">0.00 ETB</span>
+                <div>
+                    <span id="u-name">...</span><br>
+                    <button id="mute-btn" class="mute-btn" onclick="toggleMute()">🔊 ድምፅ በርቷል</button>
+                </div>
+                <div style="text-align: right;">
+                    <span class="u-bal" id="u-bal">0.00 ETB</span>
+                </div>
             </div>
 
             <div class="price-grid">
@@ -85,26 +81,26 @@
                 <button onclick="pickPrice(1000)" class="btn-price">1000</button>
             </div>
 
-            <div class="action-btns">
-                <button class="btn-act btn-dep" onclick="showForm('DEP')">📥 ብር አስገባ</button>
-                <button class="btn-act btn-with" onclick="showForm('WITH')">📤 ብር አውጣ</button>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button style="flex:1; padding:12px; border-radius:10px; border:none; background:var(--gold); font-weight:bold;" onclick="alert('TID ያስገቡ')">📥 ብር አስገባ</button>
+                <button style="flex:1; padding:12px; border-radius:10px; border:none; background:var(--red); color:white; font-weight:bold;" onclick="alert('ስልክ ያስገቡ')">📤 ብር አውጣ</button>
             </div>
 
             <div class="status-box">
-                <small style="color: var(--gold); font-weight: bold;">ተጫዋቾችን በመጠበቅ ላይ...</small>
-                <h2 id="players-count" style="margin: 8px 0; font-size: 2.5rem;">0 / 5</h2>
+                <small>ተጫዋቾችን በመጠበቅ ላይ (200 ካርቴላ ዝግጁ ነው)</small>
+                <h2 id="players-count">0 / 5</h2>
                 <div class="progress-bar"><div class="progress-fill" id="p-bar"></div></div>
             </div>
         </div>
 
-        <div id="game-page">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                <button onclick="location.reload()" style="background:var(--red); color:white; border:none; padding:10px 20px; border-radius:12px; font-weight:bold;">❌ ውጣ</button>
-                <b id="game-info" style="color:var(--gold); font-size: 1.2rem;"></b>
+        <div id="game-page" style="display: none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <button onclick="location.reload()" style="background:var(--red); color:white; border:none; padding:8px 15px; border-radius:10px;">❌ ውጣ</button>
+                <b id="game-info" style="color:var(--gold)"></b>
             </div>
-            <div class="ball" id="live-ball">?</div>
+            <div id="live-ball" style="width:70px; height:70px; background:radial-gradient(circle at 30% 30%, #fff, var(--gold)); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.2rem; font-weight:900; color:#000; margin:15px auto; border:3px solid white;">?</div>
             <div class="bingo-grid" id="board"></div>
-            <button onclick="validateBingo()" style="width:100%; background:var(--gold); color:black; padding:20px; border:none; border-radius:15px; font-weight:900; font-size:1.8rem; margin-top:20px; cursor:pointer; box-shadow: 0 6px 0 #a16207;">BINGO!</button>
+            <button onclick="validateBingo()" style="width:100%; background:var(--gold); padding:18px; border:none; border-radius:12px; font-weight:900; font-size:1.5rem; margin-top:15px; cursor:pointer;">BINGO!</button>
         </div>
     </div>
 
@@ -114,11 +110,15 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const tg = window.Telegram.WebApp;
-        tg.expand();
 
-        let uName = "ተጫዋች", uid = Date.now(), myBal = 0, drawn = [], selectedPrice = 0;
+        let uName = "ተጫዋች", uid = Date.now(), myBal = 0, drawn = [], selectedPrice = 0, isMuted = false;
         if (tg.initDataUnsafe?.user) { uName = tg.initDataUnsafe.user.first_name; uid = tg.initDataUnsafe.user.id; }
         document.getElementById('u-name').innerText = uName;
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('mute-btn').innerText = isMuted ? "🔇 ድምፅ ጠፍቷል" : "🔊 ድምፅ በርቷል";
+        }
 
         db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
         
@@ -132,9 +132,8 @@
         db.ref('game/drawn').on('value', s => {
             drawn = s.val()||[];
             if(drawn.length > 0) {
-                const last = drawn[drawn.length-1];
-                document.getElementById('live-ball').innerText = last;
-                document.querySelectorAll('.cell').forEach(c => { if(parseInt(c.innerText) === last) c.classList.add('hint'); });
+                document.getElementById('live-ball').innerText = drawn[drawn.length-1];
+                document.querySelectorAll('.cell').forEach(c => { if(parseInt(c.innerText) === drawn[drawn.length-1]) c.classList.add('hint'); });
             }
         });
 
@@ -143,7 +142,7 @@
             selectedPrice = p;
             db.ref('users/'+uid+'/bal').set(myBal - p);
             db.ref('game/players/'+uid).set({name: uName});
-            setupBoard();
+            setupBoard(); // 200 ካርቴላ እዚህ ውስጥ ነው የሚፈጠረው
             document.getElementById('home-page').style.display = 'none';
             document.getElementById('game-page').style.display = 'block';
             document.getElementById('game-info').innerText = `${p} ETB`;
@@ -151,6 +150,7 @@
 
         function setupBoard() {
             const board = document.getElementById('board'); board.innerHTML = "";
+            // ከ 1-75 ቁጥሮች ውስጥ 25ቱን በዘፈቀደ ለዚህ ተጫዋች እንሰጣለን
             let nums = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5).slice(0,25);
             nums.forEach(n => {
                 let c = document.createElement('div'); c.className = 'cell'; c.innerText = n;
@@ -161,15 +161,15 @@
 
         function validateBingo() {
             const marked = document.querySelectorAll('.cell.marked');
-            if(marked.length < 5) return alert("ቢያንስ 5 ቁጥር መርጠህ ቢንጎ በል!");
+            if(marked.length < 5) return alert("ቢያንስ 5 ቁጥር!");
             let win = true;
             marked.forEach(c => { if(!drawn.includes(parseInt(c.innerText))) win = false; });
             if(win) {
                 const prize = (selectedPrice * 5) * 0.8;
                 db.ref('users/'+uid+'/bal').transaction(b => (b||0) + prize);
                 db.ref('game/drawn').set([]); db.ref('game/players').remove();
-                alert(`🎉 ቢንጎ! ${prize} ETB ገብቷል።`); location.reload();
-            } else alert("ያልወጣ ቁጥር አለብህ!");
+                alert(`🎉 ቢንጎ! ${prize} ETB`); location.reload();
+            } else alert("ያልወጣ ቁጥር አለ!");
         }
 
         function startAuto() {
@@ -179,14 +179,6 @@
                 if(!gameSet.includes(n)) { gameSet.push(n); db.ref('game/drawn').set(gameSet); }
                 if(gameSet.length >= 75 || gameSet.length == 0) clearInterval(iv);
             }, 4000);
-        }
-
-        function showForm(type) {
-            let val = (type === 'DEP') ? prompt("የቴሌብር TID ያስገቡ") : prompt("የሚወጣ ብር እና ስልክ ያስገቡ (ለምሳሌ: 200 - 09...)");
-            if(val) {
-                db.ref('all_requests').push({uid, name:uName, data:val, type, status:'pending', time: Date.now()});
-                alert("ጥያቄህ ተልኳል!");
-            }
         }
     </script>
 </body>
