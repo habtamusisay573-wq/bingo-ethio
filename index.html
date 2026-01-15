@@ -12,7 +12,6 @@
         :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; --indigo: #6366f1; }
         body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; overflow-x: hidden; user-select: none; }
         
-        /* 1. አገርኛ SPLASH SCREEN (አዲስ የተጨመረ) */
         #splash-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg); display: flex; justify-content: center; align-items: center;
@@ -31,7 +30,6 @@
         .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.1rem; cursor: pointer; transition: 0.3s; position: relative; }
         .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); box-shadow: 0 0 10px var(--red); }
         .cell.hint { box-shadow: inset 0 0 15px var(--gold), 0 0 10px var(--gold); background: #fef08a; animation: pulse-gold 1.5s infinite; }
-        @keyframes pulse-gold { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 
         .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 8px; }
         .btn-gold { background: var(--gold); color: black; }
@@ -56,11 +54,6 @@
 
     <div id="app-content">
         <div id="home-page" class="page active">
-            <div style="background: rgba(250, 204, 21, 0.1); padding: 10px; border-radius: 10px; border: 1px dashed var(--gold); margin-bottom: 15px;">
-                <small style="color:var(--gold)">🏆 የቅርብ ጊዜ አሸናፊ፦</small>
-                <div id="winners-list" style="font-weight: bold; font-size: 0.9rem;">ተጫዋች በመጠበቅ ላይ...</div>
-            </div>
-
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
                 <button onclick="goToCardPicker(10)" class="btn" style="background:var(--card); color:white;">10</button>
                 <button onclick="goToCardPicker(20)" class="btn" style="background:var(--card); color:white;">20</button>
@@ -90,10 +83,7 @@
         </div>
 
         <div id="admin-page" class="page">
-            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 style="margin:0; color:var(--gold)">ዳኛ መቆጣጠሪያ</h3>
-                <button onclick="showPage('home-page')" style="background:#444; color:white; border:none; padding:8px 15px; border-radius:8px; font-weight:bold;">🏠 ተመለስ</button>
-            </div>
+            <h3 style="color:var(--gold)">ዳኛ መቆጣጠሪያ</h3>
             <div class="ball" id="admin-ball">?</div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
@@ -101,12 +91,13 @@
             </div>
             <button class="btn btn-red" onclick="resetGame()" style="margin-top:10px;">RESET GAME</button>
             <div id="admin-req-list" style="margin-top:20px;">ጥያቄ የለም...</div>
+            <button class="btn" onclick="showPage('home-page')">🏠 ተመለስ</button>
         </div>
 
         <div id="picker-page" class="page">
             <h3>ካርቴላ ይምረጡ</h3>
             <div id="card-list" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div>
-            <button class="btn" style="background:#444; color:white;" onclick="showPage('home-page')">ተመለስ</button>
+            <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
         </div>
 
         <div id="game-page" class="page">
@@ -190,6 +181,15 @@
             } 
         }
 
+        function requestWithdraw() { 
+            const amt = parseFloat(document.getElementById('wd-amt').value);
+            if(amt > myBal) return alert("ባላንስ የለም!");
+            // ወዲያውኑ ብር ይቀንሳል
+            db.ref('users/'+uid+'/bal').set(myBal - amt);
+            db.ref('all_requests').push({ uid, name: uName, amount: amt, phone: document.getElementById('wd-phone').value, type: 'WD', status: 'pending' }); 
+            alert("የወጪ ጥያቄ ተልኳል! ብር ቀንሰናል::"); 
+        }
+
         function showAdmin() {
             showPage('admin-page');
             db.ref('all_requests').on('value', s => {
@@ -206,11 +206,21 @@
 
         function approve(k,u,t) { if(t=='DEP') { let a = prompt("መጠን:"); if(a) db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); } db.ref('all_requests/'+k).update({status:'ok'}); }
         function drawSingle() { let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n)); drawn.push(n); db.ref('game/drawn').set(drawn); }
-        function toggleAuto() { const b = document.getElementById('auto-btn'); if(autoInterval) { clearInterval(autoInterval); autoInterval=null; b.innerText="Auto ጀምር"; } else { autoInterval = setInterval(drawSingle, 4000); b.innerText="አቁም"; } }
+        
+        // በየ 2 ሰከንድ እንዲሆን ተስተካክሏል
+        function toggleAuto() { 
+            const b = document.getElementById('auto-btn'); 
+            if(autoInterval) { 
+                clearInterval(autoInterval); autoInterval=null; b.innerText="Auto ጀምር"; 
+            } else { 
+                autoInterval = setInterval(drawSingle, 2000); 
+                b.innerText="አቁም"; 
+            } 
+        }
+
         function resetGame() { if(confirm("RESET?")) db.ref('game/drawn').set([]); }
         function confirmExit() { if(confirm("መውጣት ትፈልጋለህ?")) showPage('home-page'); }
         function sendPayment() { db.ref('all_requests').push({ uid, name: uName, tid: document.getElementById('tid').value, type: 'DEP', status: 'pending' }); alert("ተልኳል!"); }
-        function requestWithdraw() { db.ref('all_requests').push({ uid, name: uName, amount: document.getElementById('wd-amt').value, type: 'WD', status: 'pending' }); alert("ተልኳል!"); }
         function claimBingo() { db.ref('all_requests').push({ uid, name: uName, card: currentCard, type: 'BINGO', status: 'pending' }); alert("ቢንጎ ተልኳል!"); }
         function showTransactions() { showPage('tx-page'); }
     </script>
