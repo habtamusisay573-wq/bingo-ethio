@@ -3,57 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - FIXED</title>
+    <title>ETHIO BINGO GOLD - CLEAN</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <style>
-        :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; --indigo: #6366f1; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow-x: hidden; user-select: none; }
+        :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; --indigo: #6366f1; --white: #ffffff; }
         
-        /* Fixed Transition Logic */
-        #app-content { position: relative; width: 100%; min-height: 90vh; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; overflow-x: hidden; user-select: none; }
+
+        /* Smooth Page Transition */
         .page { 
             display: none; 
+            padding: 20px 15px; 
+            min-height: 80vh;
+            animation: fadeIn 0.5s ease;
+        }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Fixed Header - No Overlap */
+        .header { 
             padding: 15px; 
-            width: 100%; 
-            box-sizing: border-box;
-            position: absolute;
-            top: 0;
-            left: 0;
-            opacity: 0;
-            transform: translateX(50px);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .page.active { 
-            display: block; 
-            opacity: 1; 
-            transform: translateX(0);
-            position: relative;
+            background: #111827; 
+            border-bottom: 3px solid var(--gold); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
-        /* Improved Header with Mute Button */
-        .header { padding: 12px 15px; background: #111827; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; z-index: 1000; position: sticky; top: 0; }
-        .u-info b { font-size: 1.1rem; color: var(--gold); }
-        .mute-btn { background: #334155; border: 1px solid var(--gold); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; transition: 0.2s; }
-        .mute-btn.active { background: var(--red); border-color: white; }
+        .mute-btn { 
+            background: var(--card); 
+            border: 1px solid var(--gold); 
+            color: white; 
+            padding: 8px 15px; 
+            border-radius: 20px; 
+            font-size: 0.85rem; 
+            font-weight: bold;
+        }
 
-        /* Bingo Grid & Cards */
-        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; background: #475569; padding: 12px; border-radius: 18px; margin: 15px auto; max-width: 320px; }
-        .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 10px; font-size: 1.2rem; transition: 0.3s; box-shadow: 0 4px 0 #cbd5e1; }
-        .cell.marked { background: var(--red) !important; color: white !important; transform: scale(0.9); border-radius: 50%; box-shadow: 0 0 15px var(--red); }
-        .cell.hint { background: #fef08a; box-shadow: 0 0 15px var(--gold); animation: pulse 1s infinite; }
+        /* Status Box */
+        .timer-box { 
+            background: rgba(250, 204, 21, 0.05); 
+            padding: 20px; 
+            border-radius: 20px; 
+            border: 2px dashed rgba(250, 204, 21, 0.3); 
+            text-align: center; 
+            margin-bottom: 25px;
+        }
+
+        /* Modern Bingo Grid */
+        .bingo-grid { 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 10px; 
+            background: #334155; 
+            padding: 15px; 
+            border-radius: 20px; 
+            max-width: 340px; 
+            margin: 20px auto; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+
+        .cell { 
+            aspect-ratio: 1; 
+            background: var(--white); 
+            color: #0f172a; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 900; 
+            border-radius: 12px; 
+            font-size: 1.3rem; 
+            box-shadow: 0 4px 0 #cbd5e1;
+            transition: 0.2s;
+        }
+
+        .cell.marked { 
+            background: var(--red) !important; 
+            color: white !important; 
+            transform: scale(0.85); 
+            border-radius: 50%; 
+            box-shadow: 0 0 15px var(--red);
+        }
+
+        .cell.hint { 
+            background: #fef08a; 
+            box-shadow: 0 0 20px var(--gold); 
+            animation: pulse 1s infinite;
+        }
+
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        .ball { width: 80px; height: 80px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 900; color: #000; margin: 20px auto; border: 4px solid white; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; font-size: 1rem; }
-        .btn-gold { background: var(--gold); color: black; box-shadow: 0 4px 0 #a16207; }
+        .ball { 
+            width: 85px; 
+            height: 85px; 
+            background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 2.8rem; 
+            font-weight: 900; 
+            color: #000; 
+            margin: 20px auto; 
+            border: 5px solid white; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5); 
+        }
+
+        .btn { 
+            width: 100%; 
+            padding: 16px; 
+            border: none; 
+            border-radius: 15px; 
+            font-weight: bold; 
+            font-size: 1rem;
+            cursor: pointer; 
+            margin-top: 12px; 
+            transition: 0.3s;
+        }
+
+        .btn-gold { background: var(--gold); color: black; box-shadow: 0 5px 0 #a16207; }
         .btn-gold:active { transform: translateY(4px); box-shadow: none; }
-        
-        .timer-box { background: rgba(250, 204, 21, 0.1); padding: 15px; border-radius: 15px; border: 1px dashed var(--gold); text-align: center; margin-bottom: 20px; }
-        .progress-container { width: 100%; background: #334155; height: 8px; border-radius: 4px; margin-top: 10px; overflow: hidden; }
-        .progress-bar { width: 0%; height: 100%; background: var(--gold); transition: width 1s linear; }
+
+        .progress-bg { background: #1e293b; height: 10px; border-radius: 5px; margin-top: 15px; overflow: hidden; }
+        .progress-fill { background: var(--gold); width: 0%; height: 100%; transition: width 1s linear; }
+
+        input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #475569; background: #1e293b; color: white; margin-bottom: 12px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -63,48 +144,48 @@
     <audio id="sound-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
 
     <div class="header">
-        <div class="u-info">
-            <b id="u-name">...</b> <br>
-            <small id="u-bal" style="color:var(--green); font-weight: bold;">0.00 ETB</small>
+        <div>
+            <b id="u-name" style="font-size: 1.2rem;">...</b><br>
+            <span id="u-bal" style="color: var(--green); font-weight: bold;">0.00 ETB</span>
         </div>
         <div style="text-align: right;">
-            <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊 ድምፅ</button> <br>
-            <small id="online-count" style="font-size: 0.7rem;">🟢 0 ተጫዋች</small>
+            <button class="mute-btn" id="mute-btn" onclick="toggleMute()">🔊 ድምፅ</button><br>
+            <small id="online-count" style="color: #94a3b8;">🟢 0 ተጫዋች</small>
         </div>
     </div>
 
     <div id="app-content">
         <div id="home-page" class="page active">
             <div class="timer-box">
-                <span id="wait-msg">ተጫዋቾችን በመጠበቅ ላይ...</span>
-                <h2 id="players-count" style="margin:10px 0;">0 / 5</h2>
-                <div class="progress-container"><div class="progress-bar" id="p-bar"></div></div>
+                <span id="wait-msg" style="color: var(--gold); font-weight: bold;">ተጫዋቾችን በመጠበቅ ላይ...</span>
+                <h1 id="players-count" style="margin: 15px 0; font-size: 2.5rem;">0 / 5</h1>
+                <div class="progress-bg"><div class="progress-fill" id="p-bar"></div></div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
                 <button onclick="pickPrice(10)" class="btn" style="background:var(--card); color:white;">10</button>
                 <button onclick="pickPrice(20)" class="btn" style="background:var(--card); color:white;">20</button>
                 <button onclick="pickPrice(50)" class="btn" style="background:var(--card); color:white;">50</button>
             </div>
 
-            <button class="btn btn-gold" style="margin-top:20px;" onclick="document.getElementById('dep-form').style.display='block'">📥 ብር አስገባ</button>
+            <button class="btn btn-gold" style="margin-top: 25px;" onclick="document.getElementById('dep-form').style.display='block'">📥 ብር አስገባ</button>
             
-            <div id="dep-form" style="display:none; background:var(--card); padding:15px; border-radius:15px; margin-top:10px;">
-                <input type="text" id="tid" placeholder="ቴሌብር TID" style="width:100%; padding:12px; border-radius:10px; border:none; margin-bottom:10px;">
-                <button class="btn btn-gold" onclick="sendDep()">ላክ</button>
+            <div id="dep-form" style="display:none; background:var(--card); padding:20px; border-radius:15px; margin-top:15px; border: 1px solid #475569;">
+                <input type="text" id="tid" placeholder="ቴሌብር TID">
+                <button class="btn btn-gold" onclick="sendDep()">አረጋግጥ</button>
             </div>
 
-            <button id="admin-btn" class="btn" style="background:var(--green); color:white; display:none;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
+            <button id="admin-btn" class="btn" style="background:var(--green); color:white; display:none; margin-top:20px;" onclick="showAdmin()">🔧 የዳኛ ገጽ</button>
         </div>
 
         <div id="game-page" class="page">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <button onclick="if(confirm('መውጣት ትፈልጋለህ?')) showPage('home-page')" style="background:var(--red); color:white; border:none; padding:8px 15px; border-radius:10px;">❌ ውጣ</button>
-                <b id="game-card-info" style="color:var(--gold)"></b>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                <button onclick="confirmExit()" style="background:var(--red); color:white; border:none; padding:10px 20px; border-radius:12px; font-weight:bold;">❌ ውጣ</button>
+                <b id="game-info" style="color:var(--gold); background: var(--card); padding: 8px 15px; border-radius: 10px;"></b>
             </div>
             <div class="ball" id="live-ball">?</div>
             <div class="bingo-grid" id="board"></div>
-            <button class="btn btn-gold" style="font-size: 1.4rem;" onclick="validateBingo()">BINGO!</button>
+            <button class="btn btn-gold" style="font-size: 1.6rem; padding: 20px;" onclick="validateBingo()">BINGO!</button>
         </div>
     </div>
 
@@ -124,29 +205,25 @@
 
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            setTimeout(() => {
-                const target = document.getElementById(id);
-                target.classList.add('active');
-            }, 50);
+            document.getElementById(id).classList.add('active');
+            window.scrollTo(0,0);
         }
 
         function toggleMute() {
             isMuted = !isMuted;
-            const btn = document.getElementById('mute-btn');
-            btn.innerText = isMuted ? "🔇 ዝም" : "🔊 ድምፅ";
-            btn.classList.toggle('active', isMuted);
+            document.getElementById('mute-btn').innerText = isMuted ? "🔇 ዝም" : "🔊 ድምፅ";
         }
 
         function playSfx(id) { if(!isMuted) document.getElementById(id).play().catch(()=>{}); }
 
-        // Players Counter & Auto Start
+        // Players Counter
         db.ref('game/players').on('value', s => {
             const count = s.numChildren();
             document.getElementById('players-count').innerText = `${count} / 5`;
             if(count >= 5) {
-                document.getElementById('wait-msg').innerText = "ጨዋታው በ 10 ሰከንድ ውስጥ ይጀምራል...";
+                document.getElementById('wait-msg').innerText = "ጨዋታው ሊጀምር ነው...";
                 document.getElementById('p-bar').style.width = "100%";
-                if(uid == ADMIN_ID) setTimeout(startAutoServer, 10000);
+                if(uid == ADMIN_ID) setTimeout(startAutoServer, 8000);
             } else {
                 document.getElementById('wait-msg').innerText = "ተጫዋቾችን በመጠበቅ ላይ...";
                 document.getElementById('p-bar').style.width = "0%";
@@ -179,7 +256,7 @@
             db.ref('game/players/'+uid).set({name: uName, price: p});
             setupBoard();
             showPage('game-page');
-            document.getElementById('game-card-info').innerText = `${p} ETB`;
+            document.getElementById('game-info').innerText = `${p} ETB`;
         }
 
         function setupBoard() {
@@ -213,11 +290,9 @@
                 db.ref('game/drawn').set([]);
                 db.ref('game/players').remove();
                 playSfx('sound-win');
-                alert(`🎉 ቢንጎ! ${prize} ETB ተጨምሮልሃል።`);
+                alert(`🎉 ቢንጎ! ${prize} ETB ወደ አካውንትህ ተጨምሯል።`);
                 showPage('home-page');
-            } else {
-                alert("ያልወጣ ቁጥር መርጠሃል!");
-            }
+            } else { alert("ያልወጣ ቁጥር መርጠሃል!"); }
         }
 
         function startAutoServer() {
@@ -235,9 +310,13 @@
 
         function sendDep() {
             const t = document.getElementById('tid').value;
+            if(!t) return;
             db.ref('all_requests').push({uid, name:uName, tid:t, type:'DEP', status:'pending'});
-            alert("ተልኳል!");
+            alert("የTID ቁጥሩ ተልኳል! ዳኛው ሲያረጋግጥ ይሞላል።");
+            document.getElementById('dep-form').style.display='none';
         }
+
+        function confirmExit() { if(confirm('መውጣት ትፈልጋለህ? ብርህ አይመለስም!')) showPage('home-page'); }
     </script>
 </body>
 </html>
