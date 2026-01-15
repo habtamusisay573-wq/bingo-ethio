@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - FINAL FIX</title>
+    <title>ETHIO BINGO GOLD</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -17,39 +17,42 @@
             background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; 
             z-index: 9999; animation: fadeOut 0.5s forwards; animation-delay: 2s; 
         }
-        #splash-screen h1 { font-size: 3rem; color: var(--gold); font-weight: 900; }
+        #splash-screen h1 { font-size: 3.5rem; color: var(--gold); font-weight: 900; text-shadow: 0 0 20px var(--gold); }
+
         @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 
-        #winner-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; text-align: center; }
+        #winner-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(15, 23, 42, 0.98); display: none; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 2000; text-align: center; 
+        }
+        #winner-name { color: var(--gold); font-size: 4rem; font-weight: 900; text-shadow: 0 0 30px var(--gold); margin: 0; }
         
-        .header { padding: 12px; background: #111827; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; }
+        .header { padding: 12px; background: #111827; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; }
         .page { display: none; padding: 15px; animation: fadeIn 0.4s; }
         .page.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
-        .ball { width: 75px; height: 75px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #000; margin: 15px auto; border: 3px solid #fff; }
+        .ball { width: 80px; height: 80px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 900; color: #000; margin: 15px auto; border: 4px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .recent-numbers { display: flex; justify-content: center; gap: 8px; margin-bottom: 15px; }
         .recent-ball { width: 35px; height: 35px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: bold; border: 1px solid var(--gold); color: var(--gold); }
 
         .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #cbd5e1; padding: 10px; border-radius: 12px; max-width: 320px; margin: auto; }
-        .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.1rem; cursor: pointer; }
-        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; }
-        .cell.hint { box-shadow: inset 0 0 15px var(--gold), 0 0 10px var(--gold); background: #fef08a; }
+        .cell { aspect-ratio: 1; background: white; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 6px; font-size: 1.2rem; cursor: pointer; }
+        .cell.marked { background: var(--red) !important; color: white !important; border-radius: 50%; transform: scale(0.9); transition: 0.2s; }
+        .cell.hint { box-shadow: inset 0 0 15px var(--gold); background: #fef08a; }
         .cell.free { background: var(--gold) !important; color: black !important; font-size: 0.7rem; font-weight: 900; }
 
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 8px; font-size: 1rem; }
         .btn-gold { background: var(--gold); color: black; }
+        .btn-red { background: var(--red); color: white; }
     </style>
 </head>
 <body>
 
     <div id="splash-screen"><h1>ኢትዮ ቢንጎ</h1></div>
 
-    <div id="winner-overlay">
-        <h2 style="color:var(--gold); font-size: 2rem;">🎉 ቢንጎ ተባለ! 🎉</h2>
-        <h1 id="winner-name" style="color:white; font-size: 2.5rem; margin: 20px 0;">---</h1>
-        <button class="btn btn-gold" style="width: 200px;" onclick="location.reload()">እሺ</button>
-    </div>
+    <div id="winner-overlay"><h1 id="winner-name">---</h1></div>
 
     <div class="header">
         <b id="u-name">...</b>
@@ -66,37 +69,38 @@
                 <button onclick="goToCardPicker(500)" class="btn" style="background:var(--card); color:white;">500</button>
                 <button onclick="goToCardPicker(1000)" class="btn" style="background:var(--card); color:white;">1000</button>
             </div>
-            <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
+            <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:40px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
         </div>
 
         <div id="admin-page" class="page">
-            <h3 style="color:var(--gold)">ዳኛ</h3>
+            <h3 style="color:var(--gold)">ዳኛ መቆጣጠሪያ</h3>
             <div class="ball" id="admin-ball">?</div>
             <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
             <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto ጀምር</button>
-            <button class="btn btn-red" onclick="resetGame()">RESET</button>
+            <button class="btn btn-red" onclick="resetGame()">RESET GAME</button>
             <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
         </div>
 
         <div id="picker-page" class="page">
-            <h3>ካርቴላ ይምረጡ</h3>
-            <div id="card-list" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div>
+            <h3 style="text-align:center;">ካርቴላ ይምረጡ</h3>
+            <div id="card-list" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-height:400px; overflow-y:auto; padding:5px;"></div>
+            <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
         </div>
 
         <div id="game-page" class="page">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <button onclick="location.reload()" style="background:var(--red); color:white; border:none; border-radius:5px; padding:5px 10px;">ውጣ</button>
-                <span id="card-label" style="color:var(--gold)"></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <button onclick="location.reload()" style="background:var(--red); color:white; border:none; border-radius:8px; padding:8px 15px;">ውጣ</button>
+                <span id="card-label" style="color:var(--gold); font-weight:bold;"></span>
             </div>
             <div class="ball" id="live-ball">?</div>
             <div class="recent-numbers" id="live-recent"></div>
             <div class="bingo-grid" id="board"></div>
-            <button class="btn btn-gold" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
+            <button class="btn btn-gold" style="margin-top:25px; height:60px; font-size:1.5rem;" onclick="claimBingo()">BINGO!</button>
         </div>
     </div>
 
     <script>
-        const ADMIN_ID = 8431270634;
+        const ADMIN_ID = 8431270634; 
         const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -109,11 +113,22 @@
         document.getElementById('u-name').innerText = uName;
         if(uid == ADMIN_ID) document.getElementById('admin-btn').style.display = 'block';
 
+        // Winner Logic (2 Seconds)
         db.ref('game/winner').on('value', s => {
-            if(s.val()) {
-                document.getElementById('winner-name').innerText = s.val();
+            const winner = s.val();
+            if(winner) {
+                document.getElementById('winner-name').innerText = winner;
                 document.getElementById('winner-overlay').style.display = 'flex';
                 if(autoInterval) toggleAuto();
+
+                setTimeout(() => {
+                    if(uid == ADMIN_ID) {
+                        db.ref('game/winner').set(null);
+                        db.ref('game/drawn').set([]);
+                    }
+                    document.getElementById('winner-overlay').style.display = 'none';
+                    showPage('home-page');
+                }, 2000);
             }
         });
 
@@ -121,8 +136,9 @@
         
         db.ref('game/drawn').on('value', s => { 
             drawn = s.val()||[]; 
-            document.getElementById('live-ball').innerText = drawn[drawn.length-1]||"?";
-            document.getElementById('admin-ball').innerText = drawn[drawn.length-1]||"?";
+            const last = drawn[drawn.length-1] || "?";
+            document.getElementById('live-ball').innerText = last;
+            document.getElementById('admin-ball').innerText = last;
             const recent = drawn.slice(-6, -1).reverse(); 
             document.getElementById('live-recent').innerHTML = recent.map(n => `<div class="recent-ball">${n}</div>`).join('');
             document.querySelectorAll('.cell').forEach(cell => { if(drawn.includes(parseInt(cell.innerText))) cell.classList.add('hint'); });
@@ -132,27 +148,23 @@
             const cells = document.querySelectorAll('.cell');
             let board = [];
             let idx = 0;
-
             for (let i = 0; i < 5; i++) {
                 let row = [];
                 for (let j = 0; j < 5; j++) {
                     let cell = cells[idx++];
-                    // FREE ሴል ወይም ተጫዋቹ መትቶት (marked) የሆነ ቁጥር በትክክል ከወጣ (drawn)
-                    let isMarked = cell.classList.contains('free') || 
-                                  (cell.classList.contains('marked') && drawn.includes(parseInt(cell.innerText)));
+                    let isMarked = cell.classList.contains('free') || (cell.classList.contains('marked') && drawn.includes(parseInt(cell.innerText)));
                     row.push(isMarked);
                 }
                 board.push(row);
             }
-
             let win = false;
-            for(let i=0; i<5; i++) if(board[i].every(c=>c)) win=true; // Row
-            for(let j=0; j<5; j++) if(board.every(r=>r[j])) win=true; // Column
-            if([0,1,2,3,4].every(i=>board[i][i])) win=true; // Diag 1
-            if([0,1,2,3,4].every(i=>board[i][4-i])) win=true; // Diag 2
+            for(let i=0; i<5; i++) if(board[i].every(c=>c)) win=true;
+            for(let j=0; j<5; j++) if(board.every(r=>r[j])) win=true;
+            if([0,1,2,3,4].every(i=>board[i][i])) win=true;
+            if([0,1,2,3,4].every(i=>board[i][4-i])) win=true;
 
             if(win) db.ref('game/winner').set(uName);
-            else alert("መስመር አልሞላህም ወይም ያልወጣ ቁጥር መተሃል!");
+            else alert("መስመር አልሞላህም!");
         }
 
         function drawSingle() {
