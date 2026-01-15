@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="am">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - ADMIN FIXED</title>
+    <title>ethio bingo gold - admin fixed</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -11,10 +11,25 @@
     <style>
         :root { --gold: #facc15; --bg: #0f172a; --card: #1e293b; --green: #22c55e; --red: #ef4444; --indigo: #6366f1; }
         body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; overflow-x: hidden; user-select: none; }
+        
+        /* SPLASH SCREEN - አገርኛ ስም ገብቷል */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; justify-content: center; align-items: center;
+            z-index: 9999; animation: fadeOut 1s forwards; animation-delay: 2s; /* 2 ሰከንድ ከቆየ በኋላ ይጠፋል */
+        }
+        #splash-screen h1 { 
+            font-size: 3.5rem; 
+            color: var(--gold); 
+            font-weight: 900; 
+            text-shadow: 0 0 20px var(--gold); /* ትንሽ የብርሃን ንክኪ */
+        }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+
         .header { padding: 12px; background: #111827; border-bottom: 2px solid var(--gold); position: sticky; top:0; z-index:100; }
-        .page { display: none; padding: 15px; animation: fadeIn 0.4s; min-height: 90vh; }
+        .page { display: none; padding: 15px; animation: fadein 0.4s; min-height: 90vh; }
         .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
         
         .ball { width: 75px; height: 75px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #a16207); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #000; margin: 15px auto; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
         .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; background: #cbd5e1; padding: 10px; border-radius: 12px; max-width: 320px; margin: auto; }
@@ -31,6 +46,8 @@
 </head>
 <body>
 
+    <div id="splash-screen"><h1>ኢትዮ ቢንጎ</h1></div>
+
     <audio id="sound-coin" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
     <audio id="sound-pop" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
     <audio id="sound-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
@@ -38,7 +55,7 @@
     <div class="header">
         <div style="display:flex; justify-content: space-between; align-items:center;">
             <div><b id="u-name">...</b> <span class="online-tag" id="online-count">🟢 0</span></div>
-            <div id="u-bal" style="color:var(--green); font-weight:bold; font-size: 1.1rem;">0.00 ETB</div>
+            <div id="u-bal" style="color:var(--green); font-weight:bold; font-size: 1.1rem;">0.00 etb</div>
         </div>
     </div>
 
@@ -50,48 +67,48 @@
             </div>
 
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                <button onclick="goToCardPicker(10)" class="btn" style="background:var(--card); color:white;">10</button>
-                <button onclick="goToCardPicker(20)" class="btn" style="background:var(--card); color:white;">20</button>
-                <button onclick="goToCardPicker(50)" class="btn" style="background:var(--card); color:white;">50</button>
-                <button onclick="goToCardPicker(100)" class="btn" style="background:var(--card); color:white;">100</button>
-                <button onclick="goToCardPicker(500)" class="btn" style="background:var(--card); color:white;">500</button>
-                <button onclick="goToCardPicker(1000)" class="btn" style="background:var(--card); color:white;">1000</button>
+                <button onclick="gotocardpicker(10)" class="btn" style="background:var(--card); color:white;">10</button>
+                <button onclick="gotocardpicker(20)" class="btn" style="background:var(--card); color:white;">20</button>
+                <button onclick="gotocardpicker(50)" class="btn" style="background:var(--card); color:white;">50</button>
+                <button onclick="gotocardpicker(100)" class="btn" style="background:var(--card); color:white;">100</button>
+                <button onclick="gotocardpicker(500)" class="btn" style="background:var(--card); color:white;">500</button>
+                <button onclick="gotocardpicker(1000)" class="btn" style="background:var(--card); color:white;">1000</button>
             </div>
 
             <div style="margin-top:20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn btn-gold" onclick="showForm('dep-form')">📥 አስገባ</button>
-                <button class="btn" style="background:var(--red); color:white;" onclick="showForm('wd-form')">📤 አውጣ</button>
+                <button class="btn btn-gold" onclick="showform('dep-form')">📥 አስገባ</button>
+                <button class="btn" style="background:var(--red); color:white;" onclick="showform('wd-form')">📤 አውጣ</button>
             </div>
             
-            <button class="btn" style="background:var(--indigo); color:white;" onclick="showTransactions()">📜 ታሪክ</button>
-            <button class="btn" style="background:#444; color:white;" onclick="showPage('rules-page')">⚖️ ደንቦች</button>
+            <button class="btn" style="background:var(--indigo); color:white;" onclick="showtransactions()">📜 ታሪክ</button>
+            <button class="btn" style="background:#444; color:white;" onclick="showpage('rules-page')">⚖️ ደንቦች</button>
 
             <div id="dep-form" style="display:none; background:var(--card); padding:15px; border-radius:12px; margin-top:10px;">
-                <input type="text" id="tid" placeholder="ቴሌብር TID">
-                <button class="btn btn-gold" onclick="sendPayment()">ላክ</button>
+                <input type="text" id="tid" placeholder="ቴሌብር tid">
+                <button class="btn btn-gold" onclick="sendpayment()">ላክ</button>
             </div>
             <div id="wd-form" style="display:none; background:var(--card); padding:15px; border-radius:12px; margin-top:10px;">
                 <input type="number" id="wd-amt" placeholder="መጠን">
                 <input type="text" id="wd-phone" placeholder="ስልክ">
-                <button class="btn btn-gold" onclick="requestWithdraw()">ጠይቅ</button>
+                <button class="btn btn-gold" onclick="requestwithdraw()">ጠይቅ</button>
             </div>
-            <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showAdmin()">🔧 ዳኛ ገጽ</button>
+            <button id="admin-btn" class="btn" style="background:var(--green); display:none; margin-top:20px;" onclick="showadmin()">🔧 ዳኛ ገጽ</button>
         </div>
 
         <div id="admin-page" class="page">
             <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h3 style="margin:0; color:var(--gold)">ዳኛ መቆጣጠሪያ</h3>
-                <button onclick="showPage('home-page')" style="background:#444; color:white; border:none; padding:8px 15px; border-radius:8px; font-weight:bold;">🏠 ተመለስ</button>
+                <button onclick="showpage('home-page')" style="background:#444; color:white; border:none; padding:8px 15px; border-radius:8px; font-weight:bold;">🏠 ተመለስ</button>
             </div>
             
             <div class="ball" id="admin-ball">?</div>
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                <button class="btn btn-gold" onclick="drawSingle()">ቁጥር አውጣ</button>
-                <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto ጀምር</button>
+                <button class="btn btn-gold" onclick="drawsingle()">ቁጥር አውጣ</button>
+                <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleauto()">auto ጀምር</button>
             </div>
 
-            <button class="btn btn-red" onclick="resetGame()" style="margin-top:10px;">RESET GAME</button>
+            <button class="btn btn-red" onclick="resetgame()" style="margin-top:10px;">reset game</button>
 
             <h4 style="border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top:20px;">የተጫዋቾች ጥያቄ</h4>
             <div id="admin-req-list">ጥያቄ የለም...</div>
@@ -100,148 +117,148 @@
         <div id="picker-page" class="page">
             <h3>ካርቴላ ይምረጡ</h3>
             <div id="card-list" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;"></div>
-            <button class="btn" style="background:#444; color:white;" onclick="showPage('home-page')">ተመለስ</button>
+            <button class="btn" style="background:#444; color:white;" onclick="showpage('home-page')">ተመለስ</button>
         </div>
         <div id="game-page" class="page">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <button onclick="confirmExit()" style="background:var(--red); color:white; border:none; padding:8px 15px; border-radius:8px;">❌ ውጣ</button>
+                <button onclick="confirmexit()" style="background:var(--red); color:white; border:none; padding:8px 15px; border-radius:8px;">❌ ውጣ</button>
                 <span id="card-label"></span>
             </div>
             <div class="ball" id="live-ball">?</div>
             <div class="bingo-grid" id="board"></div>
-            <button class="btn btn-gold" style="margin-top:20px;" onclick="claimBingo()">BINGO!</button>
+            <button class="btn btn-gold" style="margin-top:20px;" onclick="claimbingo()">bingo!</button>
         </div>
         <div id="rules-page" class="page">
             <h3>ደንቦች</h3>
             <div class="tx-card">1. 20% ኮሚሽን ይቀነሳል | 2. ቢንጎ እንደወጣ መጫን አለበት | 3. የቢጫ ጥላ የሚጠሩ ቁጥሮችን ይጠቁማል።</div>
-            <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
+            <button class="btn" onclick="showpage('home-page')">ተመለስ</button>
         </div>
         <div id="tx-page" class="page">
             <h3>ታሪክ</h3>
             <div id="tx-list"></div>
-            <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
+            <button class="btn" onclick="showpage('home-page')">ተመለስ</button>
         </div>
     </div>
 
     <script>
-        const ADMIN_ID = 8431270634;
-        const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
-        firebase.initializeApp(firebaseConfig);
+        const admin_id = 8431270634;
+        const firebaseconfig = { databaseurl: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
+        firebase.initializeapp(firebaseconfig);
         const db = firebase.database();
-        const tg = window.Telegram.WebApp;
+        const tg = window.telegram.webapp;
         tg.expand();
 
-        let myBal = 0, drawn = [], autoInterval = null, selectedPrice = 0, currentCard = 0;
-        const uid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 0;
-        const uName = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "ተጫዋች";
+        let mybal = 0, drawn = [], autointerval = null, selectedprice = 0, currentcard = 0;
+        const uid = tg.initdataunsafe.user ? tg.initdataunsafe.user.id : 0;
+        const uname = tg.initdataunsafe.user ? tg.initdataunsafe.user.first_name : "ተጫዋች";
 
-        document.getElementById('u-name').innerText = uName;
-        if(uid == ADMIN_ID) document.getElementById('admin-btn').style.display = 'block';
+        document.getelementbyid('u-name').innertext = uname;
+        if(uid == admin_id) document.getelementbyid('admin-btn').style.display = 'block';
 
-        function playSfx(id) { const s = document.getElementById(id); s.currentTime = 0; s.play().catch(e => {}); }
+        function playsfx(id) { const s = document.getelementbyid(id); s.currenttime = 0; s.play().catch(e => {}); }
 
-        db.ref('status/' + uid).set({ name: uName, online: true });
-        db.ref('status/' + uid).onDisconnect().remove();
-        db.ref('status').on('value', s => { document.getElementById('online-count').innerText = `🟢 ${s.numChildren()} ተጫዋች`; });
+        db.ref('status/' + uid).set({ name: uname, online: true });
+        db.ref('status/' + uid).ondisconnect().remove();
+        db.ref('status').on('value', s => { document.getelementbyid('online-count').innertext = `🟢 ${s.numchildren()} ተጫዋች`; });
 
-        db.ref('recent_winners').limitToLast(1).on('value', s => {
-            const list = document.getElementById('winners-list');
-            s.forEach(c => { const w = c.val(); list.innerHTML = `<span style="color:var(--green)">🎉 ${w.name} #${w.card} አሸነፈ!</span>`; });
+        db.ref('recent_winners').limittolast(1).on('value', s => {
+            const list = document.getelementbyid('winners-list');
+            s.foreach(c => { const w = c.val(); list.innerhtml = `<span style="color:var(--green)">🎉 ${w.name} #${w.card} አሸነፈ!</span>`; });
         });
 
-        db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
+        db.ref('users/'+uid+'/bal').on('value', s => { mybal = s.val()||0; document.getelementbyid('u-bal').innertext = mybal.tofixed(2)+" etb"; });
         
         db.ref('game/drawn').on('value', s => { 
-            const newDrawn = s.val()||[]; 
-            if(newDrawn.length > drawn.length) {
-                const lastNum = newDrawn[newDrawn.length - 1];
-                playSfx('sound-pop');
-                checkAndHint(lastNum);
+            const newdrawn = s.val()||[]; 
+            if(newdrawn.length > drawn.length) {
+                const lastnum = newdrawn[newdrawn.length - 1];
+                playsfx('sound-pop');
+                checkandhint(lastnum);
             }
-            drawn = newDrawn;
-            document.getElementById('live-ball').innerText = drawn[drawn.length-1]||"?"; 
-            document.getElementById('admin-ball').innerText = drawn[drawn.length-1]||"?"; 
+            drawn = newdrawn;
+            document.getelementbyid('live-ball').innertext = drawn[drawn.length-1]||"?"; 
+            document.getelementbyid('admin-ball').innertext = drawn[drawn.length-1]||"?"; 
         });
 
-        function checkAndHint(num) {
-            document.querySelectorAll('.cell').forEach(cell => {
-                if (parseInt(cell.innerText) === num) {
-                    cell.classList.add('hint');
+        function checkandhint(num) {
+            document.queryselectorall('.cell').foreach(cell => {
+                if (parseint(cell.innertext) === num) {
+                    cell.classlist.add('hint');
                     if (navigator.vibrate) navigator.vibrate(200);
                 }
             });
         }
 
-        function showPage(p) { document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active')); document.getElementById(p).classList.add('active'); }
-        function showForm(id) { document.getElementById('dep-form').style.display='none'; document.getElementById('wd-form').style.display='none'; document.getElementById(id).style.display='block'; }
+        function showpage(p) { document.queryselectorall('.page').foreach(pg => pg.classlist.remove('active')); document.getelementbyid(p).classlist.add('active'); }
+        function showform(id) { document.getelementbyid('dep-form').style.display='none'; document.getelementbyid('wd-form').style.display='none'; document.getelementbyid(id).style.display='block'; }
         
-        function sendPayment() { const t = document.getElementById('tid').value; db.ref('all_requests').push({ uid, name: uName, tid: t, type: 'DEP', status: 'pending' }); alert("ተልኳል!"); }
+        function sendpayment() { const t = document.getelementbyid('tid').value; db.ref('all_requests').push({ uid, name: uname, tid: t, type: 'dep', status: 'pending' }); alert("ተልኳል!"); }
         
-        function requestWithdraw() { 
-            const amt = document.getElementById('wd-amt').value; 
-            if(amt > myBal) return alert("ባላንስ የለም");
-            db.ref('users/'+uid+'/bal').set(myBal - amt); 
-            db.ref('all_requests').push({ uid, name: uName, amount: amt, type: 'WD', status: 'pending' }); 
+        function requestwithdraw() { 
+            const amt = document.getelementbyid('wd-amt').value; 
+            if(amt > mybal) return alert("ባላንስ የለም");
+            db.ref('users/'+uid+'/bal').set(mybal - amt); 
+            db.ref('all_requests').push({ uid, name: uname, amount: amt, type: 'wd', status: 'pending' }); 
             alert("ጥያቄ ተልኳል!"); 
         }
 
-        function goToCardPicker(p) { 
-            if(myBal < p) return alert("ባላንስ የለም"); 
-            selectedPrice = p; showPage('picker-page'); 
-            const list = document.getElementById('card-list'); list.innerHTML = ""; 
+        function gotocardpicker(p) { 
+            if(mybal < p) return alert("ባላንስ የለም"); 
+            selectedprice = p; showpage('picker-page'); 
+            const list = document.getelementbyid('card-list'); list.innerhtml = ""; 
             for(let i=1; i<=200; i++) { 
-                let b = document.createElement('button'); b.className='btn'; b.style.background='var(--card)'; b.style.color='white'; b.innerText = i; 
-                b.onclick = () => startGame(i); list.appendChild(b); 
+                let b = document.createelement('button'); b.classname='btn'; b.style.background='var(--card)'; b.style.color='white'; b.innertext = i; 
+                b.onclick = () => startgame(i); list.appendchild(b); 
             } 
         }
         
-        function startGame(n) { 
-            currentCard = n; db.ref('users/'+uid+'/bal').set(myBal - selectedPrice); 
-            playSfx('sound-coin');
-            db.ref('users/'+uid+'/tx').push({type:'PLAY', amt:selectedPrice, desc:'#'+n, time:new Date().toLocaleTimeString()});
-            document.getElementById('card-label').innerText = "ካርቴላ #"+n; showPage('game-page'); 
-            const board = document.getElementById('board'); board.innerHTML = ""; 
-            let p = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5); 
+        function startgame(n) { 
+            currentcard = n; db.ref('users/'+uid+'/bal').set(mybal - selectedprice); 
+            playsfx('sound-coin');
+            db.ref('users/'+uid+'/tx').push({type:'play', amt:selectedprice, desc:'#'+n, time:new date().tolocaletimestring()});
+            document.getelementbyid('card-label').innertext = "ካርቴላ #"+n; showpage('game-page'); 
+            const board = document.getelementbyid('board'); board.innerhtml = ""; 
+            let p = array.from({length:75},(_,i)=>i+1).sort(()=>math.random()-0.5); 
             for(let i=0; i<25; i++) { 
-                let c = document.createElement('div'); c.className='cell'; c.innerText=p[i]; 
-                if (drawn.includes(p[i])) c.classList.add('hint');
+                let c = document.createelement('div'); c.classname='cell'; c.innertext=p[i]; 
+                if (drawn.includes(p[i])) c.classlist.add('hint');
                 c.onclick = function() {
-                    if (drawn.includes(parseInt(this.innerText))) {
-                        this.classList.remove('hint'); this.classList.toggle('marked'); playSfx('sound-pop');
-                    } else tg.showAlert("ይህ ቁጥር ገና አልወጣም!");
+                    if (drawn.includes(parseint(this.innertext))) {
+                        this.classlist.remove('hint'); this.classlist.toggle('marked'); playsfx('sound-pop');
+                    } else tg.showalert("ይህ ቁጥር ገና አልወጣም!");
                 }; 
-                board.appendChild(c); 
+                board.appendchild(c); 
             } 
         }
 
-        function claimBingo() { 
-            playSfx('sound-win');
-            db.ref('all_requests').push({ uid, name: uName, card: currentCard, price: selectedPrice, type: 'BINGO', status: 'pending' });
-            db.ref('recent_winners').push({ name: uName, card: currentCard, price: selectedPrice });
+        function claimbingo() { 
+            playsfx('sound-win');
+            db.ref('all_requests').push({ uid, name: uname, card: currentcard, price: selectedprice, type: 'bingo', status: 'pending' });
+            db.ref('recent_winners').push({ name: uname, card: currentcard, price: selectedprice });
             alert("ቢንጎ ለዳኛው ተልኳል!"); 
         }
 
-        function showAdmin() {
-            showPage('admin-page');
+        function showadmin() {
+            showpage('admin-page');
             db.ref('all_requests').on('value', s => {
-                const list = document.getElementById('admin-req-list'); list.innerHTML = "";
-                if(!s.exists()) list.innerHTML = "ጥያቄ የለም...";
-                s.forEach(c => {
+                const list = document.getelementbyid('admin-req-list'); list.innerhtml = "";
+                if(!s.exists()) list.innerhtml = "ጥያቄ የለም...";
+                s.foreach(c => {
                     let r = c.val(); if(r.status == 'pending') {
-                        let d = document.createElement('div'); d.className = 'tx-card';
-                        d.innerHTML = `<b>${r.type}</b>: ${r.name} | ${r.tid || r.amount || 'ካርቴላ #'+r.card} <br> <button onclick="approve('${c.key}','${r.uid}','${r.type}')" class="btn btn-gold">አጽድቅ</button>`;
-                        list.appendChild(d);
+                        let d = document.createelement('div'); d.classname = 'tx-card';
+                        d.innerhtml = `<b>${r.type}</b>: ${r.name} | ${r.tid || r.amount || 'ካርቴላ #'+r.card} <br> <button onclick="approve('${c.key}','${r.uid}','${r.type}')" class="btn btn-gold">አጽድቅ</button>`;
+                        list.appendchild(d);
                     }
                 });
             });
         }
 
-        function approve(k,u,t) { if(t=='DEP') { let a = prompt("መጠን:"); if(a) db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); } db.ref('all_requests/'+k).update({status:'ok'}); }
-        function drawSingle() { if(drawn.length >= 75) return; let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n)); drawn.push(n); db.ref('game/drawn').set(drawn); }
-        function toggleAuto() { const b = document.getElementById('auto-btn'); if(autoInterval) { clearInterval(autoInterval); autoInterval=null; b.innerText="Auto ጀምር"; b.style.background="var(--green)"; } else { autoInterval = setInterval(drawSingle, 4000); b.innerText="አቁም"; b.style.background="var(--red)"; } }
-        function resetGame() { if(confirm("RESET?")) db.ref('game/drawn').set([]); }
-        function confirmExit() { if(confirm("መውጣት ትፈልጋለህ?")) showPage('home-page'); }
-        function showTransactions() { showPage('tx-page'); db.ref('users/'+uid+'/tx').limitToLast(10).on('value', s => { const list = document.getElementById('tx-list'); list.innerHTML = ""; s.forEach(c => { let r = c.val(); let d = document.createElement('div'); d.className = 'tx-card'; d.innerHTML = `<b>${r.type}</b>: ${r.amt} ETB <br> <small>${r.time}</small>`; list.prepend(d); }); }); }
+        function approve(k,u,t) { if(t=='dep') { let a = prompt("መጠን:"); if(a) db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parsefloat(a)); } db.ref('all_requests/'+k).update({status:'ok'}); }
+        function drawsingle() { if(drawn.length >= 75) return; let n; do { n = math.floor(math.random()*75)+1; } while(drawn.includes(n)); drawn.push(n); db.ref('game/drawn').set(drawn); }
+        function toggleauto() { const b = document.getelementbyid('auto-btn'); if(autointerval) { clearinterval(autointerval); autointerval=null; b.innertext="auto ጀምር"; b.style.background="var(--green)"; } else { autointerval = setinterval(drawsingle, 4000); b.innertext="አቁም"; b.style.background="var(--red)"; } }
+        function resetgame() { if(confirm("reset?")) db.ref('game/drawn').set([]); }
+        function confirmexit() { if(confirm("መውጣት ትፈልጋለህ?")) showpage('home-page'); }
+        function showtransactions() { showpage('tx-page'); db.ref('users/'+uid+'/tx').limittolast(10).on('value', s => { const list = document.getelementbyid('tx-list'); list.innerhtml = ""; s.foreach(c => { let r = c.val(); let d = document.createelement('div'); d.classname = 'tx-card'; d.innerhtml = `<b>${r.type}</b>: ${r.amt} etb <br> <small>${r.time}</small>`; list.prepend(d); }); }); }
     </script>
 </body>
 </html>
