@@ -2,182 +2,176 @@
 <html lang="am">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - OFFICIAL</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETHIO BINGO GOLD - MASTER</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-
     <style>
-        :root { --gold: #facc15; --bg: #020617; --card-bg: rgba(30, 41, 59, 0.7); --green: #10b981; --red: #f43f5e; --blue: #3b82f6; }
-        body { background: radial-gradient(circle at top, #1e293b, var(--bg)); color: white; font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; overflow-x: hidden; }
-        .header { padding: 12px 20px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-        .page { display: none; padding: 15px; animation: fadeIn 0.4s ease-in; }
-        .page.active { display: block; }
-        .ball { width: 80px; height: 80px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold) 40%, #854d0e); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 900; color: #000; margin: 15px auto; border: 4px solid #fff; box-shadow: 0 0 20px rgba(250, 204, 21, 0.4); }
-        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 18px; max-width: 330px; margin: auto; }
-        .cell { aspect-ratio: 1; background: #fff; color: #020617; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 8px; font-size: 1.4rem; cursor: pointer; transition: 0.2s; }
-        .cell.marked { background: var(--red) !important; color: white !important; transform: scale(0.9); }
-        .cell.hint { background: #fef08a; border: 2px solid var(--gold); animation: pulse 1s infinite; }
-        .cell.free { background: var(--gold) !important; color: #000 !important; font-size: 0.7rem; font-weight: 900; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 1rem; transition: 0.3s; }
-        .btn-gold { background: linear-gradient(135deg, #fde047, #ca8a04); color: #422006; }
-        #chat-box { height: 120px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 10px; margin-top: 15px; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1); }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        :root { --gold: #f1c40f; --dark: #0f172a; --card: #1e293b; --green: #2ecc71; --red: #e74c3c; }
+        body { background: var(--dark); color: white; font-family: sans-serif; margin: 0; text-align: center; }
+        .header { background: #1e293b; padding: 15px; border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; align-items: center; }
+        .balance { color: var(--green); font-weight: bold; font-size: 1.2rem; }
+        .online-status { font-size: 0.8rem; color: #94a3b8; }
+        
+        .room-status { margin: 20px auto; padding: 10px; border-radius: 10px; width: 80%; font-weight: bold; }
+        .open { background: rgba(46, 204, 113, 0.2); color: var(--green); border: 1px solid var(--green); }
+        .locked { background: rgba(231, 76, 60, 0.2); color: var(--red); border: 1px solid var(--red); }
+        
+        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
+        .price-card { background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid #334155; cursor: pointer; transition: 0.3s; }
+        .price-card:active { transform: scale(0.95); }
+        .price-card.disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+        
+        .admin-panel { background: #1e293b; margin: 20px; padding: 15px; border-radius: 10px; border: 1px dashed var(--gold); }
+        .ball-display { width: 100px; height: 100px; background: var(--gold); color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: bold; margin: 20px auto; box-shadow: 0 0 20px var(--gold); }
+        
+        #game-view { display: none; }
+        .bingo-board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 350px; margin: auto; padding: 10px; }
+        .cell { background: white; color: black; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-weight: bold; border-radius: 5px; font-size: 1.2rem; }
+        .cell.selected { background: var(--red); color: white; }
+        .cell.drawn { border: 3px solid var(--gold); background: #fef08a; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <div>
-            <b id="u-name">...</b><br>
-            <small style="color:#94a3b8;">Online: <span id="online-count" style="color:var(--gold)">0</span></small>
+            <span id="player-name">...</span><br>
+            <span class="online-status">Online: <span id="count">0</span></span>
         </div>
-        <div style="text-align:right;">
-            <div id="u-bal" style="color:var(--green); font-weight:900; font-size:1.1rem;">0.00 ETB</div>
-            <small style="color:var(--blue); font-weight:bold;">ID: <span id="u-id">...</span></small>
+        <div class="balance" id="balance-display">0.00 ETB</div>
+    </div>
+
+    <div id="join-view">
+        <div id="status-banner" class="room-status open">መግቢያ ክፍት ነው</div>
+        
+        <div class="price-grid" id="prices">
+            <div class="price-card" onclick="selectPrice(10)"><h3>10 ETB</h3><p>Win: 80 ETB</p></div>
+            <div class="price-card" onclick="selectPrice(50)"><h3>50 ETB</h3><p>Win: 400 ETB</p></div>
+            <div class="price-card" onclick="selectPrice(100)"><h3>100 ETB</h3><p>Win: 800 ETB</p></div>
+            <div class="price-card" onclick="selectPrice(200)"><h3>200 ETB</h3><p>Win: 1600 ETB</p></div>
+        </div>
+
+        <div id="admin-area" style="display:none;" class="admin-panel">
+            <h3>ዳኛ መቆጣጠሪያ</h3>
+            <div class="ball-display" id="admin-ball">?</div>
+            <button onclick="lockGame()" id="lock-btn" style="background:var(--red); color:white; padding:10px; border:none; border-radius:5px; width:100%;">መግቢያ ዝጋ (Lock)</button>
+            <button onclick="drawNumber()" style="background:var(--green); color:white; padding:15px; border:none; border-radius:5px; width:100%; margin-top:10px; font-weight:bold;">ቁጥር አውጣ</button>
+            <button onclick="resetGame()" style="margin-top:20px; background:none; color:white; border:1px solid gray;">ጨዋታውን አቁም (Reset)</button>
         </div>
     </div>
 
-    <div id="home-page" class="page active">
-        <div id="lock-msg" style="display:none; background:rgba(244,63,94,0.2); color:var(--red); padding:10px; border-radius:10px; text-align:center; margin-bottom:15px; font-weight:bold;">
-            ⚠️ ጨዋታ ተጀምሯል! እባክዎ ይህ ዙር እስኪያልቅ ይጠብቁ።
-        </div>
-        <div id="price-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <button onclick="goToPicker(10)" class="btn" style="background:var(--card-bg); color:white;">10 ETB</button>
-            <button onclick="goToPicker(50)" class="btn" style="background:var(--card-bg); color:white;">50 ETB</button>
-            <button onclick="goToPicker(100)" class="btn" style="background:var(--card-bg); color:white;">100 ETB</button>
-            <button onclick="goToPicker(500)" class="btn" style="background:var(--card-bg); color:white;">500 ETB</button>
-        </div>
-        <button id="admin-btn" class="btn" style="background:var(--green); color:white; margin-top:30px; display:none;" onclick="showPage('admin-page')">🔧 ዳኛ መቆጣጠሪያ</button>
-    </div>
-
-    <div id="picker-page" class="page">
-        <h3 style="text-align:center;">ካርቴላ ይምረጡ</h3>
-        <div id="card-list" style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; max-height:400px; overflow-y:auto;"></div>
-        <button class="btn" style="background:#334155; color:white; margin-top:15px;" onclick="showPage('home-page')">ተመለስ</button>
-    </div>
-
-    <div id="game-page" class="page">
-        <div class="ball" id="live-ball">?</div>
-        <div class="bingo-grid" id="board"></div>
-        <button class="btn btn-gold" style="margin-top:20px; font-size:1.4rem;" onclick="checkBingo()">BINGO!</button>
-        <div id="chat-box"></div>
-    </div>
-
-    <div id="admin-page" class="page">
-        <div class="ball" id="admin-ball">?</div>
-        <button class="btn btn-gold" onclick="draw()">ቁጥር አውጣ</button>
-        <button id="auto-btn" class="btn" style="background:var(--blue); color:white; margin-top:10px;" onclick="toggleAuto()">Auto ጀምር</button>
-        <button class="btn" style="background:var(--red); color:white; margin-top:20px;" onclick="resetGame()">RESET GAME</button>
-        <button class="btn" style="background:#334155; color:white; margin-top:10px;" onclick="showPage('home-page')">ተመለስ</button>
+    <div id="game-view">
+        <div class="ball-display" id="game-ball">?</div>
+        <div class="bingo-board" id="board"></div>
+        <button onclick="checkBingo()" style="background:var(--gold); color:black; width:90%; padding:20px; font-size:1.5rem; font-weight:bold; border:none; border-radius:10px; margin-top:20px;">BINGO!</button>
     </div>
 
     <script>
-        const ADMIN_ID = 8431270634;
-        const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
-        firebase.initializeApp(firebaseConfig);
+        // አስታውሰኝ፡ እዚህ ጋር ያንተን Firebase እና Admin ID ቀይር
+        const ADMIN_ID = "8431270634"; 
+        const config = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(config);
         const db = firebase.database();
-        const tg = window.Telegram.WebApp;
-        tg.expand();
 
-        const uid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "GUEST_" + Math.floor(Math.random()*1000);
-        const uName = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "Player";
-        
-        document.getElementById('u-name').innerText = uName;
-        document.getElementById('u-id').innerText = uid;
-        if(uid == ADMIN_ID) document.getElementById('admin-btn').style.display = 'block';
+        // ቴሌግራም መረጃ
+        const user = window.Telegram?.WebApp?.initDataUnsafe?.user || { id: "TEST", first_name: "Dagi" };
+        document.getElementById('player-name').innerText = user.first_name;
+        if(user.id == ADMIN_ID) document.getElementById('admin-area').style.display = 'block';
 
-        let myBal = 0, drawn = [], isStarted = false, selectedPrice = 0, autoInt = null;
+        let currentBalance = 0;
+        let isLocked = false;
+        let drawnNumbers = [];
 
-        // 🟢 Online Status System
-        const statusRef = db.ref('status/' + uid);
-        db.ref('.info/connected').on('value', snap => {
-            if(snap.val()) { statusRef.onDisconnect().remove(); statusRef.set({name: uName, online: true}); }
-        });
-        db.ref('status').on('value', snap => { document.getElementById('online-count').innerText = snap.numChildren(); });
-
-        // 🟢 Game Logic
-        db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
-        
-        db.ref('game/status').on('value', s => {
-            isStarted = (s.val() === 'started');
-            document.getElementById('lock-msg').style.display = isStarted ? 'block' : 'none';
-            document.getElementById('price-list').style.opacity = isStarted ? '0.3' : '1';
+        // 🟢 Online Status & Balance
+        db.ref('status/' + user.id).set({ name: user.first_name, active: true });
+        db.ref('status/' + user.id).onDisconnect().remove();
+        db.ref('status').on('value', s => document.getElementById('count').innerText = s.numChildren());
+        db.ref('users/' + user.id + '/bal').on('value', s => {
+            currentBalance = s.val() || 0;
+            document.getElementById('balance-display').innerText = currentBalance.toFixed(2) + " ETB";
         });
 
-        db.ref('game/drawn').on('value', s => {
-            drawn = s.val() || [];
-            let last = drawn[drawn.length-1] || "?";
-            document.getElementById('live-ball').innerText = last;
-            document.getElementById('admin-ball').innerText = last;
-            document.querySelectorAll('.cell').forEach(c => {
-                if(drawn.includes(parseInt(c.innerText))) c.classList.add('hint');
+        // 🟢 Lock System (ዋናው ክፍል)
+        db.ref('game_config/isLocked').on('value', s => {
+            isLocked = s.val() || false;
+            const banner = document.getElementById('status-banner');
+            const priceCards = document.querySelectorAll('.price-card');
+            const lockBtn = document.getElementById('lock-btn');
+
+            if(isLocked) {
+                banner.innerText = "መግቢያ ተዘግቷል - ጨዋታ ተጀምሯል";
+                banner.className = "room-status locked";
+                priceCards.forEach(c => c.classList.add('disabled'));
+                if(user.id == ADMIN_ID) {
+                    lockBtn.innerText = "መግቢያ ክፈት (Unlock)";
+                    lockBtn.style.background = "var(--green)";
+                }
+            } else {
+                banner.innerText = "መግቢያ ክፍት ነው";
+                banner.className = "room-status open";
+                priceCards.forEach(c => c.classList.remove('disabled'));
+                if(user.id == ADMIN_ID) {
+                    lockBtn.innerText = "መግቢያ ዝጋ (Lock)";
+                    lockBtn.style.background = "var(--red)";
+                }
+            }
+        });
+
+        // 🟢 Draw System
+        db.ref('game_data/drawn').on('value', s => {
+            drawnNumbers = s.val() || [];
+            let lastNum = drawnNumbers[drawnNumbers.length - 1] || "?";
+            document.getElementById('admin-ball').innerText = lastNum;
+            document.getElementById('game-ball').innerText = lastNum;
+            
+            document.querySelectorAll('.cell').forEach(cell => {
+                if(drawnNumbers.includes(parseInt(cell.innerText))) cell.classList.add('drawn');
             });
         });
 
-        function goToPicker(p) {
-            if(isStarted) return alert("ጨዋታ ተጀምሯል!");
-            if(myBal < p) return alert("ባላንስ የለም!");
-            selectedPrice = p;
-            showPage('picker-page');
-            const list = document.getElementById('card-list'); list.innerHTML = "";
-            for(let i=1; i<=100; i++) {
-                let b = document.createElement('button'); b.className='btn'; b.style.background='var(--card-bg)'; b.style.color='white';
-                b.innerText = i; b.onclick = () => start(i); list.appendChild(b);
+        // Functions
+        function selectPrice(amt) {
+            if(isLocked) return;
+            if(currentBalance < amt) return alert("ባላንስ የለም!");
+            if(confirm(amt + " ብር ለመጫወት እርግጠኛ ነህ?")) {
+                db.ref('users/'+user.id+'/bal').set(currentBalance - amt);
+                generateBoard();
+                document.getElementById('join-view').style.display = 'none';
+                document.getElementById('game-view').style.display = 'block';
             }
         }
 
-        function start(n) {
-            db.ref('users/'+uid+'/bal').set(myBal - selectedPrice);
-            showPage('game-page');
-            const board = document.getElementById('board'); board.innerHTML = "";
-            let nums = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5).slice(0,24);
-            for(let i=0; i<25; i++) {
-                let c = document.createElement('div'); c.className='cell';
-                if(i===12) { c.innerText="FREE"; c.classList.add('free'); }
-                else { c.innerText = nums.pop(); }
-                c.onclick = function() {
-                    if(drawn.includes(parseInt(this.innerText)) || this.classList.contains('free')) {
-                        this.classList.toggle('marked');
-                        tg.HapticFeedback.selectionChanged();
-                    }
-                };
-                board.appendChild(c);
-            }
+        function generateBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = "";
+            let nums = Array.from({length: 75}, (_, i) => i + 1).sort(() => Math.random() - 0.5).slice(0, 25);
+            nums.forEach((n, i) => {
+                let cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.innerText = i === 12 ? "FREE" : n;
+                if(i === 12) cell.style.background = "var(--gold)";
+                cell.onclick = function() { this.classList.toggle('selected'); };
+                board.appendChild(cell);
+            });
         }
 
-        function draw() {
-            if(drawn.length === 0) db.ref('game/status').set('started');
-            let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n));
-            drawn.push(n); db.ref('game/drawn').set(drawn);
+        // Admin Functions
+        function lockGame() { db.ref('game_config/isLocked').set(!isLocked); }
+        function drawNumber() {
+            let n = Math.floor(Math.random() * 75) + 1;
+            if(!drawnNumbers.includes(n)) {
+                drawnNumbers.push(n);
+                db.ref('game_data/drawn').set(drawnNumbers);
+            } else { drawNumber(); }
         }
-
-        function toggleAuto() {
-            if(autoInt) { clearInterval(autoInt); autoInt=null; document.getElementById('auto-btn').innerText="Auto ጀምር"; }
-            else { autoInt = setInterval(draw, 3000); document.getElementById('auto-btn').innerText="አቁም"; }
-        }
-
         function resetGame() {
-            if(confirm("ጨዋታውን ይዘጋ?")) {
-                db.ref('game').update({drawn: [], status: 'open', winner: null});
-                if(autoInt) toggleAuto();
-            }
-        }
-
-        function showPage(p) {
-            document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
-            document.getElementById(p).classList.add('active');
-        }
-
-        // 🟢 Winner listener
-        db.ref('game/winner').on('value', s => {
-            if(s.val()) {
-                alert("አሸናፊ: " + s.val());
+            if(confirm("ጨዋታውን ማቆም ትፈልጋለህ?")) {
+                db.ref('game_data/drawn').set([]);
+                db.ref('game_config/isLocked').set(false);
                 location.reload();
             }
-        });
+        }
     </script>
 </body>
 </html>
