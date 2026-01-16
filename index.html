@@ -94,7 +94,6 @@
         document.getElementById('u-name').innerText = uName;
         if(uid == ADMIN_ID) document.getElementById('admin-btn').style.display = 'block';
 
-        // የጨዋታ ሁኔታን መከታተል (Lock/Unlock)
         db.ref('game/status').on('value', s => {
             const status = s.val();
             isGameStarted = (status === 'started');
@@ -120,7 +119,7 @@
                     if(uid == ADMIN_ID) {
                         db.ref('game/winner').set(null);
                         db.ref('game/drawn').set([]);
-                        db.ref('game/status').set('open'); // ሪሴት ሲሆን ይከፈታል
+                        db.ref('game/status').set('open');
                     }
                     document.getElementById('winner-overlay').style.display = 'none';
                     showPage('home-page');
@@ -166,7 +165,7 @@
 
         function drawSingle() {
             if (drawn.length >= 75) return;
-            if (drawn.length === 0) db.ref('game/status').set('started'); // የመጀመሪያ ቁጥር ሲወጣ ይዘጋል
+            if (drawn.length === 0) db.ref('game/status').set('started');
             tg.HapticFeedback.impactOccurred('medium');
             let n; do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
             drawn.push(n); db.ref('game/drawn').set(drawn);
@@ -176,7 +175,7 @@
             const b = document.getElementById('auto-btn'); 
             if(autoInterval) { clearInterval(autoInterval); autoInterval=null; b.innerText="Auto ጀምር"; } 
             else { 
-                db.ref('game/status').set('started'); // አውቶ ሲጀመር ይዘጋል
+                db.ref('game/status').set('started');
                 autoInterval = setInterval(drawSingle, 2000); b.innerText="አቁም"; 
             } 
         }
