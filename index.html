@@ -3,24 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO - FIXED V9</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <title>ETHIO BINGO - V10 PRO</title>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=3"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700;900&display=swap');
-        :root { --gold: linear-gradient(135deg, #fceabb 0%, #fccd4d 50%, #f8b500 51%, #fbdf93 100%); --bg: #020617; }
+        :root { --gold: linear-gradient(135deg, #fceabb 0%, #fccd4d 50%, #f8b500 51%, #fbdf93 100%); }
         body { background: #000; color: white; font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
+
+        /* Splash Screen Style */
+        #splash-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #020617; z-index: 50000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .splash-logo {
+            width: 120px; height: 120px; background: var(--gold);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 3rem; box-shadow: 0 0 30px #facc15; animation: pulse 1.5s infinite;
+        }
+        .loading-bar-container {
+            width: 200px; height: 6px; background: rgba(255,255,255,0.1);
+            border-radius: 10px; margin-top: 30px; overflow: hidden;
+        }
+        .loading-bar { width: 0%; height: 100%; background: var(--gold); transition: width 0.1s; }
+
         .header { height: 60px; background: rgba(15, 23, 42, 0.95); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; border-bottom: 2px solid #facc15; }
         .bal-badge { background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px; border: 1px solid #facc15; color: #facc15; font-weight: 900; }
         .page { display: none; height: calc(100vh - 60px); padding: 15px; box-sizing: border-box; overflow-y: auto; }
         .page.active { display: flex; flex-direction: column; }
         
         #winner-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        #winner-name { font-size: 3.5rem; color: #facc15; text-shadow: 0 0 25px #facc15; margin: 10px 0; }
-
-        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .price-btn { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid #facc15; text-align: center; cursor: pointer; }
         .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-bottom: 20px; }
         .card-num { background: rgba(255,255,255,0.1); padding: 10px; text-align: center; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); font-weight: bold; cursor: pointer; }
@@ -31,11 +50,19 @@
         .ball-main { width: 85px; height: 85px; background: radial-gradient(circle at 30% 30%, #fff, #facc15, #854d0e); border-radius: 50%; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: #000; border: 4px solid #fff; }
         .btn-gold { background: var(--gold); border: none; padding: 12px; border-radius: 10px; color: #422006; font-weight: 900; text-transform: uppercase; cursor: pointer; margin-top: 10px; }
         input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: none; box-sizing: border-box; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div id="winner-overlay"><h1 style="color:white; margin:0;">አሸናፊ!</h1><div id="winner-name">...</div><h2 style="color:white; margin:0;">BINGO!</h2></div>
+    <div id="splash-screen">
+        <div class="splash-logo">B</div>
+        <h2 style="margin-top:20px; color:#facc15;">ETHIO BINGO</h2>
+        <div class="loading-bar-container"><div id="l-bar" class="loading-bar"></div></div>
+        <p style="font-size:0.8rem; margin-top:10px; color:#94a3b8;">ዳጊ ቢንጎ - V10 Loading...</p>
+    </div>
+
+    <div id="winner-overlay"><h1 style="color:white; margin:0;">አሸናፊ!</h1><div id="winner-name" style="font-size:3.5rem; color:#facc15;">...</div><h2 style="color:white; margin:0;">BINGO!</h2></div>
 
     <div class="header">
         <div id="u-name" style="font-weight: 900; color: #facc15;">...</div>
@@ -44,7 +71,7 @@
 
     <div id="home-page" class="page active">
         <h4 style="text-align:center; color:#94a3b8;">መጠን ይምረጡ</h4>
-        <div class="price-grid">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div class="price-btn" onclick="checkJoin(10)"><h3>10</h3></div>
             <div class="price-btn" onclick="checkJoin(20)"><h3>20</h3></div>
             <div class="price-btn" onclick="checkJoin(50)"><h3>50</h3></div>
@@ -89,6 +116,18 @@
         firebase.initializeApp(config); const db = firebase.database();
         const tg = window.Telegram.WebApp; tg.expand();
 
+        // Splash Logic
+        let load = 0;
+        let int = setInterval(() => {
+            load += 5; document.getElementById('l-bar').style.width = load + "%";
+            if(load >= 100) {
+                clearInterval(int);
+                document.getElementById('splash-screen').style.transition = "0.5s";
+                document.getElementById('splash-screen').style.opacity = "0";
+                setTimeout(() => document.getElementById('splash-screen').style.display = "none", 500);
+            }
+        }, 100);
+
         const uid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "U"+Date.now();
         const uName = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "ተጫዋች";
         document.getElementById('u-name').innerText = uName;
@@ -98,7 +137,6 @@
 
         db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
         
-        // Winner Listener with Auto-Reset logic
         db.ref('game/winner').on('value', s => {
             let winData = s.val();
             if(winData && winData.name) {
@@ -107,13 +145,7 @@
                 document.getElementById('winner-name').innerText = winData.name;
                 overlay.style.display = 'flex';
                 confetti({ particleCount: 200, spread: 100 });
-                
-                setTimeout(() => {
-                    overlay.style.display = 'none';
-                    showP('home-page');
-                    // ዳኛው አሸናፊውን ዳታቤዝ ላይ እንዲያጠፋው (አንድ ጊዜ ብቻ እንዲጠራ)
-                    if(uid == ADMIN_ID) db.ref('game/winner').set(""); 
-                }, 4000);
+                setTimeout(() => { overlay.style.display = 'none'; showP('home-page'); if(uid == ADMIN_ID) db.ref('game/winner').set(""); }, 4000);
             }
         });
 
@@ -156,9 +188,8 @@
             let marked = [];
             document.querySelectorAll('.cell').forEach((c, idx) => { if(c.classList.contains('marked')) marked.push(idx); });
             const patterns = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
-            if(patterns.some(p => p.every(idx => marked.includes(idx)))) {
-                db.ref('game/winner').set({ name: uName, time: Date.now() }); 
-            } else { alert("ገና ነህ!"); }
+            if(patterns.some(p => p.every(idx => marked.includes(idx)))) { db.ref('game/winner').set({ name: uName }); }
+            else { alert("ገና ነህ!"); }
         }
 
         function draw(){
