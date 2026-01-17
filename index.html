@@ -3,183 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO GOLD - FAST EDITION</title>
+    <title>ETHIO BINGO - PREMIUM GOLD</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-
     <style>
-        :root { --gold: #facc15; --bg: #020617; --card: #1e293b; --green: #10b981; --red: #f43f5e; --blue: #3b82f6; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; user-select: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@700;900&display=swap');
+        :root { --gold: radial-gradient(circle, #fde047 0%, #ca8a04 100%); --glass: rgba(255, 255, 255, 0.1); --bg: #0f172a; }
         
-        #splash { position: fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:10000; animation: fadeOut 1s forwards 1.5s; }
-        #splash h1 { color:var(--gold); font-size:3rem; text-shadow:0 0 20px var(--gold); }
-        @keyframes fadeOut { to { opacity:0; visibility:hidden; } }
+        body { background: #020617; color: white; font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
+        
+        /* Premium Header */
+        .header { height: 60px; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; border-bottom: 1px solid rgba(250, 204, 21, 0.3); }
+        .bal-badge { background: var(--glass); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--gold); color: #facc15; font-weight: 900; }
 
-        .header { padding: 15px; background: rgba(15, 23, 42, 0.9); border-bottom: 2px solid var(--gold); display: flex; justify-content: space-between; position: sticky; top:0; z-index:1000; }
-        .page { display: none; padding: 20px; animation: slideIn 0.3s; }
-        .page.active { display: block; }
-        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .page { display: none; height: calc(100vh - 60px); padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        .page.active { display: flex; flex-direction: column; }
 
-        .ball { width: 90px; height: 90px; background: radial-gradient(circle at 30% 30%, #fff, var(--gold), #854d0e); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: #000; margin: 15px auto; border: 4px solid #fff; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
-        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: #475569; padding: 10px; border-radius: 15px; max-width: 330px; margin: auto; }
-        .cell { aspect-ratio: 1; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 8px; font-size: 1.2rem; }
-        .cell.marked { background: var(--red) !important; color: white !important; transform: scale(0.9); }
-        .cell.hint { background: #fef08a; border: 2px solid var(--gold); }
-        .cell.free { background: var(--gold) !important; font-size: 0.7rem; }
+        /* Full Screen Bingo Card */
+        .bingo-card-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; max-width: 400px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.1); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        
+        .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; border-radius: 12px; transition: 0.3s; position: relative; cursor: pointer; border-bottom: 4px solid #cbd5e1; }
+        .cell.marked { background: #ef4444 !important; color: white !important; border-bottom: 0; transform: scale(0.9) translateY(4px); box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); }
+        .cell.hint { background: #fef08a; border-color: #facc15; animation: pulse 1.5s infinite; }
+        .cell.free { background: var(--gold) !important; font-size: 0.8rem; border-color: #854d0e; }
 
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-gold { background: linear-gradient(135deg, #fde047, #ca8a04); color: #422006; }
-        .card-picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-height: 300px; overflow-y: auto; }
-        .card-num { background: var(--card); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid var(--gold); }
-        input { width: 100%; padding: 12px; border-radius: 8px; border: none; box-sizing: border-box; margin-top: 8px; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(250, 204, 21, 0); } 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); } }
+
+        /* Modern Ball */
+        .live-ball-wrap { text-align: center; margin-bottom: 10px; }
+        .ball { width: 100px; height: 100px; background: radial-gradient(circle at 30% 30%, #fff, #facc15, #a16207); border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; color: #000; border: 5px solid #fff; box-shadow: 0 10px 30px rgba(250, 204, 21, 0.4); }
+
+        /* 3D Buttons */
+        .btn-premium { background: var(--gold); border: none; padding: 18px; border-radius: 15px; color: #422006; font-weight: 900; font-size: 1.1rem; text-transform: uppercase; cursor: pointer; transition: 0.2s; border-bottom: 5px solid #854d0e; margin-top: 15px; }
+        .btn-premium:active { transform: translateY(3px); border-bottom: 2px solid #854d0e; }
+
+        /* Card Selector */
+        .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .card-item { background: var(--glass); padding: 15px; text-align: center; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-weight: 900; }
+        
+        input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 15px; border-radius: 12px; color: white; font-size: 1rem; margin-top: 10px; width: 100%; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <div id="splash"><h1>ኢትዮ ቢንጎ</h1><p>FAST DRAW: 3s</p></div>
-
     <div class="header">
-        <div><b id="u-name">...</b><br><small style="color:var(--green)">🟢 Live</small></div>
-        <div style="text-align:right;"><div id="u-bal" style="color:var(--green); font-size:1.1rem; font-weight:900;">0.00 ETB</div></div>
+        <div id="u-name" style="font-weight: 900; color: #facc15;">...</div>
+        <div class="bal-badge" id="u-bal">0.00 ETB</div>
     </div>
 
     <div id="home-page" class="page active">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <button class="btn btn-gold" onclick="checkJoin(10)">10 ETB</button>
-            <button class="btn btn-gold" onclick="checkJoin(50)">50 ETB</button>
-            <button class="btn btn-gold" onclick="checkJoin(100)">100 ETB</button>
-            <button class="btn btn-gold" onclick="checkJoin(500)">500 ETB</button>
-            <button class="btn btn-gold" onclick="checkJoin(1000)" style="grid-column: span 2;">1000 ETB</button>
+        <h2 style="text-align:center;">ካርቴላ ይምረጡ</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="card-item" onclick="checkAndJoin(10)" style="border-color:#22c55e"><h3>10</h3><small>Win 80</small></div>
+            <div class="card-item" onclick="checkAndJoin(50)" style="border-color:#3b82f6"><h3>50</h3><small>Win 400</small></div>
+            <div class="card-item" onclick="checkAndJoin(100)" style="border-color:#a855f7"><h3>100</h3><small>Win 800</small></div>
+            <div class="card-item" onclick="checkAndJoin(500)" style="border-color:#f43f5e"><h3>500</h3><small>Win 4000</small></div>
         </div>
-
-        <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <button class="btn" style="background:var(--blue); color:white;" onclick="toggleView('dep-box')">📥 አስገባ</button>
-            <button class="btn" style="background:var(--red); color:white;" onclick="toggleView('wd-box')">📤 አውጣ</button>
+        
+        <div style="margin-top: auto;">
+            <button class="btn-premium" style="width:100%; background: #334155; color: white; border-color: #1e293b;" onclick="toggleForm('dep-form')">📥 ብር አስገባ</button>
+            <div id="dep-form" style="display:none">
+                <input type="text" id="tid" placeholder="ቴሌብር TID ያስገቡ">
+                <button class="btn-premium" style="width:100%" onclick="sendReq('DEP')">ጥያቄ ላክ</button>
+            </div>
+            <button id="admin-btn" class="btn-premium" style="width:100%; display:none; background: #059669; border-color:#064e3b" onclick="showPage('admin-page')">⚙️ ዳኛ ገጽ (ADMIN)</button>
         </div>
-
-        <div id="dep-box" style="display:none; margin-top:10px; background:var(--card); padding:15px; border-radius:12px;">
-            <input type="text" id="tid" placeholder="ቴሌብር TID">
-            <button class="btn btn-gold" onclick="requestDep()">ላክ</button>
-        </div>
-        <div id="wd-box" style="display:none; margin-top:10px; background:var(--card); padding:15px; border-radius:12px;">
-            <input type="number" id="wd-amt" placeholder="መጠን">
-            <input type="text" id="wd-bank" placeholder="ባንክ/ስልክ">
-            <button class="btn" style="background:var(--red); color:white;" onclick="requestWd()">ላክ</button>
-        </div>
-
-        <button id="admin-btn" class="btn" style="display:none; background:var(--blue); color:white; margin-top:30px;" onclick="showPage('admin-page')">⚙️ ዳኛ ገጽ</button>
     </div>
 
     <div id="picker-page" class="page">
-        <h3 style="text-align:center;">ካርቴላ ይምረጡ (1-200)</h3>
-        <div class="card-picker-grid" id="card-list"></div>
-        <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
+        <h3 style="text-align:center">ካርቴላ ቁጥር ይምረጡ (1-200)</h3>
+        <div class="card-grid" id="card-list" style="max-height: 400px; overflow-y: auto; padding: 10px;"></div>
+        <button class="btn-premium" onclick="showPage('home-page')">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
-        <div class="ball" id="live-ball">?</div>
-        <div class="bingo-grid" id="board"></div>
-        <button class="btn btn-gold" style="height:70px; font-size:1.5rem;" onclick="bingo()">BINGO!</button>
+        <div class="live-ball-wrap"><div class="ball" id="live-ball">?</div></div>
+        <div class="bingo-card-container"><div class="bingo-grid" id="main-board"></div></div>
+        <button class="btn-premium" onclick="claimBingo()">BINGO!</button>
     </div>
 
     <div id="admin-page" class="page">
-        <div class="ball" id="admin-ball">?</div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <button class="btn btn-gold" onclick="draw()">አውጣ</button>
-            <button id="auto-btn" class="btn" style="background:var(--green); color:white;" onclick="toggleAuto()">Auto (3s)</button>
+        <div class="ball" id="admin-ball" style="margin-bottom:20px">?</div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <button class="btn-premium" onclick="draw()">አውጣ</button>
+            <button id="auto-btn" class="btn-premium" style="background:#22c55e" onclick="toggleAuto()">Auto (3s)</button>
         </div>
-        <button class="btn" style="background:var(--red); color:white;" onclick="resetGame()">RESET</button>
-        <div id="req-list" style="margin-top:20px;"></div>
-        <button class="btn" onclick="showPage('home-page')">ተመለስ</button>
+        <div id="admin-reqs" style="margin-top:20px;"></div>
+        <button class="btn-premium" style="background:#ef4444" onclick="resetGame()">RESET GAME</button>
+        <button class="btn-premium" onclick="showPage('home-page')">ተመለስ</button>
     </div>
 
     <script>
         const ADMIN_ID = 8431270634;
-        const config = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
-        firebase.initializeApp(config);
+        const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const tg = window.Telegram.WebApp;
 
-        const uid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "T_USER_"+Date.now();
-        const uName = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "ተጫዋች";
+        const uid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "USER_"+Date.now();
+        const uName = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "Player";
         document.getElementById('u-name').innerText = uName;
         if(uid == ADMIN_ID) document.getElementById('admin-btn').style.display = 'block';
 
-        let myBal = 0, drawn = [], autoInterval = null, activePrice = 0;
+        let myBal = 0, drawn = [], autoInt = null, price = 0;
 
         db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
         db.ref('game/drawn').on('value', s => {
             drawn = s.val() || [];
-            document.getElementById('live-ball').innerText = drawn[drawn.length-1] || "?";
-            document.getElementById('admin-ball').innerText = drawn[drawn.length-1] || "?";
+            let last = drawn[drawn.length-1] || "?";
+            document.getElementById('live-ball').innerText = last;
+            document.getElementById('admin-ball').innerText = last;
             document.querySelectorAll('.cell').forEach(c => { if(drawn.includes(parseInt(c.innerText))) c.classList.add('hint'); });
         });
 
         function showPage(p) { document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active')); document.getElementById(p).classList.add('active'); }
-        function toggleView(id) { let e = document.getElementById(id); e.style.display = (e.style.display==='none'?'block':'none'); }
+        function toggleForm(id) { let f = document.getElementById(id); f.style.display = f.style.display==='none'?'block':'none'; }
 
-        function checkJoin(p) {
+        function checkAndJoin(p) {
             if(myBal < p) return alert("ባላንስ የለም!");
-            activePrice = p; showPage('picker-page');
+            price = p; showPage('picker-page');
             const list = document.getElementById('card-list'); list.innerHTML = "";
             for(let i=1; i<=200; i++) {
-                let d = document.createElement('div'); d.className = 'card-num'; d.innerText = i;
+                let d = document.createElement('div'); d.className = 'card-item'; d.innerText = i;
                 d.onclick = () => startGame(i); list.appendChild(d);
             }
         }
 
         function startGame(n) {
-            db.ref('users/'+uid+'/bal').set(myBal - activePrice);
+            db.ref('users/'+uid+'/bal').set(myBal - price);
             showPage('game-page');
-            const b = document.getElementById('board'); b.innerHTML = "";
-            let nums = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5).slice(0,24);
+            const board = document.getElementById('main-board'); board.innerHTML = "";
+            let p = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5).slice(0,24);
             for(let i=0; i<25; i++) {
                 let c = document.createElement('div'); c.className = 'cell';
                 if(i===12) { c.innerText="FREE"; c.classList.add('free'); }
-                else { c.innerText = nums.pop(); }
+                else { c.innerText = p.pop(); }
                 c.onclick = function() { if(drawn.includes(parseInt(this.innerText)) || this.innerText=="FREE") this.classList.toggle('marked'); };
-                b.appendChild(c);
+                board.appendChild(c);
             }
         }
 
-        function requestDep() { db.ref('reqs').push({ uid, name: uName, val: document.getElementById('tid').value, type: 'DEP', status: 'pending' }); alert("ተልኳል!"); }
-        function requestWd() { db.ref('reqs').push({ uid, name: uName, val: document.getElementById('wd-amt').value + " ETB - " + document.getElementById('wd-bank').value, type: 'WD', status: 'pending' }); alert("ተልኳል!"); }
-        function bingo() { db.ref('reqs').push({ uid, name: uName, type: 'BINGO', status: 'pending' }); alert("ቢንጎ ተልኳል!"); }
+        function sendReq(type) {
+            let val = type==='DEP' ? document.getElementById('tid').value : 'BINGO';
+            db.ref('reqs').push({ uid, name: uName, type, val, status: 'pending' });
+            alert("ተልኳል!");
+        }
 
+        function claimBingo() { sendReq('BINGO'); }
+
+        // ADMIN ENGINE
         function draw() {
-            if(drawn.length >= 75) return;
             let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n));
             drawn.push(n); db.ref('game/drawn').set(drawn);
         }
 
         function toggleAuto() {
-            const btn = document.getElementById('auto-btn');
-            if(autoInterval) {
-                clearInterval(autoInterval); autoInterval = null;
-                btn.innerText = "Auto ጀምር"; btn.style.background = "var(--green)";
-            } else {
-                autoInterval = setInterval(draw, 3000); // *** እዚህ ጋር ነው በየ 3 ሰከንድ ያደረግኩት ***
-                btn.innerText = "አቁም"; btn.style.background = "var(--red)";
-            }
+            let btn = document.getElementById('auto-btn');
+            if(autoInt) { clearInterval(autoInt); autoInt = null; btn.innerText="Auto (3s)"; }
+            else { autoInt = setInterval(draw, 3000); btn.innerText="አቁም"; }
         }
 
-        function resetGame() { if(confirm("ሁሉንም አጥፋ?")) { db.ref('game/drawn').set([]); if(autoInterval) toggleAuto(); } }
+        function resetGame() { if(confirm("RESET?")) db.ref('game/drawn').set([]); }
 
         if(uid == ADMIN_ID) {
             db.ref('reqs').on('value', s => {
-                const l = document.getElementById('req-list'); l.innerHTML = "<h4>ጥያቄዎች</h4>";
-                s.forEach(c => {
-                    let r = c.val(); if(r.status == 'pending') {
-                        let d = document.createElement('div'); d.className = 'price-card'; d.style.padding="10px"; d.style.marginBottom="5px";
-                        d.innerHTML = `<b>${r.type}</b>: ${r.name}<br>${r.val||''} <button onclick="app('${c.key}','${r.uid}')" style="background:var(--green); border:none; color:white; padding:5px; border-radius:5px;">Approve</button>`;
-                        l.appendChild(d);
+                const list = document.getElementById('admin-reqs'); list.innerHTML = "<h4>ጥያቄዎች</h4>";
+                s.forEach(child => {
+                    let r = child.val(); if(r.status === 'pending') {
+                        let d = document.createElement('div'); d.className = 'card-item'; d.style.marginBottom="10px";
+                        d.innerHTML = `${r.name} (${r.type})<br><small>${r.val}</small><br><button onclick="approve('${child.key}','${r.uid}')">Approve</button>`;
+                        list.appendChild(d);
                     }
                 });
             });
         }
 
-        function app(k, u) {
+        function approve(k, u) {
             let a = prompt("መጠን:");
             if(a) { db.ref('users/'+u+'/bal').transaction(b => (b||0) + parseFloat(a)); db.ref('reqs/'+k).update({status:'ok'}); }
         }
