@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>ETHIO BINGO V13 - PRO</title>
+    <title>ETHIO BINGO V13 - PRO MOD</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -87,7 +87,8 @@
         let gameStartTime = Date.now();
         let winnerShownForThisRound = false;
 
-        setTimeout(() => { document.getElementById('splash-screen').style.display='none'; }, 2000);
+        // Splash Timer - ጌሙ ሲከፈት እንዲጠፋ
+        setTimeout(() => { document.getElementById('splash-screen').style.display='none'; }, 2500);
 
         const uid = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : "U"+Date.now();
         const uName = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : "ተጫዋች";
@@ -98,12 +99,13 @@
 
         db.ref('users/'+uid+'/bal').on('value', s => { myBal = s.val()||0; document.getElementById('u-bal').innerText = myBal.toFixed(2)+" ETB"; });
         
-        // --- SECURE WINNER LISTENER ---
+        // --- SECURE WINNER LISTENER (FIXED) ---
         db.ref('game/winner').on('value', s => {
             let w = s.val();
+            // አሸናፊ ከሌለ Reset እናደርጋለን
             if(!w || !w.name) { winnerShownForThisRound = false; return; }
 
-            // ጌሙ ከተከፈተ በኋላ የተመዘገበ አሸናፊ መሆኑን ማረጋገጥ
+            // ጌሙ ከተከፈተ በኋላ የመጣ አዲስ አሸናፊ መሆኑን ማረጋገጫ
             if(w.time > gameStartTime && !winnerShownForThisRound) {
                 winnerShownForThisRound = true;
                 document.getElementById('winner-name').innerText = w.name;
@@ -112,7 +114,9 @@
                 setTimeout(() => {
                     document.getElementById('winner-overlay').style.display = 'none';
                     showP('home-page');
-                    if(uid == ADMIN_ID) resetGame(); // ዳኛው ወዲያውኑ ክሊር ያድርገው
+                    if(uid == ADMIN_ID) {
+                        db.ref('game/winner').set(null); // ዳታቤዙን ዳኛው ያጽዳው
+                    }
                 }, 5000);
             }
         });
@@ -152,8 +156,13 @@
                 c.innerText = val;
                 c.onclick = function(){
                     let num = parseInt(this.innerText);
-                    if(drawn.includes(num) || this.innerText === "FREE") this.classList.toggle('marked');
-                    else { this.style.animation="shake 0.2s"; setTimeout(()=>this.style.animation="",200); }
+                    // ዳኛው ያወጣው ቁጥር መሆኑን ማረጋገጫ (SECURITY)
+                    if(drawn.includes(num) || this.innerText === "FREE") {
+                        this.classList.toggle('marked');
+                    } else {
+                        this.style.animation="shake 0.2s"; 
+                        setTimeout(()=>this.style.animation="",200);
+                    }
                 };
                 b.appendChild(c);
             }
@@ -175,9 +184,11 @@
         }
 
         function resetGame() {
-            db.ref('game').set({ drawn: [], winner: null });
-            gameStartTime = Date.now();
-            winnerShownForThisRound = false;
+            if(confirm("አዲስ ዙር ለመጀመር ዳታውን ላጽዳው?")){
+                db.ref('game').set({ drawn: [], winner: null });
+                gameStartTime = Date.now();
+                winnerShownForThisRound = false;
+            }
         }
     </script>
 </body>
