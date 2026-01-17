@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ETHIO BINGO - V6 PREMIUM</title>
+    <title>ETHIO BINGO - V8 ULTIMATE</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -20,26 +20,27 @@
         #winner-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         #winner-name { font-size: 3.5rem; color: #facc15; text-shadow: 0 0 25px #facc15; }
 
-        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
-        .price-btn { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; border: 1px solid #facc15; text-align: center; cursor: pointer; transition: 0.3s; }
-        .price-btn:active { transform: scale(0.95); background: #facc15; color: #000; }
-        .price-btn h3 { margin: 0; font-size: 1.5rem; }
+        .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .price-btn { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid #facc15; text-align: center; cursor: pointer; }
+
+        /* Card Picker Grid */
+        .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-bottom: 20px; }
+        .card-num { background: rgba(255,255,255,0.1); padding: 10px; text-align: center; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); font-weight: bold; cursor: pointer; }
+        .card-num:active { background: #facc15; color: #000; }
 
         .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; width: 100%; max-width: 400px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 12px; margin: auto; }
         .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 900; border-radius: 8px; border-bottom: 4px solid #cbd5e1; }
         .cell.marked { background: #ef4444 !important; color: white !important; border-bottom: 0; transform: scale(0.9); }
         .cell.hint { background: #fef08a; border-color: #facc15; }
-        .ball-main { width: 90px; height: 90px; background: radial-gradient(circle at 30% 30%, #fff, #facc15, #854d0e); border-radius: 50%; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; color: #000; border: 4px solid #fff; }
-        .btn-gold { background: var(--gold); border: none; padding: 15px; border-radius: 12px; color: #422006; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+        
+        .ball-main { width: 85px; height: 85px; background: radial-gradient(circle at 30% 30%, #fff, #facc15, #854d0e); border-radius: 50%; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: #000; border: 4px solid #fff; }
+        .btn-gold { background: var(--gold); border: none; padding: 12px; border-radius: 10px; color: #422006; font-weight: 900; text-transform: uppercase; cursor: pointer; margin-top: 10px; }
+        input { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: none; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <div id="winner-overlay">
-        <h1 style="color:white; margin:0;">አሸናፊ!</h1>
-        <div id="winner-name">...</div>
-        <h2 style="color:white; margin:0;">BINGO!</h2>
-    </div>
+    <div id="winner-overlay"><h1 style="color:white; margin:0;">አሸናፊ!</h1><div id="winner-name">...</div><h2 style="color:white; margin:0;">BINGO!</h2></div>
 
     <div class="header">
         <div id="u-name" style="font-weight: 900; color: #facc15;">...</div>
@@ -47,30 +48,46 @@
     </div>
 
     <div id="home-page" class="page active">
-        <h3 style="text-align:center; color:#94a3b8;">የመጫወቻ መጠን ይምረጡ</h3>
+        <h4 style="text-align:center; color:#94a3b8;">መጠን ይምረጡ</h4>
         <div class="price-grid">
-            <div class="price-btn" onclick="checkJoin(10)"><h3>10</h3><small>ETB</small></div>
-            <div class="price-btn" onclick="checkJoin(20)"><h3>20</h3><small>ETB</small></div>
-            <div class="price-btn" onclick="checkJoin(50)"><h3>50</h3><small>ETB</small></div>
-            <div class="price-btn" onclick="checkJoin(100)"><h3>100</h3><small>ETB</small></div>
-            <div class="price-btn" onclick="checkJoin(500)"><h3>500</h3><small>ETB</small></div>
-            <div class="price-btn" onclick="checkJoin(1000)"><h3>1000</h3><small>ETB</small></div>
+            <div class="price-btn" onclick="checkJoin(10)"><h3>10</h3></div>
+            <div class="price-btn" onclick="checkJoin(20)"><h3>20</h3></div>
+            <div class="price-btn" onclick="checkJoin(50)"><h3>50</h3></div>
+            <div class="price-btn" onclick="checkJoin(100)"><h3>100</h3></div>
+            <div class="price-btn" onclick="checkJoin(500)"><h3>500</h3></div>
+            <div class="price-btn" onclick="checkJoin(1000)"><h3>1000</h3></div>
         </div>
-        <button id="adm-btn" class="btn-gold" style="display:none; margin-top:30px; background:#3b82f6; color:white;" onclick="showP('admin-page')">⚙️ ዳኛ ገጽ</button>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+            <button class="btn-gold" style="background:#1e293b; color:white;" onclick="toggleV('dep-box')">📥 አስገባ</button>
+            <button class="btn-gold" style="background:#ef4444; color:white;" onclick="toggleV('wd-box')">📤 አውጣ</button>
+        </div>
+
+        <div id="dep-box" style="display:none;"><input type="text" id="tid" placeholder="ቴሌብር TID"><button class="btn-gold" style="width:100%" onclick="sendReq('DEP')">ላክ</button></div>
+        <div id="wd-box" style="display:none;"><input type="number" id="wda" placeholder="መጠን"><input type="text" id="wdp" placeholder="ስልክ"><button class="btn-gold" style="width:100%; background:#ef4444;" onclick="sendReq('WD')">ላክ</button></div>
+        <button id="adm-btn" class="btn-gold" style="display:none; background:#3b82f6;" onclick="showP('admin-page')">⚙️ ዳኛ ገጽ</button>
+    </div>
+
+    <div id="picker-page" class="page">
+        <h3 style="text-align:center;">ካርቴላ ይምረጡ (1-200)</h3>
+        <div class="card-grid" id="picker-list"></div>
+        <button class="btn-gold" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
+        <div style="text-align:right;"><button onclick="if(confirm('መውጣት ትፈልጋለህ?')){showP('home-page')}" style="background:none; border:none; color:red; font-weight:900; font-size:1.5rem;">✕</button></div>
         <div class="ball-main" id="live-ball">?</div>
         <div class="bingo-grid" id="main-board"></div>
-        <button class="btn-gold" style="height:65px; margin-top:15px; font-size:1.6rem;" onclick="validateBingo()">BINGO!</button>
+        <button class="btn-gold" style="height:60px; font-size:1.6rem;" onclick="validateBingo()">BINGO!</button>
     </div>
 
     <div id="admin-page" class="page">
         <div class="ball-main" id="adm-ball">?</div>
         <button class="btn-gold" style="width:100%" onclick="draw()">ቁጥር አውጣ</button>
-        <button id="auto-btn" class="btn-gold" style="width:100%; margin-top:10px; background:#22c55e" onclick="toggleAuto()">Auto (3s)</button>
-        <button class="btn-gold" style="width:100%; margin-top:10px; background:#ef4444" onclick="db.ref('game').set({drawn:[], winner:''})">RESET GAME</button>
-        <button class="btn-gold" onclick="showP('home-page')" style="width:100%; margin-top:10px;">ተመለስ</button>
+        <button id="auto-btn" class="btn-gold" style="width:100%; background:#22c55e" onclick="toggleAuto()">Auto (3s)</button>
+        <div id="adm-reqs" style="margin-top:10px;"></div>
+        <button class="btn-gold" style="width:100%; background:#ef4444" onclick="db.ref('game').set({drawn:[], winner:''})">RESET GAME</button>
+        <button class="btn-gold" onclick="showP('home-page')" style="width:100%;">ተመለስ</button>
     </div>
 
     <script>
@@ -92,11 +109,10 @@
             let winData = s.val();
             if(winData) {
                 if(autoInt) { clearInterval(autoInt); autoInt = null; }
-                const overlay = document.getElementById('winner-overlay');
                 document.getElementById('winner-name').innerText = winData.name;
-                overlay.style.display = 'flex';
+                document.getElementById('winner-overlay').style.display = 'flex';
                 confetti({ particleCount: 200, spread: 100 });
-                setTimeout(() => { overlay.style.display = 'none'; showP('home-page'); }, 4000);
+                setTimeout(() => { document.getElementById('winner-overlay').style.display = 'none'; showP('home-page'); }, 4000);
             }
         });
 
@@ -108,16 +124,28 @@
         });
 
         function showP(p){ document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active')); document.getElementById(p).classList.add('active'); }
+        function toggleV(id){ let e=document.getElementById(id); e.style.display=e.style.display==='none'?'block':'none'; }
 
         function checkJoin(p){
             if(myBal < p) return alert("ባላንስ የለም!");
-            price = p; db.ref('users/'+uid+'/bal').set(myBal - price);
-            startGame();
+            price = p;
+            showP('picker-page');
+            const list = document.getElementById('picker-list');
+            list.innerHTML = "";
+            for(let i=1; i<=200; i++){
+                let d = document.createElement('div');
+                d.className = 'card-num';
+                d.innerText = i;
+                d.onclick = () => startGame(i);
+                list.appendChild(d);
+            }
         }
 
-        function startGame(){
+        function startGame(cardNum){
+            db.ref('users/'+uid+'/bal').set(myBal - price);
             showP('game-page');
             const b = document.getElementById('main-board'); b.innerHTML = "";
+            // Use cardNum as seed or just random
             let nums = Array.from({length:75},(_,i)=>i+1).sort(()=>Math.random()-0.5).slice(0,24);
             for(let i=0; i<25; i++){
                 let val = (i===12) ? "FREE" : nums.pop();
@@ -130,16 +158,14 @@
         }
 
         function validateBingo() {
-            let markedIndices = [];
-            document.querySelectorAll('.cell').forEach((c, idx) => { if(c.classList.contains('marked')) markedIndices.push(idx); });
-            const winPatterns = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
-            if(winPatterns.some(p => p.every(idx => markedIndices.includes(idx)))) {
-                db.ref('game/winner').set({ name: uName, uid: uid });
-            } else { alert("ገና ነህ! አልሞላህም!"); }
+            let marked = [];
+            document.querySelectorAll('.cell').forEach((c, idx) => { if(c.classList.contains('marked')) marked.push(idx); });
+            const patterns = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
+            if(patterns.some(p => p.every(idx => marked.includes(idx)))) { db.ref('game/winner').set({ name: uName }); }
+            else { alert("ገና ነህ!"); }
         }
 
         function draw(){
-            if(drawn.length >= 75) return;
             let n; do { n = Math.floor(Math.random()*75)+1; } while(drawn.includes(n));
             drawn.push(n); db.ref('game/drawn').set(drawn);
         }
@@ -149,6 +175,26 @@
             if(autoInt){ clearInterval(autoInt); autoInt=null; b.innerText="Auto (3s)"; }
             else { autoInt=setInterval(draw, 3000); b.innerText="አቁም"; }
         }
+
+        function sendReq(t){
+            let v = t==='DEP'?document.getElementById('tid').value : document.getElementById('wda').value+"-"+document.getElementById('wdp').value;
+            db.ref('reqs').push({ uid, name: uName, type: t, val: v, status: 'pending' });
+            alert("ጥያቄ ተልኳል!");
+        }
+
+        if(uid == ADMIN_ID){
+            db.ref('reqs').on('value', s => {
+                const l = document.getElementById('adm-reqs'); l.innerHTML = "";
+                s.forEach(c => {
+                    let r = c.val(); if(r.status==='pending'){
+                        let d = document.createElement('div'); d.style.background="rgba(255,255,255,0.1)"; d.style.padding="5px"; d.style.marginTop="5px";
+                        d.innerHTML = `${r.name}(${r.type}) ${r.val} <button onclick="app('${c.key}','${r.uid}')">OK</button>`;
+                        l.appendChild(d);
+                    }
+                });
+            });
+        }
+        function app(k,u){ let a=prompt("መጠን:"); if(a){ db.ref('users/'+u+'/bal').transaction(b=>(b||0)+parseFloat(a)); db.ref('reqs/'+k).update({status:'ok'}); }}
     </script>
 </body>
 </html>
