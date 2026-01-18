@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V19.7 - PERMANENT BINGO BUTTON</title>
+    <title>DAGI BINGO V19.6 - FINAL MASTER</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -11,10 +11,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
         :root { --gold: linear-gradient(135deg, #fceabb 0%, #fccd4d 50%, #f8b500 51%, #fbdf93 100%); --dark: #0f172a; }
-        body { background: var(--dark); color: white; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; user-select: none; }
+        body { background: var(--dark); color: white; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; user-select: none; overflow-x: hidden; }
         
         #splash { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .logo-anim { font-size: 3rem; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: zoom 2s infinite; }
+        .logo-anim { font-size: 3.5rem; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: zoom 2s infinite; }
         @keyframes zoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 
         .header { background: #1e293b; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #facc15; position: sticky; top:0; z-index:100; }
@@ -26,28 +26,26 @@
         .marked { background: #ef4444 !important; color: white !important; }
         .hint { border: 3px solid #facc15; background: #fef08a; }
 
-        /* ቢንጎ በተን - ሁልጊዜ የሚታይ */
-        #bingo-btn-fixed { 
-            background: #ef4444; color: white; border: 3px solid #fff; 
-            padding: 18px; border-radius: 15px; font-size: 1.4rem; font-weight: 900; 
-            width: 100%; margin-top: 20px; cursor: pointer; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-            text-shadow: 1px 1px 2px #000; transition: 0.2s;
+        /* Bingo Button - Always Visible */
+        #bingo-btn { 
+            background: #ef4444; color: white; border: 4px solid #fff; 
+            padding: 18px; border-radius: 15px; font-size: 1.5rem; font-weight: 900; 
+            width: 100%; margin-top: 20px; display: block; /* Always show */
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); cursor: pointer;
         }
-        #bingo-btn-fixed:active { transform: scale(0.95); }
 
-        .ball-main { width: 80px; height: 80px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.2rem; font-weight: 900; margin: 10px auto; border: 3px solid #fff; }
+        .ball-main { width: 85px; height: 85px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.5rem; font-weight: 900; margin: 10px auto; border: 4px solid #fff; }
         .btn { background: var(--gold); border: none; padding: 15px; border-radius: 12px; font-weight: 900; width: 100%; color: #422006; cursor: pointer; margin-top: 10px; }
-        
-        .board-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding-bottom: 20px; }
-        .board-btn { aspect-ratio: 1; background: #1e293b; border: 2px solid #facc15; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 900; }
+        .board-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding-bottom: 80px; }
+        .board-btn { aspect-ratio: 1; background: #1e293b; border: 2px solid #facc15; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 900; }
         .reserved { opacity: 0.3; pointer-events: none; }
+        .hist-card { background: #1e293b; padding: 10px; margin-bottom: 8px; border-radius: 8px; border-left: 4px solid #facc15; }
     </style>
 </head>
 <body>
 
 <div id="splash">
     <div class="logo-anim">DAGI BINGO</div>
-    <p style="color: #facc15;">LOADING V19.7 PRO...</p>
 </div>
 
 <div id="main-ui" style="display:none;">
@@ -56,7 +54,7 @@
             <div id="u-name" style="font-weight: 700;">Loading...</div>
             <div style="font-size: 10px; color: #22c55e;">Online: <span id="online-count">0</span></div>
         </div>
-        <div id="u-bal" style="color: #facc15; font-weight: 900;">0.00 ETB</div>
+        <div id="u-bal" style="color: #facc15; font-weight: 900; font-size: 1.2rem;">0.00 ETB</div>
     </div>
 
     <div id="home-page" class="page active">
@@ -70,27 +68,28 @@
                 <button class="btn" onclick="checkBet(100)">100 ETB</button>
             </div>
         </div>
-        <button id="adm-gate" class="btn" style="display:none; background: #64748b; margin-top: 20px;" onclick="showP('admin-page')">⚙️ የዳኛ ገፅ</button>
+        <button id="adm-gate" class="btn" style="display:none; background: #64748b;" onclick="showP('admin-page')">⚙️ የዳኛ ገፅ</button>
     </div>
 
     <div id="game-page" class="page">
+        <div id="ball-history" style="display:flex; gap:5px; justify-content:center; margin-bottom:10px;"></div>
         <div class="ball-main" id="current-ball">?</div>
         <div id="bingo-grid" class="grid"></div>
-        <button id="bingo-btn-fixed" onclick="claimWin()">BINGO! 🏆</button>
-        <p style="text-align:center; font-size:11px; color:#94a3b8; margin-top:10px;">የተጠራውን ቁጥር በመንካት ቀይ ያድርጉ</p>
+        <button id="bingo-btn" onclick="claimWin()">BINGO! 🏆</button>
     </div>
 
     <div id="history-page" class="page"><div id="history-list"></div><button class="btn" onclick="showP('home-page')">ተመለስ</button></div>
-    <div id="reserve-page" class="page"><h3 style="text-align:center;">ካርቴላ ይምረጡ</h3><div id="board-list" class="board-selector"></div></div>
+    <div id="reserve-page" class="page"><h3 style="text-align: center;">ካርቴላ ይምረጡ (1-200)</h3><div id="board-list" class="board-selector"></div></div>
+    
     <div id="admin-page" class="page">
         <div class="ball-main" id="adm-ball">?</div>
-        <button class="btn" onclick="drawNum()">ቁጥር ጥራ</button>
+        <button class="btn" onclick="drawNum()">ቁጥር አውጣ</button>
         <button class="btn" style="background:#ef4444; color:white;" onclick="resetAll()">RESET GAME</button>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
 </div>
 
-<div id="winner-msg" style="position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:9999; display:none; flex-direction:column; justify-content:center; align-items:center;">
+<div id="winner-msg" style="position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:9999; display:none; flex-direction:column; justify-content:center; align-items:center;">
     <h1 style="color: #facc15; font-size: 3.5rem;">BINGO!</h1>
     <h2 id="winner-name" style="color:white;">---</h2>
 </div>
@@ -114,10 +113,11 @@
     function cellClick(idx, val) {
         if(val === "FREE") return;
         if(drawn.includes(val)) {
+            const cell = document.getElementById('c-' + idx);
             if(!markedCells.includes(idx)) {
                 markedCells.push(idx);
-                document.getElementById('c-' + idx).classList.replace('hint', 'marked');
-                if(!document.getElementById('c-' + idx).classList.contains('marked')) document.getElementById('c-' + idx).classList.add('marked');
+                cell.classList.remove('hint');
+                cell.classList.add('marked');
             }
         }
     }
@@ -136,12 +136,8 @@
                        [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
                        [0,6,12,18,24],[4,8,12,16,20]];
         let isWin = paths.some(p => p.every(idx => markedCells.includes(idx)));
-        
-        if(isWin) {
-            db.ref('game/winner').set({ name: user.first_name, id: user.id });
-        } else {
-            alert("ገና ነህ! አልሞላህም::");
-        }
+        if(isWin) db.ref('game/winner').set({ name: user.first_name, id: user.id });
+        else alert("አልሞላህም!");
     }
 
     db.ref('game/winner').on('value', s => {
@@ -175,7 +171,7 @@
         }
     }
 
-    function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='reserve-page') loadBoards(); }
+    function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='reserve-page') loadBoards(); if(id==='history-page') loadHistory(); }
     function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም"); currentBet = amt; showP('reserve-page'); }
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
@@ -191,6 +187,7 @@
     }
     function drawNum() { db.ref('game/drawn').once('value', s => { let d = s.val() || []; if(d.length >= 75) return; let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n)); d.push(n); db.ref('game/drawn').set(d); }); }
     function resetAll() { db.ref('game').set({ drawn: [], winner: null }); db.ref('reserved_boards').remove(); }
+    function loadHistory() { db.ref('history/games').limitToLast(10).on('value', s => { const list = document.getElementById('history-list'); list.innerHTML = ""; s.forEach(c => { let h = c.val(); let d = document.createElement('div'); d.className = "hist-card"; d.innerHTML = `🏆 አሸናፊ: ${h.winner}`; list.appendChild(d); }); }); }
 </script>
 </body>
 </html>
