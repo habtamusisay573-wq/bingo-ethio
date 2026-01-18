@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V21.2 STABLE</title>
+    <title>DAGI BINGO V21.3</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -33,7 +33,7 @@
 </head>
 <body>
 
-<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.2 PRO</p></div>
+<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.3 STABLE</p></div>
 <div id="win-overlay"><h1 id="win-name" style="color: #facc15; font-size: 3rem;">BINGO!</h1></div>
 
 <div id="main-ui" style="display:none;">
@@ -43,15 +43,14 @@
     </div>
 
     <div id="home-page" class="page active">
-        <h2 style="text-align: center;">ውርርድ ይምረጡ</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <button class="btn" onclick="checkBet(10)">10 ETB</button>
             <button class="btn" onclick="checkBet(50)">50 ETB</button>
             <button class="btn" onclick="checkBet(100)">100 ETB</button>
             <button class="btn" onclick="checkBet(500)">500 ETB</button>
         </div>
-        <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('finance-page')">💸 ብር ለማስገባት / ለማውጣት</button>
-        <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Panel</button>
+        <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('finance-page')">💸 ብር ገቢ / ወጪ</button>
+        <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
     </div>
 
     <div id="game-page" class="page">
@@ -70,7 +69,6 @@
     </div>
 
     <div id="finance-page" class="page">
-        <h3>ገቢና ወጪ</h3>
         <input type="number" id="f-amt" placeholder="የብር መጠን (ETB)">
         <input type="text" id="f-trx" placeholder="Transaction ID (ለገቢ)">
         <input type="text" id="f-phone" placeholder="የስልክ ቁጥር (ለወጪ)">
@@ -78,19 +76,16 @@
             <button class="btn btn-green" onclick="reqFinance('DEP')">ብር አስገባ</button>
             <button class="btn btn-red" onclick="reqFinance('WIT')">ብር አውጣ</button>
         </div>
-        <button class="btn" style="background:#475569; color:white; margin-top:15px;" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="admin-page" class="page">
-        <h3>ዳኛ Dashboard</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <button class="btn" onclick="drawNum()">Draw 1</button>
-            <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO (2s): OFF</button>
+            <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
         </div>
-        <div id="dep-list"></div>
-        <div id="wit-list"></div>
+        <div id="dep-list"></div><div id="wit-list"></div>
         <button class="btn btn-red" onclick="resetGame()">RESET GAME</button>
-        <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('home-page')">ወደ መጀመሪያ ገጽ</button>
     </div>
 </div>
 
@@ -111,23 +106,20 @@
 
     db.ref('users/' + user.id + '/bal').on('value', s => { myBal = s.val() || 0; document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; });
 
-    // --- Winner Logic (1s Display) ---
     db.ref('game/winner').on('value', s => {
         const win = s.val();
         if(win) {
             const over = document.getElementById('win-overlay');
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             over.style.display = 'flex';
-            confetti({ particleCount: 150, spread: 70 });
             setTimeout(() => {
                 over.style.display = 'none';
                 if(user.id == ADMIN_ID) resetGame();
                 showP('home-page');
-            }, 1000);
+            }, 1000); // 1s Winner Display
         }
     });
 
-    // --- Ball Logic & 5-Second Hint ---
     db.ref('game/drawn').on('value', s => {
         const newDrawn = s.val() || [];
         const lastNum = newDrawn[newDrawn.length - 1];
@@ -135,12 +127,11 @@
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-15).join(" - ");
 
-        // አዲስ ቁጥር ሲወጣ ፍንጭ (Hint) አሳይ
         myBoard.forEach((v, i) => {
             const el = document.getElementById('c-'+i);
             if(el && v === lastNum && !markedCells.includes(i)) {
                 el.classList.add('hint');
-                setTimeout(() => { el.classList.remove('hint'); }, 5000); // በትክክል 5 ሰከንድ ብቻ
+                setTimeout(() => { el.classList.remove('hint'); }, 5000); // 5s Hint
             }
         });
     });
@@ -152,10 +143,9 @@
         else alert("ቢንጎ ገና ነህ!");
     }
 
-    // --- Admin Dashboard ---
     function toggleAutoDraw() {
-        if(autoInterval) { clearInterval(autoInterval); autoInterval = null; document.getElementById('auto-btn').innerText = "AUTO (2s): OFF"; }
-        else { autoInterval = setInterval(drawNum, 2000); document.getElementById('auto-btn').innerText = "AUTO (2s): ON"; }
+        if(autoInterval) { clearInterval(autoInterval); autoInterval = null; document.getElementById('auto-btn').innerText = "AUTO: OFF"; }
+        else { autoInterval = setInterval(drawNum, 2000); document.getElementById('auto-btn').innerText = "AUTO: ON"; }
     }
     function drawNum() {
         db.ref('game/drawn').once('value', s => {
@@ -167,7 +157,6 @@
     }
     function resetGame() { db.ref('game').set({drawn:[], winner:null}); db.ref('reserved_boards').remove(); }
 
-    // --- Finance ---
     function reqFinance(type) {
         const amt = parseFloat(document.getElementById('f-amt').value);
         const trx = document.getElementById('f-trx').value.trim();
@@ -183,15 +172,14 @@
             s.forEach(c => {
                 const r = c.val();
                 let h = `<div class="req-card"><b>${r.name}</b>: ${r.amount} ETB<br><small>${r.type=='DEP'?'TRX:'+r.trxId:'PH:'+r.phone}</small><br>
-                <button onclick="approveReq('${c.key}','${r.uid}',${r.amount},'${r.type}')" class="btn-green" style="padding:5px;width:45%">ፍቀድ</button>
-                <button onclick="db.ref('finance_reqs/${c.key}').remove()" class="btn-red" style="padding:5px;width:45%">ሰርዝ</button></div>`;
+                <button onclick="approveReq('${c.key}','${r.uid}',${r.amount},'${r.type}')" class="btn-green">ፍቀድ</button>
+                <button onclick="db.ref('finance_reqs/${c.key}').remove()" class="btn-red">ሰርዝ</button></div>`;
                 if(r.type=='DEP') dep.innerHTML += h; else wit.innerHTML += h;
             });
         });
     }
     function approveReq(k, u, a, t) { db.ref('users/'+u+'/bal').transaction(c => t=='DEP'?(c||0)+a:(c||0)-a); db.ref('finance_reqs/'+k).remove(); }
 
-    // --- Board & Grid ---
     function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); currentBet = amt; showP('reserve-page'); }
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
@@ -211,17 +199,11 @@
         for(let i=0; i<25; i++) {
             let val = (i === 12) ? "FREE" : nums.pop(); myBoard.push(val);
             let c = document.createElement('div'); c.className = 'cell'+(val==="FREE"?" marked":""); c.id = 'c-'+i; c.innerText = val;
-            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); tg.HapticFeedback.impactOccurred('medium'); } } };
+            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); } } };
             grid.appendChild(c);
         }
     }
-
-    function showP(id) { 
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
-        document.getElementById(id).classList.add('active'); 
-        if(id==='admin-page') loadRequests();
-        if(id==='reserve-page') loadBoards();
-    }
+    function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='admin-page') loadRequests(); if(id==='reserve-page') loadBoards(); }
 </script>
 </body>
 </html>
