@@ -221,4 +221,84 @@
         // 9. Hint Logic
         myBoard.forEach((val, i) => {
             const cell = document.getElementById('c-' + i);
-            if(cell && drawn.includes
+            if(cell && drawn.includes(val) && !markedCells.includes(i)) cell.classList.add('hint');
+            else if(cell) cell.classList.remove('hint');
+        });
+    });
+
+    // 34. Pattern Detection & Win Logic
+    function claimWin() {
+        const paths = [
+            [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24], // Horizontal
+            [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24], // Vertical
+            [0,6,12,18,24],[4,8,12,16,20], // Diagonals
+            [0,4,20,24] // 4 Corners
+        ];
+        let win = paths.some(p => p.every(idx => markedCells.includes(idx)));
+        if(win) db.ref('game/winner').set({ name: user.first_name, uid: user.id });
+        else alert("ገና ነህ! አልሞላህም::");
+    }
+
+    // 14. 19. Winner Celebration
+    db.ref('game/winner').on('value', s => {
+        const w = s.val();
+        if(w) {
+            document.getElementById('winner-name').innerText = w.name;
+            document.getElementById('win-overlay').style.display = 'flex';
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            setTimeout(() => {
+                document.getElementById('win-overlay').style.display = 'none';
+                if(user.id == ADMIN_ID) resetAllNoRefund();
+                showP('home-page');
+            }, 6000);
+        }
+    });
+
+    // 13. Admin Reset with Refund
+    function resetGameWithRefund() {
+        if(!confirm("ጌሙን ሪሴት ላድርገው? ብር ለሁሉም ተጫዋቾች ይመለሳል!")) return;
+        db.ref('reserved_boards').once('value', s => {
+            const data = s.val() || {};
+            Object.values(data).forEach(res => {
+                db.ref('users/' + res.uid + '/bal').transaction(c => (c || 0) + res.bet);
+            });
+            resetAllNoRefund();
+            alert("ሪሴት ተደርጓል! ብር ተመላሽ ሆኗል::");
+        });
+    }
+
+    function resetAllNoRefund() {
+        db.ref('game').set({ drawn: [], winner: null });
+        db.ref('reserved_boards').remove();
+    }
+
+    function drawNum() {
+        db.ref('game/drawn').once('value', s => {
+            let d = s.val() || [];
+            if(d.length >= 75) return alert("ቁጥሮች አልቀዋል!");
+            let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n));
+            d.push(n); db.ref('game/drawn').set(d);
+        });
+    }
+
+    // 32. Manual Balance Edit (Admin only)
+    function adjustBalance() {
+        const uid = document.getElementById('target-uid').value;
+        const amt = parseFloat(document.getElementById('adj-amt').value);
+        if(!uid || isNaN(amt)) return alert("መረጃ በትክክል ያስገቡ");
+        db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
+        alert("ተስተካክሏል!");
+    }
+
+    // 17. Finance
+    function reqFinance(type) {
+        const amt = document.getElementById('f-amt').value;
+        if(!amt) return alert("መጠን ያስገቡ");
+        db.ref('requests').push({ uid: user.id, name: user.first_name, amount: amt, type: type, status: 'pending' });
+        alert("ጥያቄዎ ለዳኛ ተልኳል!");
+        showP('home-page');
+    }
+
+</script>
+</body>
+</html>
