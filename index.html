@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V21.1 FIXED</title>
+    <title>DAGI BINGO V21.2 STABLE</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -19,9 +19,9 @@
         .page { display: none; padding: 15px; box-sizing: border-box; min-height: 90vh; }
         .active { display: block; }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }
-        .cell { aspect-ratio: 1; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 8px; font-size: 1.2rem; cursor: pointer; }
+        .cell { aspect-ratio: 1; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 8px; font-size: 1.2rem; cursor: pointer; border: 3px solid transparent; }
         .marked { background: var(--danger) !important; color: white !important; }
-        .hint { border: 3px solid #facc15; animation: glow 0.8s infinite alternate; }
+        .hint { border: 3px solid #facc15 !important; animation: glow 0.8s infinite alternate; }
         @keyframes glow { from { box-shadow: 0 0 2px #facc15; } to { box-shadow: 0 0 12px #facc15; } }
         .btn { background: var(--gold); border: none; padding: 16px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; }
         .btn-red { background: var(--danger); color: white; }
@@ -33,7 +33,7 @@
 </head>
 <body>
 
-<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.1 STABLE</p></div>
+<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.2 PRO</p></div>
 <div id="win-overlay"><h1 id="win-name" style="color: #facc15; font-size: 3rem;">BINGO!</h1></div>
 
 <div id="main-ui" style="display:none;">
@@ -111,14 +111,7 @@
 
     db.ref('users/' + user.id + '/bal').on('value', s => { myBal = s.val() || 0; document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; });
 
-    function showP(id) { 
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
-        document.getElementById(id).classList.add('active'); 
-        if(id==='admin-page') loadRequests();
-        if(id==='reserve-page') loadBoards();
-    }
-
-    // --- Winner Detection ---
+    // --- Winner Logic (1s Display) ---
     db.ref('game/winner').on('value', s => {
         const win = s.val();
         if(win) {
@@ -134,13 +127,21 @@
         }
     });
 
+    // --- Ball Logic & 5-Second Hint ---
     db.ref('game/drawn').on('value', s => {
-        drawn = s.val() || [];
-        document.getElementById('current-ball').innerText = drawn[drawn.length-1] || "?";
+        const newDrawn = s.val() || [];
+        const lastNum = newDrawn[newDrawn.length - 1];
+        drawn = newDrawn;
+        document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-15).join(" - ");
+
+        // አዲስ ቁጥር ሲወጣ ፍንጭ (Hint) አሳይ
         myBoard.forEach((v, i) => {
             const el = document.getElementById('c-'+i);
-            if(el && drawn.includes(v) && !markedCells.includes(i)) el.classList.add('hint');
+            if(el && v === lastNum && !markedCells.includes(i)) {
+                el.classList.add('hint');
+                setTimeout(() => { el.classList.remove('hint'); }, 5000); // በትክክል 5 ሰከንድ ብቻ
+            }
         });
     });
 
@@ -151,7 +152,7 @@
         else alert("ቢንጎ ገና ነህ!");
     }
 
-    // --- Admin Logic ---
+    // --- Admin Dashboard ---
     function toggleAutoDraw() {
         if(autoInterval) { clearInterval(autoInterval); autoInterval = null; document.getElementById('auto-btn').innerText = "AUTO (2s): OFF"; }
         else { autoInterval = setInterval(drawNum, 2000); document.getElementById('auto-btn').innerText = "AUTO (2s): ON"; }
@@ -166,7 +167,7 @@
     }
     function resetGame() { db.ref('game').set({drawn:[], winner:null}); db.ref('reserved_boards').remove(); }
 
-    // --- Finance Logic ---
+    // --- Finance ---
     function reqFinance(type) {
         const amt = parseFloat(document.getElementById('f-amt').value);
         const trx = document.getElementById('f-trx').value.trim();
@@ -190,7 +191,7 @@
     }
     function approveReq(k, u, a, t) { db.ref('users/'+u+'/bal').transaction(c => t=='DEP'?(c||0)+a:(c||0)-a); db.ref('finance_reqs/'+k).remove(); }
 
-    // --- Board Logic ---
+    // --- Board & Grid ---
     function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); currentBet = amt; showP('reserve-page'); }
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
@@ -213,6 +214,13 @@
             c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); tg.HapticFeedback.impactOccurred('medium'); } } };
             grid.appendChild(c);
         }
+    }
+
+    function showP(id) { 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        if(id==='admin-page') loadRequests();
+        if(id==='reserve-page') loadBoards();
     }
 </script>
 </body>
