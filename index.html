@@ -1,91 +1,81 @@
 <!DOCTYPE html>
 <html lang="am">
 <head>
-    <meta charset="UTF-8">
-    <title>AUTO DRAW SPEED</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            background: #f4f4f4;
-            padding: 20px;
-        }
+<meta charset="UTF-8">
+<title>AUTO DRAW</title>
 
-        .box {
-            max-width: 400px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 14px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
-
-        select, button {
-            width: 100%;
-            padding: 14px;
-            border-radius: 10px;
-            font-weight: 900;
-            margin-bottom: 10px;
-            border: none;
-            cursor: pointer;
-        }
-
-        button {
-            background: #222;
-            color: #fff;
-        }
-
-        button.stop {
-            background: crimson;
-        }
-
-        .status {
-            text-align: center;
-            font-weight: bold;
-        }
-    </style>
+<style>
+body {
+    background:#f2f2f2;
+    font-family: sans-serif;
+    padding:20px;
+}
+.box{
+    max-width:420px;
+    margin:auto;
+    background:#fff;
+    padding:20px;
+    border-radius:12px;
+    box-shadow:0 10px 25px rgba(0,0,0,.1);
+}
+button{
+    width:100%;
+    padding:14px;
+    border-radius:10px;
+    font-weight:900;
+    border:none;
+    background:#111;
+    color:#fff;
+    cursor:pointer;
+    margin-top:10px;
+}
+.status{
+    text-align:center;
+    font-weight:bold;
+    margin-top:10px;
+}
+</style>
 </head>
+
 <body>
 
 <div class="box">
 
-    <!-- AUTO DRAW SPEED SELECT -->
-    <select id="auto-speed">
-        <option value="" selected disabled>⚡ AUTO SPEED ምረጥ</option>
-        <option value="2000">AUTO – 2 ሰከንድ</option>
-        <option value="3000">AUTO – 3 ሰከንድ</option>
-        <option value="4000">AUTO – 4 ሰከንድ</option>
-        <option value="5000">AUTO – 5 ሰከንድ</option>
-    </select>
+<!-- ✅ የአንተ ትክክለኛ source code -->
+<select id="auto-speed" style="width:100%; padding:14px; border-radius:10px; font-weight:900; margin-bottom:10px;">
+    <option value="2000">AUTO – 2 ሰከንድ</option>
+    <option value="3000">AUTO – 3 ሰከንድ</option>
+    <option value="4000">AUTO – 4 ሰከንድ</option>
+    <option value="5000">AUTO – 5 ሰከንድ</option>
+</select>
 
-    <button id="stopBtn" class="stop">⛔ STOP AUTO DRAW</button>
+<button id="stop">⛔ STOP AUTO</button>
 
-    <div class="status" id="status">AUTO DRAW አልተጀመረም</div>
+<div class="status" id="status">AUTO DRAW አልተጀመረም</div>
 
 </div>
 
 <script>
 let autoInterval = null;
 
-function autoDraw() {
-    // እዚህ የራስህን draw logic ትጨምራለህ
-    console.log("🎯 AUTO DRAW RUNNING");
+function autoDraw(){
+    console.log("🔥 AUTO DRAW RUNNING");
+    // እዚህ የራስህን draw function አስገባ
 }
 
-document.getElementById("auto-speed").addEventListener("change", function () {
+document.getElementById("auto-speed").addEventListener("change",function(){
     const speed = parseInt(this.value);
-
-    if (autoInterval) clearInterval(autoInterval);
+    clearInterval(autoInterval);
 
     autoInterval = setInterval(autoDraw, speed);
 
-    document.getElementById("status").textContent =
-        "AUTO DRAW በ " + speed / 1000 + " ሰከንድ እየሰራ ነው 🔥";
+    document.getElementById("status").innerText =
+        "AUTO DRAW በ " + (speed/1000) + " ሰከንድ እየሰራ ነው ✅";
 });
 
-document.getElementById("stopBtn").addEventListener("click", function () {
+document.getElementById("stop").addEventListener("click",function(){
     clearInterval(autoInterval);
-    autoInterval = null;
-    document.getElementById("status").textContent = "AUTO DRAW ተቋርጧል ⛔";
+    document.getElementById("status").innerText = "AUTO DRAW ተቋርጧል ⛔";
 });
 </script>
 
