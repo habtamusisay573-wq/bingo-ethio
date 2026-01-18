@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V20.5 ULTIMATE PRO</title>
+    <title>DAGI BINGO V20.6 ULTIMATE PRO</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -34,12 +34,12 @@
 
         .req-card { background: #1e293b; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
         .section-title { color: #facc15; font-size: 1.1rem; border-bottom: 1px solid #334155; margin: 15px 0 10px 0; padding-bottom: 5px; }
-        input { width: 100%; padding: 15px; border-radius: 10px; border: none; margin-bottom: 10px; background: #f1f5f9; }
+        input { width: 100%; padding: 15px; border-radius: 10px; border: none; margin-bottom: 10px; background: #f1f5f9; color: #000; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V20.5 FINAL</p></div>
+<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V20.6 PRO</p></div>
 
 <div id="main-ui" style="display:none;">
     <div class="header">
@@ -79,7 +79,9 @@
     <div id="finance-page" class="page">
         <h3>ገቢና ወጪ</h3>
         <input type="number" id="f-amt" placeholder="የብር መጠን (ETB)">
-        <input type="text" id="f-trx" placeholder="SMS / Transaction ID (ለገቢ ብቻ)">
+        <input type="text" id="f-trx" placeholder="Transaction ID (ለገቢ ብቻ)">
+        <input type="text" id="f-phone" placeholder="የስልክ ቁጥር (ለወጪ ብቻ)">
+        
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <button class="btn btn-green" onclick="reqFinance('DEP')">ብር አስገባ</button>
             <button class="btn btn-red" onclick="reqFinance('WIT')">ብር አውጣ</button>
@@ -91,7 +93,7 @@
         <h3>ዳኛ Dashboard</h3>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <button class="btn" onclick="drawNum()">Draw 1</button>
-            <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
+            <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO (2s): OFF</button>
         </div>
         
         <div class="section-title">📥 የገቢ ጥያቄዎች (Deposits)</div>
@@ -132,24 +134,30 @@
         if(id==='reserve-page') loadBoards();
     }
 
-    // --- Finance Request Logic ---
+    // --- Finance Request Logic (Updated for Phone) ---
     function reqFinance(type) {
         const amt = parseFloat(document.getElementById('f-amt').value);
         const trx = document.getElementById('f-trx').value.trim();
+        const phone = document.getElementById('f-phone').value.trim();
+        
         if(!amt || amt <= 0) return alert("መጠን በትክክል ያስገቡ!");
-        if(type === 'DEP' && !trx) return alert("ትራንዛክሽን ቁጥር ያስገቡ!");
+        if(type === 'DEP' && !trx) return alert("የትራንዛክሽን ቁጥር ያስገቡ!");
+        if(type === 'WIT' && !phone) return alert("የስልክ ቁጥር ያስገቡ!");
         if(type === 'WIT' && myBal < amt) return alert("በባላንስህ ካለው በላይ ማውጣት አትችልም!");
 
         db.ref('finance_reqs').push({
-            uid: user.id, name: user.first_name, amount: amt, type: type, trxId: trx || "N/A", time: Date.now()
+            uid: user.id, name: user.first_name, amount: amt, type: type, 
+            trxId: trx || "N/A", phone: phone || "N/A", time: Date.now()
         }).then(() => {
             alert("ጥያቄው ተልኳል!");
-            document.getElementById('f-amt').value = ""; document.getElementById('f-trx').value = "";
+            document.getElementById('f-amt').value = ""; 
+            document.getElementById('f-trx').value = "";
+            document.getElementById('f-phone').value = "";
             showP('home-page');
         });
     }
 
-    // --- Admin Request Loader (Splitted) ---
+    // --- Admin Request Loader (Showing Phone for Withdrawals) ---
     function loadRequests() {
         db.ref('finance_reqs').on('value', s => {
             const depList = document.getElementById('dep-list');
@@ -162,15 +170,28 @@
                 const r = child.val();
                 let div = document.createElement('div');
                 div.className = "req-card";
-                div.innerHTML = `
-                    <div style="font-size:13px;"><b>${r.name}</b> (${r.uid})</div>
-                    <div style="font-weight:bold; color:#facc15;">${r.amount} ETB</div>
-                    <div style="font-size:11px; color:#94a3b8;">TRX: ${r.trxId}</div>
+                
+                if(r.type === 'DEP') {
+                    div.innerHTML = `
+                        <div style="font-size:13px;"><b>${r.name}</b></div>
+                        <div style="font-weight:bold; color:#22c55e;">${r.amount} ETB (Deposit)</div>
+                        <div style="font-size:11px; color:#94a3b8;">TRX: ${r.trxId}</div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <div style="font-size:13px;"><b>${r.name}</b></div>
+                        <div style="font-weight:bold; color:#ef4444;">${r.amount} ETB (Withdraw)</div>
+                        <div style="font-size:12px; color:#facc15;">📱 Phone: ${r.phone}</div>
+                    `;
+                }
+
+                div.innerHTML += `
                     <div style="display:flex; gap:10px; margin-top:8px;">
                         <button class="btn-green" style="flex:1; padding:8px; border:none; border-radius:5px;" onclick="approveReq('${child.key}', '${r.uid}', ${r.amount}, '${r.type}')">ፍቀድ</button>
                         <button class="btn-red" style="flex:1; padding:8px; border:none; border-radius:5px;" onclick="db.ref('finance_reqs/${child.key}').remove()">ሰርዝ</button>
                     </div>
                 `;
+
                 if(r.type === 'DEP') depList.appendChild(div);
                 else witList.appendChild(div);
             });
@@ -186,7 +207,7 @@
         });
     }
 
-    // --- Game Engine ---
+    // --- Game Engine (Same) ---
     function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); currentBet = amt; showP('reserve-page'); }
 
     function loadBoards() {
@@ -235,8 +256,8 @@
     });
 
     function toggleAutoDraw() {
-        if(autoInterval) { clearInterval(autoInterval); autoInterval = null; document.getElementById('auto-btn').innerText = "AUTO: OFF"; }
-        else { autoInterval = setInterval(drawNum, 2000); document.getElementById('auto-btn').innerText = "AUTO: ON"; }
+        if(autoInterval) { clearInterval(autoInterval); autoInterval = null; document.getElementById('auto-btn').innerText = "AUTO (2s): OFF"; }
+        else { autoInterval = setInterval(drawNum, 2000); document.getElementById('auto-btn').innerText = "AUTO (2s): ON"; }
     }
 
     function drawNum() {
