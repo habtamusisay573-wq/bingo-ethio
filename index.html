@@ -1,143 +1,93 @@
 <!DOCTYPE html>
 <html lang="am">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>DAGI BINGO V21.2 STABLE</title>
+    <meta charset="UTF-8">
+    <title>AUTO DRAW SPEED</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f4f4f4;
+            padding: 20px;
+        }
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+        .box {
+            max-width: 400px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 14px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
-:root{
- --gold:linear-gradient(135deg,#fceabb 0%,#fccd4d 50%,#f8b500 51%,#fbdf93 100%);
- --dark:#0f172a;--danger:#ef4444;--success:#22c55e;
-}
-body{background:var(--dark);color:#fff;font-family:Poppins;margin:0}
-.page{display:none;padding:15px;min-height:90vh}
-.active{display:block}
-.btn{background:var(--gold);border:none;padding:16px;border-radius:12px;font-weight:900;width:100%}
-.btn-red{background:var(--danger);color:#fff}
-.btn-green{background:var(--success);color:#fff}
-.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.cell{background:#fff;color:#000;aspect-ratio:1;border-radius:8px;
-display:flex;align-items:center;justify-content:center;font-weight:900}
-.marked{background:#ef4444!important;color:#fff!important}
-.hint{border:3px solid #facc15;animation:glow .8s infinite alternate}
-@keyframes glow{from{box-shadow:0 0 2px #facc15}to{box-shadow:0 0 12px #facc15}}
-</style>
+        select, button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            font-weight: 900;
+            margin-bottom: 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        button {
+            background: #222;
+            color: #fff;
+        }
+
+        button.stop {
+            background: crimson;
+        }
+
+        .status {
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
 </head>
-
 <body>
 
-<div id="main-ui">
-<div id="home-page" class="page active">
-<h2 style="text-align:center">ውርርድ ይምረጡ</h2>
-<button class="btn btn-red" onclick="showP('admin-page')">⚙️ Admin Panel</button>
-</div>
+<div class="box">
 
-<!-- ================= ADMIN PAGE ================= -->
-<div id="admin-page" class="page">
-<h3>ዳኛ Dashboard</h3>
+    <!-- AUTO DRAW SPEED SELECT -->
+    <select id="auto-speed">
+        <option value="" selected disabled>⚡ AUTO SPEED ምረጥ</option>
+        <option value="2000">AUTO – 2 ሰከንድ</option>
+        <option value="3000">AUTO – 3 ሰከንድ</option>
+        <option value="4000">AUTO – 4 ሰከንድ</option>
+        <option value="5000">AUTO – 5 ሰከንድ</option>
+    </select>
 
-<select id="auto-speed" style="width:100%;padding:14px;border-radius:10px;font-weight:900;margin-bottom:10px">
-<option value="2000">AUTO – 2 ሰከንድ</option>
-<option value="3000">AUTO – 3 ሰከንድ</option>
-<option value="4000">AUTO – 4 ሰከንድ</option>
-<option value="5000">AUTO – 5 ሰከንድ</option>
-</select>
+    <button id="stopBtn" class="stop">⛔ STOP AUTO DRAW</button>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-<button class="btn" onclick="drawNum()">Draw 1</button>
-<button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
-</div>
+    <div class="status" id="status">AUTO DRAW አልተጀመረም</div>
 
-<button class="btn btn-red" style="margin-top:15px" onclick="resetGame()">RESET GAME</button>
-<button class="btn" style="margin-top:10px" onclick="showP('home-page')">ተመለስ</button>
-</div>
 </div>
 
 <script>
-/* ===== FIREBASE ===== */
-const fb = firebase.initializeApp({
- databaseURL:"https://dagi-bingo-default-rtdb.firebaseio.com/"
-});
-const db = fb.database();
+let autoInterval = null;
 
-let autoInterval=null;
-
-/* ===== PAGE SWITCH ===== */
-function showP(id){
- document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
- document.getElementById(id).classList.add('active');
+function autoDraw() {
+    // እዚህ የራስህን draw logic ትጨምራለህ
+    console.log("🎯 AUTO DRAW RUNNING");
 }
 
-/* ===== AUTO DRAW ===== */
-function toggleAutoDraw(){
- const speed=parseInt(document.getElementById('auto-speed').value);
+document.getElementById("auto-speed").addEventListener("change", function () {
+    const speed = parseInt(this.value);
 
- if(autoInterval){
-   clearInterval(autoInterval);
-   autoInterval=null;
-   autoBtn(false);
- }else{
-   db.ref('game/autoSpeed').set(speed);
-   autoInterval=setInterval(drawNum,speed);
-   autoBtn(true,speed);
- }
-}
+    if (autoInterval) clearInterval(autoInterval);
 
-function autoBtn(on,speed){
- const b=document.getElementById('auto-btn');
- if(on){
-   b.innerText="AUTO: ON ("+(speed/1000)+"s)";
-   b.classList.remove('btn-green');
-   b.classList.add('btn-red');
- }else{
-   b.innerText="AUTO: OFF";
-   b.classList.remove('btn-red');
-   b.classList.add('btn-green');
- }
-}
+    autoInterval = setInterval(autoDraw, speed);
 
-/* ===== DRAW NUMBER ===== */
-function drawNum(){
- db.ref('game/drawn').once('value',s=>{
-   let d=s.val()||[];
-   if(d.length>=75) return;
-   let n;
-   do{n=Math.floor(Math.random()*75)+1}while(d.includes(n));
-   d.push(n);
-   db.ref('game/drawn').set(d);
- });
-}
-
-/* ===== RESET ===== */
-function resetGame(){
- if(autoInterval){
-   clearInterval(autoInterval);
-   autoInterval=null;
-   autoBtn(false);
- }
- db.ref('game').set({drawn:[],winner:null});
-}
-
-/* ===== KEEP AUTO SPEED ===== */
-db.ref('game/autoSpeed').on('value',s=>{
- if(s.val()){
-   document.getElementById('auto-speed').value=s.val();
- }
+    document.getElementById("status").textContent =
+        "AUTO DRAW በ " + speed / 1000 + " ሰከንድ እየሰራ ነው 🔥";
 });
 
-/* ===== STOP AUTO ON WIN ===== */
-db.ref('game/winner').on('value',s=>{
- if(s.val() && autoInterval){
-   clearInterval(autoInterval);
-   autoInterval=null;
-   autoBtn(false);
- }
+document.getElementById("stopBtn").addEventListener("click", function () {
+    clearInterval(autoInterval);
+    autoInterval = null;
+    document.getElementById("status").textContent = "AUTO DRAW ተቋርጧል ⛔";
 });
-</
+</script>
+
+</body>
+</html>
