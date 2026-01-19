@@ -56,6 +56,10 @@
         .req-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #facc15; font-size: 13px; }
         .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
         .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; transition: all 0.3s ease; }
+        
+        /* አዲስ የ HIT ማሳወቂያ ስታይል */
+        .board-hit { animation: flash 0.5s infinite alternate; color: #facc15 !important; text-shadow: 0 0 20px #fff; }
+        @keyframes flash { from { transform: scale(1); opacity: 1; } to { transform: scale(1.1); opacity: 0.8; } }
     </style>
 </head>
 <body>
@@ -234,7 +238,6 @@
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
             
-            // ጨዋታው እንዳለቀ በ 1 ሰከንድ ውስጥ ሪሴት አድርጎ 30 ሰከንድ ያስጀምራል
             setTimeout(() => { 
                 if(user.id == ADMIN_ID) { 
                     resetGame(); 
@@ -258,10 +261,19 @@
         document.getElementById('ball-history').innerText = drawn.slice(-10).join(" - ");
         if(drawn.length > 0) document.getElementById('game-status-text').innerText = "● ጨዋታ ተጀምሯል";
 
-        // አዲስ ቁጥር ሲወጣ ለ5 ሰከንድ ደማቅ hint ማሳያ
-        if(drawn.length > prevCount && lastNum) {
+        // ተጫዋቹ የያዘው ቁጥር ከሆነ ብቻ HIT መልዕክት እንዲያሳይ
+        if(drawn.length > prevCount && lastNum && hasBoard) {
             const h = document.getElementById('live-hint');
-            h.innerText = "⭐ ቁጥር " + lastNum + " ወጥቷል! ⭐";
+            if(myBoard.includes(lastNum)) {
+                h.innerHTML = `<span class="board-hit">🔥 HIT! ቁጥር ${lastNum} ካርቴላዎ ላይ አለ! 🔥</span>`;
+                // በካርቴላው ላይ ያለውን ቁጥር ለጊዜው እንዲበራ ማድረግ
+                const cellIndex = myBoard.indexOf(lastNum);
+                const cellEl = document.getElementById('c-'+cellIndex);
+                if(cellEl) cellEl.style.boxShadow = "0 0 20px #facc15";
+                setTimeout(() => { if(cellEl) cellEl.style.boxShadow = ""; }, 5000);
+            } else {
+                h.innerText = "ቁጥር " + lastNum + " ወጥቷል";
+            }
             setTimeout(() => { if(h.innerText.includes(lastNum)) h.innerText = ""; }, 5000);
         }
     });
@@ -336,6 +348,7 @@
         hasBoard = false;
         myBoardID = null;
         markedCells = [12];
+        myBoard = [];
     }
 
     function reqFinance(type) {
