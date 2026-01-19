@@ -118,28 +118,32 @@
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; 
     });
 
-    // --- የቆጣሪ እና የጨዋታ ፍሰት ሲስተም ---
+    // --- የቆጣሪ እና የጨዋታ ፍሰት ማስተካከያ ---
     db.ref('game/timer').on('value', s => {
         const val = s.val();
         const tDisp = document.getElementById('timer-display');
-        if(val > 0) {
+        
+        if (val !== null && val >= 0) {
             tDisp.style.display = 'block';
             document.getElementById('timer-sec').innerText = val;
             
-            // ተጫዋቾች ገብተው ከሆነ ቆጣሪውን 00 ለማድረግ (ለዳኛው ብቻ የሚሰራ)
-            if(user.id == ADMIN_ID) {
+            // ተጫዋች ቼክ (Admin ብቻ እንዲቆጣጠር)
+            if(user.id == ADMIN_ID && val > 0) {
                 db.ref('reserved_boards').once('value', rb => {
-                    if(rb.numChildren() >= 2) { // 2 እና ከዚያ በላይ ተጫዋች ሲገቡ
-                        db.ref('game/timer').set(0); 
+                    if(rb.numChildren() >= 2) {
+                        db.ref('game/timer').set(0); // 00 ያደርገዋል
                     }
                 });
             }
+
+            if(val === 0 && user.id == ADMIN_ID) {
+                setTimeout(() => {
+                    db.ref('game/timer').set(-1); 
+                    toggleAutoDraw(true); 
+                }, 1000);
+            }
         } else {
             tDisp.style.display = 'none';
-            if(val === 0 && user.id == ADMIN_ID) {
-                db.ref('game/timer').set(-1); 
-                toggleAutoDraw(true); 
-            }
         }
     });
 
@@ -155,7 +159,7 @@
                 over.style.display = 'none';
                 if(user.id == ADMIN_ID) {
                     resetGame(); 
-                    startCountdown(); // ቢንጎ ሲባል ቆጣሪው ይጀምራል
+                    startCountdown(); // ቆጣሪውን ያስጀምራል
                 }
                 showP('home-page');
             }, 6000); 
@@ -171,8 +175,7 @@
                 if(currentT <= 0) {
                     clearInterval(interval);
                 } else {
-                    timeLeft = currentT - 1;
-                    db.ref('game/timer').set(timeLeft);
+                    db.ref('game/timer').set(currentT - 1);
                 }
             });
         }, 1000);
@@ -226,7 +229,9 @@
     }
 
     function resetGame() { 
-        db.ref('game').set({drawn:[], winner:null, timer: -1}); 
+        db.ref('game/drawn').set([]);
+        db.ref('game/winner').set(null);
+        db.ref('game/timer').set(-1); 
         db.ref('reserved_boards').remove(); 
     }
 
