@@ -29,7 +29,6 @@
             overflow-x: hidden; 
         }
 
-        /* Splash Screen */
         #splash { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .logo-anim { font-size: 3.5rem; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: zoom 2s infinite; text-shadow: var(--gold-shadow); }
         @keyframes zoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
@@ -39,34 +38,32 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
 
-        /* Grid & Cartela Styles */
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 15px; }
+        /* Grid Size Slightly Reduced */
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; max-width: 380px; margin-left: auto; margin-right: auto; }
         .cell { 
             aspect-ratio: 1; background: #fff; color: #1e293b; 
             display: flex; align-items: center; justify-content: center; 
-            font-weight: 900; border-radius: 12px; font-size: 1.3rem; 
+            font-weight: 900; border-radius: 10px; font-size: 1.1rem; 
             cursor: pointer; border: none; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            box-shadow: 0 4px 0px #cbd5e1;
+            box-shadow: 0 3px 0px #cbd5e1;
         }
         .cell:active { transform: scale(0.9); box-shadow: 0 0px 0px transparent; }
-        .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 4px 0px #991b1b !important; transform: scale(0.95); }
+        .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 3px 0px #991b1b !important; transform: scale(0.92); }
         
-        /* Board Selection List */
         #board-list { 
-            grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 10px; 
-            height: 65vh; overflow-y: auto; border-radius: 20px; 
+            grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; 
+            height: 60vh; overflow-y: auto; border-radius: 20px; 
             background: var(--glass); border: 1px solid rgba(255,255,255,0.1);
         }
         .board-item { 
             background: linear-gradient(145deg, #ffffff, #e2e8f0); 
-            border: 2px solid transparent; height: 75px; font-size: 1.5rem;
+            border: 2px solid transparent; height: 65px; font-size: 1.3rem;
         }
         .board-taken { 
             background: #334155 !important; color: #64748b !important; 
             cursor: not-allowed; opacity: 0.5; box-shadow: none !important;
         }
 
-        /* Hint & Win Overlay */
         .hint { border: 4px solid #facc15 !important; animation: pulseGlow 0.8s infinite alternate; z-index: 5; }
         @keyframes pulseGlow { from { box-shadow: 0 0 5px #facc15; } to { box-shadow: 0 0 25px #facc15; } }
         
@@ -90,12 +87,11 @@
         #timer-display { background: rgba(24acc15, 0.1); border: 2px solid #facc15; padding: 15px; border-radius: 15px; text-align: center; color: #facc15; font-weight: 900; margin: 15px; display: none; }
         .online-dot { height: 10px; width: 10px; background-color: #22c55e; border-radius: 50%; display: inline-block; margin-right: 6px; box-shadow: 0 0 10px #22c55e; }
         
-        /* Ball Animation */
         #current-ball { 
-            width: 90px; height: 90px; background: var(--gold); border-radius: 50%; 
+            width: 80px; height: 80px; background: var(--gold); border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; color: #000; 
-            font-size: 2.8rem; font-weight: 900; border: 6px solid #fff; 
-            box-shadow: 0 0 30px rgba(250, 204, 21, 0.6); animation: bounceBall 0.5s ease;
+            font-size: 2.5rem; font-weight: 900; border: 5px solid #fff; 
+            box-shadow: 0 0 25px rgba(250, 204, 21, 0.6); animation: bounceBall 0.5s ease;
         }
         @keyframes bounceBall { 0% { transform: scale(0.5); } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
@@ -109,7 +105,7 @@
     <div class="header">
         <div>
             <div id="u-name" style="font-weight: 900; color: #facc15; font-size: 1.2rem;">---</div>
-            <div style="font-size: 11px; opacity: 0.8;"><span class="online-dot"></span> Online | ID: <span id="u-id-display"></span></div>
+            <div style="font-size: 11px; opacity: 0.8;"><span class="online-dot"></span> Online ( <span id="player-count">0</span> ) | ID: <span id="u-id-display"></span></div>
         </div>
         <div style="text-align: right;"><div id="u-bal" style="font-weight: 900; font-size: 1.4rem; color: #facc15;">0.00 ETB</div></div>
     </div>
@@ -129,22 +125,22 @@
     </div>
 
     <div id="game-page" class="page">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
             <div id="current-ball">?</div>
-            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:15px; border-radius:15px; flex-grow:1; margin-left:15px; height:60px; overflow-x:auto; font-size: 16px; color:#facc15; white-space:nowrap; border:1px solid #334155;"></div>
+            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:10px; border-radius:12px; flex-grow:1; margin-left:12px; height:50px; overflow-x:auto; font-size: 14px; color:#facc15; white-space:nowrap; border:1px solid #334155;"></div>
         </div>
         <div id="bingo-grid" class="grid"></div>
-        <button id="bingo-btn" class="btn btn-red" style="height:75px; font-size:1.8rem; margin-top:25px;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
-        <button class="btn" style="background:#475569; color:white; height:50px; padding:5px; margin-top:20px; opacity: 0.8;" onclick="safeBackToHome()">⬅️ ተመለስ</button>
+        <button id="bingo-btn" class="btn btn-red" style="height:65px; font-size:1.6rem; margin-top:15px;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        <button class="btn" style="background:#475569; color:white; height:45px; padding:5px; margin-top:15px; opacity: 0.8;" onclick="safeBackToHome()">⬅️ ተመለስ</button>
     </div>
 
     <div id="reserve-page" class="page">
-        <div style="text-align: center; margin-bottom: 15px;">
-            <h2 style="margin:0; color: #facc15; font-size: 1.8rem;">ካርቴላ ይምረጡ</h2>
-            <p style="opacity: 0.7;">ለጨዋታ የሚሆን ቁጥር ይምረጡ</p>
+        <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="margin:0; color: #facc15; font-size: 1.5rem;">ካርቴላ ይምረጡ</h2>
+            <p style="opacity: 0.7; font-size: 0.9rem;">ለጨዋታ የሚሆን ቁጥር ይምረጡ</p>
         </div>
         <div id="board-list" class="grid"></div>
-        <button class="btn btn-red" style="margin-top: 25px;" onclick="showP('home-page')">መመለሻ</button>
+        <button class="btn btn-red" style="margin-top: 20px;" onclick="showP('home-page')">መመለሻ</button>
     </div>
 
     <div id="history-page" class="page">
@@ -201,7 +197,11 @@
         }, 2000); 
     };
 
-    // ጨዋታ ላይ እያለ ለመውጣት ማስጠንቀቂያ
+    // ተጫዋች ሲገባ ቆጣሪውን ማደስ
+    db.ref('users').on('value', s => {
+        document.getElementById('player-count').innerText = s.numChildren();
+    });
+
     function safeBackToHome() {
         if (drawn.length > 0) {
             if (confirm("ጨዋታ ገና አላለቀም! አሁን ከወጡ ብርዎ አይመለስም (Lost)። እርግጠኛ ነዎት መውጣት ይፈልጋሉ?")) {
