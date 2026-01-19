@@ -54,6 +54,7 @@
         #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
         .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
         .req-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #facc15; font-size: 13px; }
+        .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
     </style>
 </head>
 <body>
@@ -73,6 +74,7 @@
     <div id="timer-display">ጨዋታ ለመጀመር: <span id="timer-sec" style="font-size: 1.4rem;">30</span> ሰከንድ</div>
 
     <div id="home-page" class="page active">
+        <div class="hint-text">💡 ፍንጭ፡ ለመጫወት የሚፈልጉትን የብር መጠን ይምረጡ!</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
             <button class="btn" onclick="checkBet(10)">10 ETB</button>
             <button class="btn" onclick="checkBet(50)">50 ETB</button>
@@ -88,6 +90,7 @@
     </div>
 
     <div id="deposit-page" class="page">
+        <div class="hint-text">💡 ፍንጭ፡ የላኩበትን ትክክለኛ Transaction ID ያስገቡ።</div>
         <h3 style="text-align: center; color: #22c55e;">ብር ማስገቢያ (Deposit)</h3>
         <input type="number" id="dep-amt" placeholder="የብር መጠን">
         <input type="text" id="dep-trx" placeholder="Transaction ID">
@@ -96,6 +99,7 @@
     </div>
 
     <div id="withdraw-page" class="page">
+        <div class="hint-text">💡 ፍንጭ፡ ብር የሚቀበሉበትን ትክክለኛ ስልክ ያስገቡ።</div>
         <h3 style="text-align: center; color: #ef4444;">ብር ማውጫ (Withdraw)</h3>
         <input type="number" id="wit-amt" placeholder="የሚወጣው መጠን">
         <input type="text" id="wit-phone" placeholder="የተቀባይ ስልክ">
@@ -104,6 +108,7 @@
     </div>
 
     <div id="game-page" class="page">
+        <div class="hint-text">💡 ፍንጭ፡ የወጣውን ቁጥር ካርቴላዎ ላይ በመንካት BINGO ይበሉ!</div>
         <div class="live-indicator">
             <span id="game-status-text" style="color: #facc15; font-weight: bold;">● መጠባበቂያ ላይ...</span> | ወጥተዋል: <span id="balls-out-count">0</span>/75
         </div>
@@ -117,6 +122,7 @@
     </div>
 
     <div id="reserve-page" class="page">
+        <div class="hint-text">💡 ፍንጭ፡ ክፍት የሆነ (ነጭ) ካርቴላ ይምረጡ።</div>
         <div style="text-align: center; margin-bottom: 10px;"><h2 style="margin:0; color: #facc15;">ካርቴላ ይምረጡ</h2></div>
         <div id="board-list" class="grid"></div>
         <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ተመለስ</button>
@@ -152,7 +158,6 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
-    // Online Status Tracker (Exclude Admin)
     const onlineRef = db.ref('online_players/' + user.id);
     if(user.id != ADMIN_ID) {
         onlineRef.set(true);
@@ -227,7 +232,19 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
-            if(user.id == ADMIN_ID) { setTimeout(() => { resetGame(); }, 5000); }
+            
+            // ጨዋታው እንዳለቀ በ 1 ሰከንድ ውስጥ ሪሴት አድርጎ 30 ሰከንድ ያስጀምራል
+            setTimeout(() => { 
+                if(user.id == ADMIN_ID) { 
+                    resetGame(); 
+                    db.ref('game/timer').set(30);
+                    startAutoTimer();
+                } else {
+                    document.getElementById('win-overlay').style.display = 'none';
+                    resetPlayerLocal();
+                    showP('home-page');
+                }
+            }, 1000); 
         } else { document.getElementById('win-overlay').style.display = 'none'; }
     });
 
@@ -241,17 +258,12 @@
     });
 
     function startAutoTimer() {
-        db.ref('game/timer').once('value', s => {
-            if(s.val() === -1 || s.val() === null) {
-                db.ref('game/timer').set(30);
-                let t = 30;
-                let intv = setInterval(() => {
-                    t--;
-                    db.ref('game/timer').set(t);
-                    if(t <= 0) { clearInterval(intv); }
-                }, 1000);
-            }
-        });
+        let t = 30;
+        let intv = setInterval(() => {
+            t--;
+            db.ref('game/timer').set(t);
+            if(t <= 0) { clearInterval(intv); }
+        }, 1000);
     }
 
     function checkBet(amt) { 
@@ -286,7 +298,14 @@
         db.ref('reserved_boards/' + id).set(user.id);
         myBoardID = id;
         hasBoard = true;
-        startAutoTimer();
+        
+        db.ref('game/timer').once('value', s => {
+            if(s.val() === -1 || s.val() === null) {
+                db.ref('game/timer').set(30);
+                startAutoTimer();
+            }
+        });
+        
         startBingo();
         showP('game-page');
     }
@@ -302,6 +321,12 @@
             c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); } } };
             grid.appendChild(c);
         }
+    }
+
+    function resetPlayerLocal() {
+        hasBoard = false;
+        myBoardID = null;
+        markedCells = [12];
     }
 
     function reqFinance(type) {
@@ -334,7 +359,7 @@
     function resetGame() { 
         db.ref('game').set({ drawn: [], timer: -1, winner: null, isStopped: false });
         db.ref('reserved_boards').remove(); 
-        hasBoard = false; myBoardID = null;
+        resetPlayerLocal();
         document.getElementById('game-status-text').innerText = "● መጠባበቂያ ላይ...";
         showP('home-page');
     }
@@ -363,7 +388,6 @@
         });
     }
 
-    // Safe navigation for players
     function safeBack() {
         if (hasBoard) {
             if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) {
