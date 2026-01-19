@@ -184,15 +184,14 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [];
 
-    // --- Presence System ለትክክለኛ Online ቆጣሪ ---
+    // --- Presence System ---
     const onlineRef = db.ref('online_players/' + user.id);
     onlineRef.set(true);
-    onlineRef.onDisconnect().remove(); // ተጠቃሚው ሲወጣ ከ Firebase እንዲጠፋ
+    onlineRef.onDisconnect().remove();
 
     db.ref('online_players').on('value', s => {
         document.getElementById('player-count').innerText = s.numChildren();
     });
-    // -------------------------------------------
 
     window.onload = () => { 
         setTimeout(() => { 
@@ -243,11 +242,13 @@
             over.style.display = 'flex';
             
             if(user.id == ADMIN_ID) {
+                // እዚህ ጋር ነው ስሌቱ የተስተካከለው
                 db.ref('reserved_boards').once('value', boards => {
-                    const playerCount = boards.numChildren();
-                    const totalPool = playerCount * win.bet; 
-                    const commission = totalPool * 0.20;
-                    const winnerPrize = totalPool - commission;
+                    const totalBoardsReserved = boards.numChildren(); // ጠቅላላ የተገዙ ካርቴላዎች
+                    const totalPool = totalBoardsReserved * win.bet;  // ጠቅላላ ብር
+                    const commission = totalPool * 0.20;             // 20% ኮሚሽን
+                    const winnerPrize = totalPool - commission;      // ለአሸናፊው የሚሰጥ (80%)
+
                     db.ref('admin/wallet').transaction(c => (c || 0) + commission);
                     db.ref('users/' + win.id + '/bal').transaction(c => (c || 0) + winnerPrize);
                     addHistory(win.id, `Bingo አሸንፈሃል! +${winnerPrize.toFixed(2)} ETB`);
