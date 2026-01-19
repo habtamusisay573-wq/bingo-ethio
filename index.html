@@ -55,6 +55,7 @@
         .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
         .req-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #facc15; font-size: 13px; }
         .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
+        .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; transition: all 0.3s ease; }
     </style>
 </head>
 <body>
@@ -108,7 +109,7 @@
     </div>
 
     <div id="game-page" class="page">
-        <div class="hint-text">💡 ፍንጭ፡ የወጣውን ቁጥር ካርቴላዎ ላይ በመንካት BINGO ይበሉ!</div>
+        <div id="live-hint" class="big-hint"></div>
         <div class="live-indicator">
             <span id="game-status-text" style="color: #facc15; font-weight: bold;">● መጠባበቂያ ላይ...</span> | ወጥተዋል: <span id="balls-out-count">0</span>/75
         </div>
@@ -249,12 +250,20 @@
     });
 
     db.ref('game/drawn').on('value', s => {
+        const prevCount = drawn.length;
         drawn = s.val() || [];
         document.getElementById('balls-out-count').innerText = drawn.length;
         const lastNum = drawn[drawn.length - 1];
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-10).join(" - ");
         if(drawn.length > 0) document.getElementById('game-status-text').innerText = "● ጨዋታ ተጀምሯል";
+
+        // አዲስ ቁጥር ሲወጣ ለ5 ሰከንድ ደማቅ hint ማሳያ
+        if(drawn.length > prevCount && lastNum) {
+            const h = document.getElementById('live-hint');
+            h.innerText = "⭐ ቁጥር " + lastNum + " ወጥቷል! ⭐";
+            setTimeout(() => { if(h.innerText.includes(lastNum)) h.innerText = ""; }, 5000);
+        }
     });
 
     function startAutoTimer() {
