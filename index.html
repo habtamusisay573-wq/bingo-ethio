@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V21.5</title>
+    <title>DAGI BINGO V21.5 STABLE</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -29,7 +29,7 @@
         .req-card { background: #1e293b; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
         input { width: 100%; padding: 15px; border-radius: 10px; border: none; margin-bottom: 10px; background: #f1f5f9; color: #000; }
         #win-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        #timer-display { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); padding: 5px; border-radius: 5px; text-align: center; color: var(--danger); font-weight: bold; margin: 10px; display: none; }
+        #timer-display { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); padding: 10px; border-radius: 5px; text-align: center; color: #facc15; font-weight: bold; margin: 10px; display: none; border: 1px dashed #facc15; }
     </style>
 </head>
 <body>
@@ -106,11 +106,19 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [];
 
-    window.onload = () => { setTimeout(() => { document.getElementById('splash').style.display = 'none'; document.getElementById('main-ui').style.display = 'block'; }, 2000); };
+    window.onload = () => { 
+        setTimeout(() => { 
+            document.getElementById('splash').style.display = 'none'; 
+            document.getElementById('main-ui').style.display = 'block'; 
+        }, 2000); 
+    };
 
-    db.ref('users/' + user.id + '/bal').on('value', s => { myBal = s.val() || 0; document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; });
+    db.ref('users/' + user.id + '/bal').on('value', s => { 
+        myBal = s.val() || 0; 
+        document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; 
+    });
 
-    // የቆጣሪ ሲስተም (Sync across all players)
+    // --- የቆጣሪ ሲስተም ---
     db.ref('game/timer').on('value', s => {
         const val = s.val();
         const tDisp = document.getElementById('timer-display');
@@ -129,37 +137,39 @@
     db.ref('game/winner').on('value', s => {
         const win = s.val();
         if(win) {
-            // ቢንጎ ሲባል አውቶ ድሮው ይቆማል
             if(autoInterval) toggleAutoDraw(false);
             const over = document.getElementById('win-overlay');
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             over.style.display = 'flex';
+            
             setTimeout(() => {
                 over.style.display = 'none';
                 if(user.id == ADMIN_ID) {
                     resetGame(); 
-                    startCountdown(); // 2 ደቂቃ መቁጠር ይጀምራል
+                    startCountdown(); 
                 }
                 showP('home-page');
-            }, 5000); 
+            }, 6000); 
         }
     });
 
-    // የቆጣሪ ማስጀመሪያ (ለዳኛው ብቻ)
     function startCountdown() {
         let timeLeft = 120;
         db.ref('game/timer').set(timeLeft);
         let interval = setInterval(() => {
             timeLeft--;
             db.ref('game/timer').set(timeLeft);
-            if(timeLeft <= 0) clearInterval(interval);
+            if(timeLeft <= 0) {
+                clearInterval(interval);
+                db.ref('game/timer').set(0); 
+            }
         }, 1000);
     }
 
     db.ref('game/drawn').on('value', s => {
         const newDrawn = s.val() || [];
-        const lastNum = newDrawn[newDrawn.length - 1];
         drawn = newDrawn;
+        const lastNum = drawn[drawn.length - 1];
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-15).join(" - ");
 
@@ -182,7 +192,7 @@
     function toggleAutoDraw(forceStart = null) {
         if(forceStart === true || (!autoInterval && forceStart === null)) {
             if(autoInterval) return;
-            autoInterval = setInterval(drawNum, 2000);
+            autoInterval = setInterval(drawNum, 2500);
             document.getElementById('auto-btn').innerText = "AUTO: ON";
             document.getElementById('auto-btn').style.background = "#ef4444";
         } else {
@@ -198,7 +208,8 @@
             let d = s.val() || [];
             if(d.length >= 75) return;
             let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n));
-            d.push(n); db.ref('game/drawn').set(d);
+            d.push(n); 
+            db.ref('game/drawn').set(d);
         });
     }
 
@@ -248,7 +259,11 @@
         });
     }
 
-    function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); currentBet = amt; showP('reserve-page'); }
+    function checkBet(amt) { 
+        if(myBal < amt) return alert("ባላንስ የለም!"); 
+        currentBet = amt; 
+        showP('reserve-page'); 
+    }
     
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
@@ -256,7 +271,12 @@
             const taken = s.val() || {};
             for(let i=1; i<=200; i++) {
                 let b = document.createElement('div'); b.className = "cell"; b.style.background = taken[i]?"#ef4444":"#fff"; b.innerText = i;
-                b.onclick = () => { if(taken[i]) return; db.ref('reserved_boards/'+i).set(user.id); db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet); startBingo(); };
+                b.onclick = () => { 
+                    if(taken[i]) return; 
+                    db.ref('reserved_boards/'+i).set(user.id); 
+                    db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet); 
+                    startBingo(); 
+                };
                 list.appendChild(b);
             }
         });
@@ -269,7 +289,11 @@
         for(let i=0; i<25; i++) {
             let val = (i === 12) ? "FREE" : nums.pop(); myBoard.push(val);
             let c = document.createElement('div'); c.className = 'cell'+(val==="FREE"?" marked":""); c.id = 'c-'+i; c.innerText = val;
-            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); } } };
+            c.onclick = () => { 
+                if(drawn.includes(val) || val === "FREE") { 
+                    if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); } 
+                } 
+            };
             grid.appendChild(c);
         }
     }
