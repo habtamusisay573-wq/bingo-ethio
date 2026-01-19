@@ -118,18 +118,27 @@
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; 
     });
 
-    // --- የቆጣሪ ሲስተም ---
+    // --- የቆጣሪ እና የጨዋታ ፍሰት ሲስተም ---
     db.ref('game/timer').on('value', s => {
         const val = s.val();
         const tDisp = document.getElementById('timer-display');
         if(val > 0) {
             tDisp.style.display = 'block';
             document.getElementById('timer-sec').innerText = val;
+            
+            // ተጫዋቾች ገብተው ከሆነ ቆጣሪውን 00 ለማድረግ (ለዳኛው ብቻ የሚሰራ)
+            if(user.id == ADMIN_ID) {
+                db.ref('reserved_boards').once('value', rb => {
+                    if(rb.numChildren() >= 2) { // 2 እና ከዚያ በላይ ተጫዋች ሲገቡ
+                        db.ref('game/timer').set(0); 
+                    }
+                });
+            }
         } else {
             tDisp.style.display = 'none';
             if(val === 0 && user.id == ADMIN_ID) {
                 db.ref('game/timer').set(-1); 
-                toggleAutoDraw(true); // በራሱ ይጀምራል
+                toggleAutoDraw(true); 
             }
         }
     });
@@ -146,7 +155,7 @@
                 over.style.display = 'none';
                 if(user.id == ADMIN_ID) {
                     resetGame(); 
-                    startCountdown(); 
+                    startCountdown(); // ቢንጎ ሲባል ቆጣሪው ይጀምራል
                 }
                 showP('home-page');
             }, 6000); 
@@ -157,12 +166,15 @@
         let timeLeft = 120;
         db.ref('game/timer').set(timeLeft);
         let interval = setInterval(() => {
-            timeLeft--;
-            db.ref('game/timer').set(timeLeft);
-            if(timeLeft <= 0) {
-                clearInterval(interval);
-                db.ref('game/timer').set(0); 
-            }
+            db.ref('game/timer').once('value', s => {
+                let currentT = s.val();
+                if(currentT <= 0) {
+                    clearInterval(interval);
+                } else {
+                    timeLeft = currentT - 1;
+                    db.ref('game/timer').set(timeLeft);
+                }
+            });
         }, 1000);
     }
 
