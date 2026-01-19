@@ -27,7 +27,6 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
 
-        /* አዲሱ ማራኪ የካርቴላ ዲዛይን */
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 350px; margin: 15px auto; padding: 15px; background: #1e293b; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
         .cell { aspect-ratio: 1; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 12px; font-size: 1.2rem; cursor: pointer; transition: 0.2s; border-bottom: 4px solid rgba(0,0,0,0.2); }
         .col-0 { color: var(--b-color); } .col-1 { color: var(--i-color); } .col-2 { color: var(--n-color); } .col-3 { color: var(--g-color); } .col-4 { color: var(--o-color); }
@@ -37,6 +36,7 @@
         .btn { background: var(--gold); border: none; padding: 15px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; text-transform: uppercase; }
         .btn-red { background: var(--danger); color: white; }
         .btn-green { background: var(--success); color: white; }
+        .btn-gray { background: #475569; color: white; }
         input { width: 100%; padding: 15px; border-radius: 12px; border: none; margin-bottom: 10px; background: #fff; color: #000; font-weight: bold; box-sizing: border-box; }
 
         #current-ball { width: 80px; height: 80px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.5rem; font-weight: 900; border: 4px solid #fff; box-shadow: 0 0 15px gold; }
@@ -70,7 +70,7 @@
         </div>
         <button class="btn btn-green" onclick="showP('deposit-page')">➕ ብር አስገባ</button>
         <button class="btn btn-red" onclick="showP('withdraw-page')">➖ ብር አውጣ</button>
-        <button id="adm-gate" class="btn" style="display:none; background:#475569; color:white;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
+        <button id="adm-gate" class="btn btn-gray" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
     </div>
 
     <div id="deposit-page" class="page">
@@ -78,7 +78,7 @@
         <input type="number" id="dep-amt" placeholder="የብር መጠን">
         <input type="text" id="dep-trx" placeholder="Transaction ID">
         <button class="btn btn-green" onclick="reqFinance('DEP')">ጥያቄ ላክ</button>
-        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn btn-gray" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="withdraw-page" class="page">
@@ -86,7 +86,7 @@
         <input type="number" id="wit-amt" placeholder="የሚወጣው መጠን">
         <input type="text" id="wit-phone" placeholder="ስልክ ቁጥር">
         <button class="btn btn-red" onclick="reqFinance('WIT')">ጥያቄ ላክ</button>
-        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn btn-gray" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
@@ -97,11 +97,13 @@
         </div>
         <div id="bingo-grid" class="grid"></div>
         <button id="bingo-btn" class="btn btn-red" style="height:60px; font-size:1.5rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        <button class="btn btn-gray" onclick="confirmExit()">ውጣ (ተመለስ)</button>
     </div>
 
     <div id="reserve-page" class="page">
         <h2 style="text-align:center; color:gold;">ካርቴላ ይምረጡ</h2>
         <div id="board-list" class="grid" style="grid-template-columns: repeat(4, 1fr); height: 50vh; overflow-y: auto;"></div>
+        <button class="btn btn-gray" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="admin-page" class="page">
@@ -109,7 +111,7 @@
         <button class="btn" onclick="drawNum()">Draw 1</button>
         <div id="admin-req-list"></div>
         <button class="btn btn-red" onclick="confirmReset()">RESET GAME</button>
-        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn btn-gray" onclick="showP('home-page')">ተመለስ</button>
     </div>
 </div>
 
@@ -274,6 +276,7 @@
 
     function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
     function confirmReset() { if(confirm("RESET?")) { db.ref('game').set({drawn:[], winner:null, timer:-1}); db.ref('reserved_boards').remove(); } }
+    function confirmExit() { if(confirm("ጨዋታውን ጥለው መውጣት ይፈልጋሉ?")) { hasBoard = false; showP('home-page'); } }
 </script>
 </body>
 </html>
