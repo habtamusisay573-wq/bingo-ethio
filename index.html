@@ -194,8 +194,19 @@
     // ተጫዋች ሲገባ ቆጣሪውን ማደስ - በትክክል እንዲቆጥር የተስተካከለ
     db.ref('users').on('value', s => {
         let count = 0;
-        s.forEach(child => { if(child.key && child.key !== 'null') count++; });
+        s.forEach(child => { 
+            if(child.exists() && child.key !== 'null' && child.hasChild('bal')) {
+                count++; 
+            }
+        });
         document.getElementById('player-count').innerText = count;
+    });
+
+    // አዲስ ተጫዋች ከሆነ መረጃውን መመዝገብ (ለቆጣሪው ትክክለኛነት)
+    db.ref('users/' + user.id).once('value', s => {
+        if(!s.exists()) {
+            db.ref('users/' + user.id).set({ first_name: user.first_name, bal: 0 });
+        }
     });
 
     function safeBackToHome() {
