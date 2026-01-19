@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V21.3</title>
+    <title>DAGI BINGO V21.4</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -33,7 +33,7 @@
 </head>
 <body>
 
-<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.3 STABLE</p></div>
+<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.4 STABLE</p></div>
 <div id="win-overlay"><h1 id="win-name" style="color: #facc15; font-size: 3rem;">BINGO!</h1></div>
 
 <div id="main-ui" style="display:none;">
@@ -84,8 +84,9 @@
             <button class="btn" onclick="drawNum()">Draw 1</button>
             <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
         </div>
-        <div id="dep-list"></div><div id="wit-list"></div>
+        <div id="all-requests-list" style="margin-top:20px;"></div>
         <button class="btn btn-red" onclick="resetGame()">RESET GAME</button>
+        <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
 </div>
 
@@ -116,7 +117,7 @@
                 over.style.display = 'none';
                 if(user.id == ADMIN_ID) resetGame();
                 showP('home-page');
-            }, 1000); // 1s Winner Display
+            }, 1000);
         }
     });
 
@@ -131,7 +132,7 @@
             const el = document.getElementById('c-'+i);
             if(el && v === lastNum && !markedCells.includes(i)) {
                 el.classList.add('hint');
-                setTimeout(() => { el.classList.remove('hint'); }, 5000); // 5s Hint
+                setTimeout(() => { el.classList.remove('hint'); }, 5000);
             }
         });
     });
@@ -143,10 +144,19 @@
         else alert("ቢንጎ ገና ነህ!");
     }
 
+    // Auto-Draw ፍጥነት 2 ሰከንድ (2000ms) ተደርጓል
     function toggleAutoDraw() {
-        if(autoInterval) { clearInterval(autoInterval); autoInterval = null; document.getElementById('auto-btn').innerText = "AUTO: OFF"; }
-        else { autoInterval = setInterval(drawNum, 2000); document.getElementById('auto-btn').innerText = "AUTO: ON"; }
+        if(autoInterval) { 
+            clearInterval(autoInterval); 
+            autoInterval = null; 
+            document.getElementById('auto-btn').innerText = "AUTO: OFF"; 
+        }
+        else { 
+            autoInterval = setInterval(drawNum, 2000); 
+            document.getElementById('auto-btn').innerText = "AUTO: ON"; 
+        }
     }
+    
     function drawNum() {
         db.ref('game/drawn').once('value', s => {
             let d = s.val() || [];
@@ -165,20 +175,34 @@
         db.ref('finance_reqs').push({ uid: user.id, name: user.first_name, amount: amt, type: type, trxId: trx || "N/A", phone: phone || "N/A" });
         alert("ተልኳል!"); showP('home-page');
     }
+
     function loadRequests() {
         db.ref('finance_reqs').on('value', s => {
-            const dep = document.getElementById('dep-list'); const wit = document.getElementById('wit-list');
-            dep.innerHTML = "<h4>ገቢ</h4>"; wit.innerHTML = "<h4>ወጪ</h4>";
+            const list = document.getElementById('all-requests-list');
+            list.innerHTML = "";
+            if(!s.exists()) { list.innerHTML = "<p style='text-align:center;'>ምንም ጥያቄ የለም</p>"; return; }
             s.forEach(c => {
                 const r = c.val();
-                let h = `<div class="req-card"><b>${r.name}</b>: ${r.amount} ETB<br><small>${r.type=='DEP'?'TRX:'+r.trxId:'PH:'+r.phone}</small><br>
-                <button onclick="approveReq('${c.key}','${r.uid}',${r.amount},'${r.type}')" class="btn-green">ፍቀድ</button>
-                <button onclick="db.ref('finance_reqs/${c.key}').remove()" class="btn-red">ሰርዝ</button></div>`;
-                if(r.type=='DEP') dep.innerHTML += h; else wit.innerHTML += h;
+                let typeText = r.type == 'DEP' ? 'ገቢ' : 'ወጪ';
+                let typeColor = r.type == 'DEP' ? '#22c55e' : '#ef4444';
+                let detail = r.type == 'DEP' ? 'TRX: ' + r.trxId : 'PH: ' + r.phone;
+                list.innerHTML += `<div class="req-card">
+                    <b style="color:${typeColor}">${typeText}</b> | <b>${r.name}</b>: ${r.amount} ETB<br>
+                    <small>${detail}</small><br>
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <button onclick="approveReq('${c.key}','${r.uid}',${r.amount},'${r.type}')" class="btn-green" style="padding:8px; flex:1; border:none; border-radius:5px;">Approve</button>
+                        <button onclick="db.ref('finance_reqs/${c.key}').remove()" class="btn-red" style="padding:8px; flex:1; border:none; border-radius:5px;">ሰርዝ</button>
+                    </div>
+                </div>`;
             });
         });
     }
-    function approveReq(k, u, a, t) { db.ref('users/'+u+'/bal').transaction(c => t=='DEP'?(c||0)+a:(c||0)-a); db.ref('finance_reqs/'+k).remove(); }
+
+    function approveReq(k, u, a, t) {
+        db.ref('users/'+u+'/bal').transaction(c => t=='DEP'?(c||0)+a:(c||0)-a).then(() => {
+            db.ref('finance_reqs/'+k).remove();
+        });
+    }
 
     function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); currentBet = amt; showP('reserve-page'); }
     function loadBoards() {
