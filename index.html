@@ -87,6 +87,11 @@
         .online-dot { height: 8px; width: 8px; background-color: #22c55e; border-radius: 50%; display: inline-block; margin-right: 4px; }
         
         #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
+
+        /* Admin Request Cards */
+        .req-card { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
+        .req-card.DEP { border-left-color: #22c55e; }
+        .req-card.WIT { border-left-color: #ef4444; }
     </style>
 </head>
 <body>
@@ -172,6 +177,10 @@
             <button class="btn" onclick="drawNum()">Draw 1</button>
             <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
         </div>
+
+        <h3 style="margin-top:20px;">የገንዘብ ጥያቄዎች (Finance Requests)</h3>
+        <div id="admin-req-list" style="max-height: 300px; overflow-y: auto;"></div>
+
         <button class="btn btn-red" onclick="resetGame()" style="margin-top:25px;">RESET GAME</button>
         <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
@@ -226,6 +235,7 @@
         db.ref('admin/wallet').on('value', s => {
             document.getElementById('adm-commission').innerText = (s.val() || 0).toFixed(2) + " ETB";
         });
+        loadAdminRequests();
     }
 
     db.ref('game/timer').on('value', s => {
@@ -349,11 +359,54 @@
         
         if(!amt || amt <= 0 || !meta) return alert("እባክዎ ትክክለኛ መረጃ ያስገቡ!");
         
+        // ይህ ኮድ ሁለቱንም ጥያቄዎች ወደ Firebase 'finance_reqs' ውስጥ ይልካል
         db.ref('finance_reqs').push({ 
             uid: user.id, name: user.first_name, amount: amt, 
-            type: type, info: meta, status: 'pending' 
+            type: type, info: meta, status: 'pending', time: Date.now()
         });
         alert("ጥያቄው ለዳኛው ተልኳል!"); showP('home-page');
+    }
+
+    // Admin: የገንዘብ ጥያቄዎችን መጫኛ
+    function loadAdminRequests() {
+        db.ref('finance_reqs').on('value', s => {
+            const list = document.getElementById('admin-req-list');
+            list.innerHTML = "";
+            if(!s.exists()) { list.innerHTML = "ምንም ጥያቄ የለም"; return; }
+            s.forEach(c => {
+                const r = c.val();
+                if(r.status !== 'pending') return;
+                const div = document.createElement('div');
+                div.className = `req-card ${r.type}`;
+                div.innerHTML = `
+                    <b>${r.name}</b> (${r.type === 'DEP' ? 'ማስገቢያ' : 'ማውጫ'})<br>
+                    መጠን: ${r.amount} ETB<br>
+                    መረጃ: ${r.info}<br>
+                    <button class="btn btn-green" style="width:45%; padding:5px; font-size:12px;" onclick="approveReq('${c.key}')">Approve</button>
+                    <button class="btn btn-red" style="width:45%; padding:5px; font-size:12px;" onclick="rejectReq('${c.key}')">Reject</button>
+                `;
+                list.appendChild(div);
+            });
+        });
+    }
+
+    function approveReq(key) {
+        db.ref('finance_reqs/' + key).once('value', s => {
+            const r = s.val();
+            if(r.type === 'DEP') {
+                db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amount);
+                addHistory(r.uid, `ገንዘብ ገቢ ተደርጓል: +${r.amount} ETB`);
+            } else {
+                // ወጪ ሲሆን ከባላንሱ ላይ ይቀንሳል (ጥያቄ ሲጠይቅ አልተቀነሰም ነበር)
+                db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) - r.amount);
+                addHistory(r.uid, `ገንዘብ ወጪ ተደርጓል: -${r.amount} ETB`);
+            }
+            db.ref('finance_reqs/' + key).update({ status: 'approved' });
+        });
+    }
+
+    function rejectReq(key) {
+        db.ref('finance_reqs/' + key).update({ status: 'rejected' });
     }
 
     function checkBet(amt) { 
