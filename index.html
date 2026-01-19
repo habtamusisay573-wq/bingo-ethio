@@ -43,6 +43,7 @@
         #board-list { grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 15px; height: 60vh; overflow-y: auto; border-radius: 20px; background: rgba(15, 23, 42, 0.6); }
         .board-item { background: var(--gold) !important; color: #422006 !important; height: 55px; font-size: 1.2rem; }
         .board-taken { background: rgba(239, 68, 68, 0.2) !important; opacity: 0.4; }
+        .my-selection { border: 4px solid #fff !important; transform: scale(1.1); box-shadow: 0 0 20px #facc15 !important; z-index: 10; }
 
         .btn { background: var(--gold); border: none; padding: 15px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; text-transform: uppercase; }
         .btn-red { background: var(--danger); color: white; }
@@ -52,7 +53,6 @@
         #win-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; }
         #timer-display { background: rgba(250, 204, 21, 0.1); border: 2px solid #facc15; padding: 10px; border-radius: 12px; text-align: center; color: #facc15; font-weight: 900; margin: 10px; display: none; }
         #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
-        .req-card { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
         .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
     </style>
 </head>
@@ -118,6 +118,7 @@
     <div id="reserve-page" class="page">
         <div style="text-align: center; margin-bottom: 10px;"><h2 style="margin:0; color: #facc15;">ካርቴላ ይምረጡ</h2></div>
         <div id="board-list" class="grid"></div>
+        <div style="text-align: center; margin-top: 10px; font-size: 0.8rem; opacity: 0.7;">* መምረጥ የሚቻለው አንድ ካርቴላ ብቻ ነው።</div>
     </div>
 
     <div id="history-page" class="page">
@@ -147,13 +148,17 @@
     document.getElementById('u-name').innerText = user.first_name;
     if(user.id == ADMIN_ID) document.getElementById('adm-gate').style.display = 'block';
 
-    let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false;
+    let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
     window.addEventListener('load', () => { setTimeout(() => { document.getElementById('splash').style.display = 'none'; document.getElementById('main-ui').style.display = 'block'; }, 2000); });
 
-    db.ref('users/' + user.id + '/bal').on('value', s => { myBal = s.val() || 0; document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; });
+    db.ref('users/' + user.id + '/bal').on('value', s => { 
+        myBal = s.val() || 0; 
+        document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
+        // ባላንስ ከዜሮ በታች ከሆነ ወደ ሆም ይመልሰው
+        if(myBal < 0) { db.ref('users/' + user.id + '/bal').set(0); }
+    });
 
-    // Timer Logic
     db.ref('game/timer').on('value', s => {
         const val = s.val();
         if (val !== null && val > 0) {
@@ -161,12 +166,11 @@
             document.getElementById('timer-sec').innerText = val;
         } else if (val === 0) {
             document.getElementById('timer-display').style.display = 'none';
-            if(hasBoard) showP('game-page'); // ሰከንዱ ሲያልቅ በራሱ ወደ ጨዋታ አስገባ
-            if(user.id == ADMIN_ID) toggleAutoDraw(true); // በራሱ እጣ ማውጣት ጀምር
+            if(hasBoard) showP('game-page');
+            if(user.id == ADMIN_ID) toggleAutoDraw(true);
         } else { document.getElementById('timer-display').style.display = 'none'; }
     });
 
-    // Auto Reset Logic
     db.ref('game/winner').on('value', s => {
         const win = s.val();
         if(win) {
@@ -174,10 +178,7 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
-            if(user.id == ADMIN_ID) {
-                // ... Finance logic stays same ...
-                setTimeout(() => { resetGame(); }, 5000); // 5 ሰከንድ ቆይቶ በራሱ ሪሴት አድርግ
-            }
+            if(user.id == ADMIN_ID) { setTimeout(() => { resetGame(); }, 5000); }
         } else { document.getElementById('win-overlay').style.display = 'none'; }
     });
 
@@ -203,26 +204,54 @@
         });
     }
 
-    function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); db.ref('game/drawn').once('value', s => { if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል!"); currentBet = amt; showP('reserve-page'); }); }
+    function checkBet(amt) { 
+        if(myBal < amt) return alert("በቂ ባላንስ የለም!"); 
+        db.ref('game/drawn').once('value', s => { 
+            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል!"); 
+            currentBet = amt; 
+            showP('reserve-page'); 
+        }); 
+    }
 
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
             const list = document.getElementById('board-list'); list.innerHTML = "";
             const taken = s.val() || {};
             for(let i=1; i<=100; i++) {
-                let b = document.createElement('div'); b.className = "cell board-item" + (taken[i] ? " board-taken" : "");
+                let b = document.createElement('div'); 
+                let isTaken = taken[i] && taken[i] !== user.id;
+                let isMine = taken[i] === user.id;
+                
+                b.className = "cell board-item" + (isTaken ? " board-taken" : "") + (isMine ? " my-selection" : "");
                 b.innerText = i;
-                b.onclick = () => { if(taken[i]) return; buyBoard(i); };
+                b.onclick = () => { if(isTaken) return; buyBoard(i); };
                 list.appendChild(b);
             }
         });
     }
 
     function buyBoard(id) {
-        db.ref('reserved_boards/'+id).set(user.id);
-        db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet);
+        // ባላንስ በድጋሚ ቼክ ማድረግ (Negative እንዳይሆን)
+        if(myBal < currentBet && !myBoardID) {
+            alert("በቂ ባላንስ የለም!");
+            return;
+        }
+
+        // የድሮ ካርቴላ ካለው ነጻ ያድርገው (አንዱን መርጦ ሌላ ሲነካ እንዲቀየር)
+        if(myBoardID) {
+            db.ref('reserved_boards/' + myBoardID).remove();
+        } else {
+            // አዲስ ካርቴላ ሲገዛ ብቻ ብር ይቀንስ
+            db.ref('users/'+user.id+'/bal').transaction(c => {
+                if (c >= currentBet) return c - currentBet;
+                return c; // ብር ከሌለው አይቀንስም
+            });
+        }
+
+        db.ref('reserved_boards/' + id).set(user.id);
+        myBoardID = id;
         hasBoard = true;
-        startAutoTimer(); // የመጀመሪያው ሰው ሲገዛ ቆጠራ ይጀምራል
+        startAutoTimer();
         startBingo();
     }
 
@@ -243,6 +272,7 @@
         db.ref('game').set({ drawn: [], timer: -1, winner: null, isStopped: false });
         db.ref('reserved_boards').remove(); 
         hasBoard = false;
+        myBoardID = null;
         showP('home-page');
     }
 
@@ -255,10 +285,8 @@
     function toggleAutoDraw(f = null) {
         if(f === true || (!autoInterval && f === null)) {
             autoInterval = setInterval(drawNum, 2500);
-            if(document.getElementById('auto-btn')) document.getElementById('auto-btn').innerText = "AUTO: ON";
         } else {
             clearInterval(autoInterval); autoInterval = null;
-            if(document.getElementById('auto-btn')) document.getElementById('auto-btn').innerText = "AUTO: OFF";
         }
     }
 
@@ -272,7 +300,6 @@
 
     function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='reserve-page') loadBoards(); }
     function confirmReset() { if(confirm("RESET?")) resetGame(); }
-    function reqFinance(t) { /* Same as before */ alert("ጥያቄ ተልኳል"); showP('home-page'); }
 </script>
 </body>
 </html>
