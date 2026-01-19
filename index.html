@@ -88,10 +88,12 @@
         
         #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
 
-        /* Admin Request Cards */
         .req-card { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
         .req-card.DEP { border-left-color: #22c55e; }
         .req-card.WIT { border-left-color: #ef4444; }
+
+        /* Status Styling */
+        .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
     </style>
 </head>
 <body>
@@ -148,6 +150,11 @@
     </div>
 
     <div id="game-page" class="page">
+        <div class="live-indicator">
+            <span id="game-status-text" style="color: #facc15; font-weight: bold;">● መጠባበቂያ ላይ...</span> | 
+            ወጥተዋል: <span id="balls-out-count" style="color:white">0</span>/75
+        </div>
+
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div id="current-ball">?</div>
             <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:8px; border-radius:10px; flex-grow:1; margin-left:10px; height:45px; overflow-x:auto; font-size: 13px; color:#facc15; white-space:nowrap; border:1px solid #334155;"></div>
@@ -177,10 +184,8 @@
             <button class="btn" onclick="drawNum()">Draw 1</button>
             <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
         </div>
-
         <h3 style="margin-top:20px;">የገንዘብ ጥያቄዎች (Finance Requests)</h3>
         <div id="admin-req-list" style="max-height: 300px; overflow-y: auto;"></div>
-
         <button class="btn btn-red" onclick="resetGame()" style="margin-top:25px;">RESET GAME</button>
         <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
@@ -291,6 +296,18 @@
     db.ref('game/drawn').on('value', s => {
         const newDrawn = s.val() || []; drawn = newDrawn;
         const lastNum = drawn[drawn.length - 1];
+
+        // Status Update Logic
+        document.getElementById('balls-out-count').innerText = drawn.length;
+        const stext = document.getElementById('game-status-text');
+        if(drawn.length > 0) {
+            stext.innerText = "● ጨዋታው ተጀምሯል";
+            stext.style.color = "#22c55e";
+        } else {
+            stext.innerText = "● መጠባበቂያ ላይ...";
+            stext.style.color = "#facc15";
+        }
+
         if(lastNum) playSfx(400, 'sine', 0.1);
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-15).join(" - ");
@@ -356,18 +373,11 @@
             meta = document.getElementById('wit-phone').value;
             if(amt > myBal) return alert("በቂ ባላንስ የለም!");
         }
-        
         if(!amt || amt <= 0 || !meta) return alert("እባክዎ ትክክለኛ መረጃ ያስገቡ!");
-        
-        // ይህ ኮድ ሁለቱንም ጥያቄዎች ወደ Firebase 'finance_reqs' ውስጥ ይልካል
-        db.ref('finance_reqs').push({ 
-            uid: user.id, name: user.first_name, amount: amt, 
-            type: type, info: meta, status: 'pending', time: Date.now()
-        });
+        db.ref('finance_reqs').push({ uid: user.id, name: user.first_name, amount: amt, type: type, info: meta, status: 'pending', time: Date.now() });
         alert("ጥያቄው ለዳኛው ተልኳል!"); showP('home-page');
     }
 
-    // Admin: የገንዘብ ጥያቄዎችን መጫኛ
     function loadAdminRequests() {
         db.ref('finance_reqs').on('value', s => {
             const list = document.getElementById('admin-req-list');
@@ -378,13 +388,7 @@
                 if(r.status !== 'pending') return;
                 const div = document.createElement('div');
                 div.className = `req-card ${r.type}`;
-                div.innerHTML = `
-                    <b>${r.name}</b> (${r.type === 'DEP' ? 'ማስገቢያ' : 'ማውጫ'})<br>
-                    መጠን: ${r.amount} ETB<br>
-                    መረጃ: ${r.info}<br>
-                    <button class="btn btn-green" style="width:45%; padding:5px; font-size:12px;" onclick="approveReq('${c.key}')">Approve</button>
-                    <button class="btn btn-red" style="width:45%; padding:5px; font-size:12px;" onclick="rejectReq('${c.key}')">Reject</button>
-                `;
+                div.innerHTML = `<b>${r.name}</b> (${r.type === 'DEP' ? 'ማስገቢያ' : 'ማውጫ'})<br>መጠን: ${r.amount} ETB<br>መረጃ: ${r.info}<br><button class="btn btn-green" style="width:45%; padding:5px; font-size:12px;" onclick="approveReq('${c.key}')">Approve</button><button class="btn btn-red" style="width:45%; padding:5px; font-size:12px;" onclick="rejectReq('${c.key}')">Reject</button>`;
                 list.appendChild(div);
             });
         });
@@ -393,27 +397,15 @@
     function approveReq(key) {
         db.ref('finance_reqs/' + key).once('value', s => {
             const r = s.val();
-            if(r.type === 'DEP') {
-                db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amount);
-                addHistory(r.uid, `ገንዘብ ገቢ ተደርጓል: +${r.amount} ETB`);
-            } else {
-                // ወጪ ሲሆን ከባላንሱ ላይ ይቀንሳል (ጥያቄ ሲጠይቅ አልተቀነሰም ነበር)
-                db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) - r.amount);
-                addHistory(r.uid, `ገንዘብ ወጪ ተደርጓል: -${r.amount} ETB`);
-            }
+            if(r.type === 'DEP') { db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amount); addHistory(r.uid, `ገንዘብ ገቢ ተደርጓል: +${r.amount} ETB`); }
+            else { db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) - r.amount); addHistory(r.uid, `ገንዘብ ወጪ ተደርጓል: -${r.amount} ETB`); }
             db.ref('finance_reqs/' + key).update({ status: 'approved' });
         });
     }
 
-    function rejectReq(key) {
-        db.ref('finance_reqs/' + key).update({ status: 'rejected' });
-    }
+    function rejectReq(key) { db.ref('finance_reqs/' + key).update({ status: 'rejected' }); }
 
-    function checkBet(amt) { 
-        if(myBal < amt) return alert("ባላንስ የለም!"); 
-        if(drawn.length > 0) return alert("ጨዋታ ተጀምሯል! ቀጣዩን ዙር ይጠብቁ።");
-        currentBet = amt; showP('reserve-page'); 
-    }
+    function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); if(drawn.length > 0) return alert("ጨዋታ ተጀምሯል! ቀጣዩን ዙር ይጠብቁ።"); currentBet = amt; showP('reserve-page'); }
     
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
@@ -423,13 +415,7 @@
                 let b = document.createElement('div'); 
                 b.className = "cell board-item" + (taken[i] ? " board-taken" : "");
                 b.innerText = i;
-                b.onclick = () => { 
-                    if(taken[i]) return; 
-                    db.ref('reserved_boards/'+i).set(user.id); 
-                    db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet); 
-                    addHistory(user.id, `ካርቴላ #${i} ተገዝቷል: -${currentBet} ETB`);
-                    startAutoTimer(); startBingo(); 
-                };
+                b.onclick = () => { if(taken[i]) return; db.ref('reserved_boards/'+i).set(user.id); db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet); addHistory(user.id, `ካርቴላ #${i} ተገዝቷል: -${currentBet} ETB`); startAutoTimer(); startBingo(); };
                 list.appendChild(b);
             }
         });
@@ -445,13 +431,7 @@
             let c = document.createElement('div'); 
             c.className = 'cell col-'+colIndex+(val==="FREE"?" marked":""); 
             c.id = 'c-'+i; c.innerText = val;
-            c.onclick = () => { 
-                if(drawn.includes(val) || val === "FREE") { 
-                    if(!markedCells.includes(i)) { 
-                        playSfx(800, 'sine', 0.05); c.classList.add('marked'); markedCells.push(i); 
-                    } 
-                } 
-            };
+            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { playSfx(800, 'sine', 0.05); c.classList.add('marked'); markedCells.push(i); } } };
             grid.appendChild(c);
         }
     }
