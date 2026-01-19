@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V21.4</title>
+    <title>DAGI BINGO V21.5</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -29,11 +29,12 @@
         .req-card { background: #1e293b; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
         input { width: 100%; padding: 15px; border-radius: 10px; border: none; margin-bottom: 10px; background: #f1f5f9; color: #000; }
         #win-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        #timer-display { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); padding: 5px; border-radius: 5px; text-align: center; color: var(--danger); font-weight: bold; margin-bottom: 10px; display: none; }
     </style>
 </head>
 <body>
 
-<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.4 STABLE</p></div>
+<div id="splash"><div class="logo-anim">DAGI BINGO</div><p>V21.5 STABLE</p></div>
 <div id="win-overlay"><h1 id="win-name" style="color: #facc15; font-size: 3rem;">BINGO!</h1></div>
 
 <div id="main-ui" style="display:none;">
@@ -41,6 +42,8 @@
         <div><div id="u-name" style="font-weight: 900; color: #facc15;">---</div><div style="font-size: 10px;">ID: <span id="u-id-display"></span></div></div>
         <div style="text-align: right;"><div id="u-bal" style="font-weight: 900; font-size: 1.3rem;">0.00 ETB</div></div>
     </div>
+
+    <div id="timer-display">ቀጣይ ጨዋታ ለመጀመር: <span id="timer-sec">120</span> ሰከንድ</div>
 
     <div id="home-page" class="page active">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -107,19 +110,49 @@
 
     db.ref('users/' + user.id + '/bal').on('value', s => { myBal = s.val() || 0; document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; });
 
+    // የቆጣሪ ሲስተም
+    db.ref('game/timer').on('value', s => {
+        const val = s.val();
+        const tDisp = document.getElementById('timer-display');
+        if(val > 0) {
+            tDisp.style.display = 'block';
+            document.getElementById('timer-sec').innerText = val;
+        } else {
+            tDisp.style.display = 'none';
+            if(val === 0 && user.id == ADMIN_ID) {
+                db.ref('game/timer').set(-1); // ቆጣሪው እንዳይደጋገም
+                toggleAutoDraw(true); // በራሱ ይጀምር
+            }
+        }
+    });
+
     db.ref('game/winner').on('value', s => {
         const win = s.val();
         if(win) {
+            if(autoInterval) toggleAutoDraw(false); // ቢንጎ ሲባል Auto Draw ይቆማል
             const over = document.getElementById('win-overlay');
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             over.style.display = 'flex';
             setTimeout(() => {
                 over.style.display = 'none';
-                if(user.id == ADMIN_ID) resetGame();
+                if(user.id == ADMIN_ID) {
+                    resetGame(); // ራሱ reset ያደርጋል
+                    startCountdown(); // 2 ደቂቃ መቁጠር ይጀምራል
+                }
                 showP('home-page');
-            }, 1000);
+            }, 5000); // አሸናፊው ለ5 ሰከንድ ይታይ
         }
     });
+
+    function startCountdown() {
+        let timeLeft = 120;
+        db.ref('game/timer').set(timeLeft);
+        let interval = setInterval(() => {
+            timeLeft--;
+            db.ref('game/timer').set(timeLeft);
+            if(timeLeft <= 0) clearInterval(interval);
+        }, 1000);
+    }
 
     db.ref('game/drawn').on('value', s => {
         const newDrawn = s.val() || [];
@@ -144,15 +177,17 @@
         else alert("ቢንጎ ገና ነህ!");
     }
 
-    function toggleAutoDraw() {
-        if(autoInterval) { 
-            clearInterval(autoInterval); 
-            autoInterval = null; 
-            document.getElementById('auto-btn').innerText = "AUTO: OFF"; 
-        }
-        else { 
-            autoInterval = setInterval(drawNum, 2000); 
-            document.getElementById('auto-btn').innerText = "AUTO: ON"; 
+    function toggleAutoDraw(forceStart = null) {
+        if(forceStart === true || (!autoInterval && forceStart === null)) {
+            if(autoInterval) return;
+            autoInterval = setInterval(drawNum, 2000);
+            document.getElementById('auto-btn').innerText = "AUTO: ON";
+            document.getElementById('auto-btn').classList.replace('btn-green', 'btn-red');
+        } else {
+            clearInterval(autoInterval);
+            autoInterval = null;
+            document.getElementById('auto-btn').innerText = "AUTO: OFF";
+            document.getElementById('auto-btn').classList.replace('btn-red', 'btn-green');
         }
     }
     
@@ -164,21 +199,21 @@
             d.push(n); db.ref('game/drawn').set(d);
         });
     }
-    function resetGame() { db.ref('game').set({drawn:[], winner:null}); db.ref('reserved_boards').remove(); }
+
+    function resetGame() { 
+        db.ref('game').set({drawn:[], winner:null, timer: -1}); 
+        db.ref('reserved_boards').remove(); 
+    }
 
     function reqFinance(type) {
         const amt = parseFloat(document.getElementById('f-amt').value);
         const trx = document.getElementById('f-trx').value.trim();
         const phone = document.getElementById('f-phone').value.trim();
-        
         if(!amt || amt <= 0) return alert("መጠን ያስገቡ!");
-
-        // Withdraw Validation (Min 20 ETB and Balance Check)
         if(type === 'WIT') {
             if(amt < 20) return alert("ዝቅተኛው ወጪ 20 ብር ነው!");
             if(amt > myBal) return alert("በቂ ሂሳብ የለዎትም!");
         }
-
         db.ref('finance_reqs').push({ uid: user.id, name: user.first_name, amount: amt, type: type, trxId: trx || "N/A", phone: phone || "N/A" });
         alert("ተልኳል!"); showP('home-page');
     }
@@ -223,6 +258,7 @@
             }
         });
     }
+
     function startBingo() {
         showP('game-page'); markedCells = [12];
         let nums = Array.from({length: 75}, (_, i) => i+1).sort(() => Math.random()-0.5).slice(0, 24);
@@ -234,7 +270,13 @@
             grid.appendChild(c);
         }
     }
-    function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='admin-page') loadRequests(); if(id==='reserve-page') loadBoards(); }
+
+    function showP(id) { 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        if(id==='admin-page') loadRequests(); 
+        if(id==='reserve-page') loadBoards(); 
+    }
 </script>
 </body>
 </html>
