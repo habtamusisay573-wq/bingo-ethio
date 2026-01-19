@@ -57,14 +57,18 @@
         .cell:active { transform: scale(0.9); box-shadow: 0 0px 0px transparent; }
         .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 4px 0px #991b1b !important; transform: scale(0.92); border: none !important; animation: pop 0.3s ease; }
         
+        /* Hint Class */
+        .hint-active { background: #facc15 !important; color: #000 !important; transform: scale(1.1); z-index: 10; box-shadow: 0 0 20px #facc15 !important; }
+
         #board-list { 
             grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 15px; 
             height: 60vh; overflow-y: auto; border-radius: 20px; 
             background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1);
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
-        .board-item { background: rgba(255, 255, 255, 0.1) !important; color: #fff !important; height: 55px; font-size: 1.2rem; }
-        .board-taken { background: rgba(239, 68, 68, 0.2) !important; color: rgba(255,255,255,0.2) !important; opacity: 0.4; border: 1px solid transparent !important; }
+        /* Golden Board Items */
+        .board-item { background: var(--gold) !important; color: #422006 !important; height: 55px; font-size: 1.2rem; border: 1px solid #f8b500 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important; }
+        .board-taken { background: #1e293b !important; color: rgba(255,255,255,0.1) !important; opacity: 0.5; border: 1px solid transparent !important; box-shadow: none !important; }
 
         .btn { 
             background: var(--gold); border: none; padding: 15px; border-radius: 12px; 
@@ -92,7 +96,6 @@
         .req-card.DEP { border-left-color: #22c55e; }
         .req-card.WIT { border-left-color: #ef4444; }
 
-        /* Status Styling */
         .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
     </style>
 </head>
@@ -297,12 +300,21 @@
         const newDrawn = s.val() || []; drawn = newDrawn;
         const lastNum = drawn[drawn.length - 1];
 
-        // Status Update Logic
         document.getElementById('balls-out-count').innerText = drawn.length;
         const stext = document.getElementById('game-status-text');
         if(drawn.length > 0) {
             stext.innerText = "● ጨዋታው ተጀምሯል";
             stext.style.color = "#22c55e";
+            
+            // Hint Logic: Check if last drawn number is in my board
+            if(myBoard.includes(lastNum)) {
+                let idx = myBoard.indexOf(lastNum);
+                let cell = document.getElementById('c-'+idx);
+                if(cell && !cell.classList.contains('marked')) {
+                    cell.classList.add('hint-active');
+                    setTimeout(() => cell.classList.remove('hint-active'), 3000);
+                }
+            }
         } else {
             stext.innerText = "● መጠባበቂያ ላይ...";
             stext.style.color = "#facc15";
@@ -431,7 +443,7 @@
             let c = document.createElement('div'); 
             c.className = 'cell col-'+colIndex+(val==="FREE"?" marked":""); 
             c.id = 'c-'+i; c.innerText = val;
-            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { playSfx(800, 'sine', 0.05); c.classList.add('marked'); markedCells.push(i); } } };
+            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { playSfx(800, 'sine', 0.05); c.classList.add('marked'); markedCells.push(idx); /* note: using global 'i' here */ markedCells.push(i); } } };
             grid.appendChild(c);
         }
     }
