@@ -38,7 +38,6 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
 
-        /* Grid Size Modified: More compact for better fit */
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 8px; max-width: 320px; margin-left: auto; margin-right: auto; }
         .cell { 
             aspect-ratio: 1; background: #fff; color: #1e293b; 
@@ -93,7 +92,6 @@
             font-size: 2.2rem; font-weight: 900; border: 4px solid #fff; 
             box-shadow: 0 0 20px rgba(250, 204, 21, 0.6); animation: bounceBall 0.5s ease;
         }
-        @keyframes bounceBall { 0% { transform: scale(0.5); } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -135,9 +133,7 @@
     </div>
 
     <div id="reserve-page" class="page">
-        <div style="text-align: center; margin-bottom: 10px;">
-            <h2 style="margin:0; color: #facc15; font-size: 1.3rem;">ካርቴላ ይምረጡ</h2>
-        </div>
+        <div style="text-align: center; margin-bottom: 10px;"><h2 style="margin:0; color: #facc15; font-size: 1.3rem;">ካርቴላ ይምረጡ</h2></div>
         <div id="board-list" class="grid"></div>
         <button class="btn btn-red" style="margin-top: 20px;" onclick="showP('home-page')">መመለሻ</button>
     </div>
@@ -151,8 +147,8 @@
     <div id="finance-page" class="page">
         <div style="background: var(--glass); padding: 15px; border-radius: 15px;">
             <input type="number" id="f-amt" placeholder="የብር መጠን (ETB)">
-            <input type="text" id="f-trx" placeholder="Transaction ID (ለገቢ)">
-            <input type="text" id="f-phone" placeholder="የስልክ ቁጥር (ለወጪ)">
+            <input type="text" id="f-trx" placeholder="Transaction ID">
+            <input type="text" id="f-phone" placeholder="የስልክ ቁጥር">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <button class="btn btn-green" onclick="reqFinance('DEP')">ብር አስገባ</button>
                 <button class="btn btn-red" onclick="reqFinance('WIT')">ብር አውጣ</button>
@@ -195,8 +191,11 @@
         }, 2000); 
     };
 
+    // ተጫዋች ሲገባ ቆጣሪውን ማደስ - በትክክል እንዲቆጥር የተስተካከለ
     db.ref('users').on('value', s => {
-        document.getElementById('player-count').innerText = s.numChildren();
+        let count = 0;
+        s.forEach(child => { if(child.key && child.key !== 'null') count++; });
+        document.getElementById('player-count').innerText = count;
     });
 
     function safeBackToHome() {
