@@ -184,30 +184,22 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [];
 
+    // --- Presence System ለትክክለኛ Online ቆጣሪ ---
+    const onlineRef = db.ref('online_players/' + user.id);
+    onlineRef.set(true);
+    onlineRef.onDisconnect().remove(); // ተጠቃሚው ሲወጣ ከ Firebase እንዲጠፋ
+
+    db.ref('online_players').on('value', s => {
+        document.getElementById('player-count').innerText = s.numChildren();
+    });
+    // -------------------------------------------
+
     window.onload = () => { 
         setTimeout(() => { 
             document.getElementById('splash').style.display = 'none'; 
             document.getElementById('main-ui').style.display = 'block'; 
         }, 2000); 
     };
-
-    // ተጫዋች ሲገባ ቆጣሪውን ማደስ - በትክክል እንዲቆጥር የተስተካከለ
-    db.ref('users').on('value', s => {
-        let count = 0;
-        s.forEach(child => { 
-            if(child.exists() && child.key !== 'null' && child.hasChild('bal')) {
-                count++; 
-            }
-        });
-        document.getElementById('player-count').innerText = count;
-    });
-
-    // አዲስ ተጫዋች ከሆነ መረጃውን መመዝገብ (ለቆጣሪው ትክክለኛነት)
-    db.ref('users/' + user.id).once('value', s => {
-        if(!s.exists()) {
-            db.ref('users/' + user.id).set({ first_name: user.first_name, bal: 0 });
-        }
-    });
 
     function safeBackToHome() {
         if (drawn.length > 0) {
