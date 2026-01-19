@@ -17,7 +17,7 @@
             --success: #22c55e; 
             --glass: rgba(255, 255, 255, 0.05);
             --gold-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
-            /* Bingo Column Colors - Enhanced */
+            /* Bingo Column Colors - Enhanced UI */
             --b-color: #3b82f6; --i-color: #ef4444; --n-color: #facc15; --g-color: #22c55e; --o-color: #a855f7;
         }
 
@@ -31,7 +31,7 @@
             overflow-x: hidden; 
         }
 
-        #splash { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #splash { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
         .logo-anim { font-size: 3.5rem; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: zoom 2s infinite; text-shadow: var(--gold-shadow); }
         @keyframes zoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 
@@ -135,7 +135,7 @@
         </div>
         <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('finance-page')">💸 ብር ገቢ / ወጪ</button>
         <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር (History)</button>
-        <button class="btn" style="background:#0ea5e9; color:white;" onclick="window.open('https://t.me/YourBotLink', '_blank')">💬 ሀሳብ መስጫ (Feedback)</button>
+        <button class="btn" style="background:#0ea5e9; color:white;" onclick="window.open('https://t.me/DagiBingo_Support_Bot', '_blank')">💬 ሀሳብ መስጫ (Feedback)</button>
         <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
     </div>
 
@@ -193,7 +193,11 @@
     const ADMIN_ID = 8431270634; 
     const fb = firebase.initializeApp({ databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" });
     const db = fb.database();
-    const tg = window.Telegram.WebApp; tg.expand();
+    const tg = window.Telegram.WebApp; 
+    
+    // Telegram ዝግጁ መሆኑን እናረጋግጥ
+    tg.ready();
+    tg.expand();
 
     const user = tg.initDataUnsafe.user || { id: "GUEST_" + Date.now(), first_name: "Player" };
     document.getElementById('u-name').innerText = user.first_name;
@@ -201,27 +205,38 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [];
 
+    // Splash ስክሪኑን የማጥፊያ ተግባር
+    function hideSplash() {
+        const splash = document.getElementById('splash');
+        const main = document.getElementById('main-ui');
+        splash.style.opacity = '0';
+        setTimeout(() => {
+            splash.style.display = 'none';
+            main.style.display = 'block';
+        }, 500);
+    }
+
+    // ፔጁ ሲጫን የሚሰራ
+    window.addEventListener('load', () => {
+        setTimeout(hideSplash, 2500); 
+    });
+
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSfx(f, t, d) {
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.type = t; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
-        g.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + d);
+        try {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = t; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+            g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + d);
+        } catch(e) {}
     }
 
     const onlineRef = db.ref('online_players/' + user.id);
     onlineRef.set(true);
     onlineRef.onDisconnect().remove();
     db.ref('online_players').on('value', s => { document.getElementById('player-count').innerText = s.numChildren(); });
-
-    window.onload = () => { 
-        setTimeout(() => { 
-            document.getElementById('splash').style.display = 'none'; 
-            document.getElementById('main-ui').style.display = 'block'; 
-        }, 2000); 
-    };
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
