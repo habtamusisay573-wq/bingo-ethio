@@ -144,7 +144,6 @@
         else alert("ቢንጎ ገና ነህ!");
     }
 
-    // Auto-Draw ፍጥነት 2 ሰከንድ (2000ms) ተደርጓል
     function toggleAutoDraw() {
         if(autoInterval) { 
             clearInterval(autoInterval); 
@@ -171,7 +170,15 @@
         const amt = parseFloat(document.getElementById('f-amt').value);
         const trx = document.getElementById('f-trx').value.trim();
         const phone = document.getElementById('f-phone').value.trim();
+        
         if(!amt || amt <= 0) return alert("መጠን ያስገቡ!");
+
+        // Withdraw Validation (Min 20 ETB and Balance Check)
+        if(type === 'WIT') {
+            if(amt < 20) return alert("ዝቅተኛው ወጪ 20 ብር ነው!");
+            if(amt > myBal) return alert("በቂ ሂሳብ የለዎትም!");
+        }
+
         db.ref('finance_reqs').push({ uid: user.id, name: user.first_name, amount: amt, type: type, trxId: trx || "N/A", phone: phone || "N/A" });
         alert("ተልኳል!"); showP('home-page');
     }
