@@ -22,13 +22,17 @@
         .cell { aspect-ratio: 1; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 8px; font-size: 1.2rem; cursor: pointer; border: 3px solid transparent; transition: 0.3s; }
         .marked { background: var(--danger) !important; color: white !important; }
         
-        /* ቁጥር ሲወጣ የሚበራ Hint */
+        /* Hint Style */
         .hint { border: 4px solid #facc15 !important; animation: glow 0.8s infinite alternate; transform: scale(1.05); z-index: 5; }
         @keyframes glow { from { box-shadow: 0 0 5px #facc15; } to { box-shadow: 0 0 20px #facc15; } }
         
         .btn { background: var(--gold); border: none; padding: 16px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; }
         .btn-red { background: var(--danger); color: white; }
         .btn-green { background: var(--success); color: white; }
+        
+        /* Online Status Dot */
+        .status-dot { height: 10px; width: 10px; background-color: var(--success); border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 8px var(--success); }
+        
         .req-card { background: #1e293b; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
         .hist-card { background: #334155; padding: 10px; border-radius: 8px; margin-bottom: 5px; font-size: 0.85rem; border-left: 3px solid #facc15; }
         input { width: 100%; padding: 15px; border-radius: 10px; border: none; margin-bottom: 10px; background: #f1f5f9; color: #000; }
@@ -43,8 +47,16 @@
 
 <div id="main-ui" style="display:none;">
     <div class="header">
-        <div><div id="u-name" style="font-weight: 900; color: #facc15;">---</div><div style="font-size: 10px;">ID: <span id="u-id-display"></span></div></div>
-        <div style="text-align: right;"><div id="u-bal" style="font-weight: 900; font-size: 1.3rem;">0.00 ETB</div></div>
+        <div>
+            <div id="u-name" style="font-weight: 900; color: #facc15;">---</div>
+            <div style="font-size: 10px;">ID: <span id="u-id-display"></span></div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 11px; display: flex; align-items: center; justify-content: flex-end; margin-bottom: 4px;">
+                <span class="status-dot"></span> Online
+            </div>
+            <div id="u-bal" style="font-weight: 900; font-size: 1.3rem;">0.00 ETB</div>
+        </div>
     </div>
 
     <div id="timer-display">ቀጣይ ጨዋታ ለመጀመር: <span id="timer-sec">120</span> ሰከንድ</div>
@@ -67,7 +79,10 @@
             <div id="ball-history" style="background:#1e293b; padding:10px; border-radius:10px; flex-grow:1; margin-left:10px; height:50px; overflow-x:auto; font-size: 12px; color:#facc15; white-space:nowrap;"></div>
         </div>
         <div id="bingo-grid" class="grid"></div>
-        <button id="bingo-btn" class="btn btn-red" style="height:60px; font-size:1.5rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="btn btn-red" onclick="showP('home-page')" style="background: #475569; color: white;">ተመለስ</button>
+            <button id="bingo-btn" class="btn btn-red" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        </div>
     </div>
 
     <div id="reserve-page" class="page">
@@ -191,7 +206,6 @@
         }, 1000);
     }
 
-    // --- Hint System (ቁጥር ሲወጣ ማሳያ) ---
     db.ref('game/drawn').on('value', s => {
         const newDrawn = s.val() || [];
         drawn = newDrawn;
@@ -199,12 +213,10 @@
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-15).join(" - ");
 
-        // ተጫዋቹ ካርቴላው ላይ ያ ቁጥር ካለ Hint እንዲበራ
         myBoard.forEach((v, i) => {
             const el = document.getElementById('c-'+i);
             if(el && v === lastNum && !markedCells.includes(i)) {
                 el.classList.add('hint');
-                // ከ 5 ሰከንድ በኋላ Hint ይጠፋል
                 setTimeout(() => { el.classList.remove('hint'); }, 5000);
             }
         });
@@ -324,7 +336,7 @@
                 if(drawn.includes(val) || val === "FREE") { 
                     if(!markedCells.includes(i)) { 
                         c.classList.add('marked'); 
-                        c.classList.remove('hint'); // ከተነካ Hint ይጠፋል
+                        c.classList.remove('hint'); 
                         markedCells.push(i); 
                     } 
                 } 
