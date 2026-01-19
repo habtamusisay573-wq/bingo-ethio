@@ -92,7 +92,7 @@
         <input type="number" id="dep-amt" placeholder="የብር መጠን">
         <input type="text" id="dep-trx" placeholder="Transaction ID">
         <button class="btn btn-green" onclick="reqFinance('DEP')">ጥያቄ ላክ</button>
-        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="withdraw-page" class="page">
@@ -100,7 +100,7 @@
         <input type="number" id="wit-amt" placeholder="የሚወጣው መጠን">
         <input type="text" id="wit-phone" placeholder="የተቀባይ ስልክ">
         <button class="btn btn-red" onclick="reqFinance('WIT')">ጥያቄ ላክ</button>
-        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
@@ -113,19 +113,19 @@
         </div>
         <div id="bingo-grid" class="grid"></div>
         <button id="bingo-btn" class="btn btn-red" style="height:55px; font-size:1.4rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
-        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ውጣ (ተመለስ)</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ውጣ (ተመለስ)</button>
     </div>
 
     <div id="reserve-page" class="page">
         <div style="text-align: center; margin-bottom: 10px;"><h2 style="margin:0; color: #facc15;">ካርቴላ ይምረጡ</h2></div>
         <div id="board-list" class="grid"></div>
-        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="history-page" class="page">
         <h3 style="text-align: center; color: #facc15;">የሂሳብ እንቅስቃሴ ታሪክ</h3>
         <div id="hist-list" style="max-height: 400px; overflow-y: auto; padding:10px;"></div>
-        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="admin-page" class="page">
@@ -151,6 +151,18 @@
     if(user.id == ADMIN_ID) document.getElementById('adm-gate').style.display = 'block';
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
+
+    // Online Status Tracker (Exclude Admin)
+    const onlineRef = db.ref('online_players/' + user.id);
+    if(user.id != ADMIN_ID) {
+        onlineRef.set(true);
+        onlineRef.onDisconnect().remove();
+    }
+
+    db.ref('online_players').on('value', s => {
+        const count = s.numChildren();
+        document.getElementById('player-count').innerText = count;
+    });
 
     window.addEventListener('load', () => { 
         setTimeout(() => { 
@@ -204,7 +216,6 @@
         } else if (val === 0) {
             document.getElementById('timer-display').style.display = 'none';
             if(hasBoard) showP('game-page');
-            // የሰከንድ መቁጠሪያው ሲያልቅ በራሱ እጣ መውጣት ይጀምራል (System Auto Draw)
             if(user.id == ADMIN_ID) toggleAutoDraw(true);
         } else { document.getElementById('timer-display').style.display = 'none'; }
     });
@@ -216,7 +227,6 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
-            // ቢንጎ ሲባል በራሱ ጨዋታውን reset አድርጎ አዲስ ዙር ያስጀምራል
             if(user.id == ADMIN_ID) { setTimeout(() => { resetGame(); }, 5000); }
         } else { document.getElementById('win-overlay').style.display = 'none'; }
     });
@@ -351,6 +361,17 @@
             let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n));
             d.push(n); db.ref('game/drawn').set(d);
         });
+    }
+
+    // Safe navigation for players
+    function safeBack() {
+        if (hasBoard) {
+            if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) {
+                showP('home-page');
+            }
+        } else {
+            showP('home-page');
+        }
     }
 
     function showP(id) { 
