@@ -394,4 +394,30 @@
         myBoard = []; const grid = document.getElementById('bingo-grid'); grid.innerHTML = "";
         for(let i=0; i<25; i++) {
             let colIndex = i % 5;
-            let val = (i === 12) ? "FREE" : nums.pop(); myBoard
+            let val = (i === 12) ? "FREE" : nums.pop(); myBoard.push(val);
+            let c = document.createElement('div'); 
+            c.className = 'cell col-'+colIndex+(val==="FREE"?" marked":""); 
+            c.id = 'c-'+i; c.innerText = val;
+            c.onclick = () => { 
+                if(drawn.includes(val) || val === "FREE") { 
+                    if(!markedCells.includes(i)) { 
+                        playSfx(800, 'sine', 0.05);
+                        c.classList.add('marked'); 
+                        markedCells.push(i); 
+                    } 
+                } 
+            };
+            grid.appendChild(c);
+        }
+    }
+
+    function showP(id) { 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        if(id==='reserve-page') loadBoards(); 
+        if(id==='history-page') loadHistory();
+    }
+    function safeBackToHome() { showP('home-page'); }
+</script>
+</body>
+</html>
