@@ -57,8 +57,8 @@
         .cell:active { transform: scale(0.9); box-shadow: 0 0px 0px transparent; }
         .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 4px 0px #991b1b !important; transform: scale(0.92); border: none !important; animation: pop 0.3s ease; }
         
-        /* Hint Class */
-        .hint-active { background: #facc15 !important; color: #000 !important; transform: scale(1.1); z-index: 10; box-shadow: 0 0 20px #facc15 !important; }
+        /* Hint - Vibrant Yellow highlight */
+        .hint-active { background: #ffff00 !important; color: #000 !important; transform: scale(1.05); box-shadow: 0 0 15px #ffff00 !important; z-index: 5; }
 
         #board-list { 
             grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 15px; 
@@ -67,8 +67,8 @@
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
         /* Golden Board Items */
-        .board-item { background: var(--gold) !important; color: #422006 !important; height: 55px; font-size: 1.2rem; border: 1px solid #f8b500 !important; box-shadow: 0 4px 8px rgba(0,0,0,0.3) !important; }
-        .board-taken { background: #1e293b !important; color: rgba(255,255,255,0.1) !important; opacity: 0.5; border: 1px solid transparent !important; box-shadow: none !important; }
+        .board-item { background: var(--gold) !important; color: #422006 !important; height: 55px; font-size: 1.2rem; border: 1px solid #f8b500 !important; box-shadow: 0 4px 10px rgba(251, 223, 147, 0.3) !important; }
+        .board-taken { background: rgba(239, 68, 68, 0.2) !important; color: rgba(255,255,255,0.2) !important; opacity: 0.4; border: 1px solid transparent !important; box-shadow: none !important; }
 
         .btn { 
             background: var(--gold); border: none; padding: 15px; border-radius: 12px; 
@@ -258,7 +258,7 @@
     db.ref('game/winner').on('value', s => {
         const win = s.val();
         if(win) {
-            if(autoInterval) toggleAutoDraw(false);
+            // FIXED: Removed toggleAutoDraw(false) so the game doesn't stop automatically when someone calls BINGO
             const over = document.getElementById('win-overlay');
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             over.style.display = 'flex';
@@ -275,9 +275,8 @@
             }
             setTimeout(() => {
                 over.style.display = 'none';
-                if(user.id == ADMIN_ID) { resetGame(); }
-                showP('home-page');
-            }, 3000); 
+                // Game only resets if admin manually chooses to or when winner window closes
+            }, 5000); 
         }
     });
 
@@ -306,7 +305,7 @@
             stext.innerText = "● ጨዋታው ተጀምሯል";
             stext.style.color = "#22c55e";
             
-            // Hint Logic: Check if last drawn number is in my board
+            // Hint Logic: Bright yellow for 3 seconds
             if(myBoard.includes(lastNum)) {
                 let idx = myBoard.indexOf(lastNum);
                 let cell = document.getElementById('c-'+idx);
@@ -356,8 +355,10 @@
     }
 
     function resetGame() { 
-        db.ref('game/drawn').set([]); db.ref('game/winner').set(null);
-        db.ref('game/timer').set(-1); db.ref('reserved_boards').remove(); 
+        db.ref('game/drawn').set([]); 
+        db.ref('game/winner').set(null);
+        db.ref('game/timer').set(-1); 
+        db.ref('reserved_boards').remove(); 
     }
 
     function addHistory(uid, msg) {
@@ -443,7 +444,7 @@
             let c = document.createElement('div'); 
             c.className = 'cell col-'+colIndex+(val==="FREE"?" marked":""); 
             c.id = 'c-'+i; c.innerText = val;
-            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { playSfx(800, 'sine', 0.05); c.classList.add('marked'); markedCells.push(idx); /* note: using global 'i' here */ markedCells.push(i); } } };
+            c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { playSfx(800, 'sine', 0.05); c.classList.add('marked'); markedCells.push(i); } } };
             grid.appendChild(c);
         }
     }
