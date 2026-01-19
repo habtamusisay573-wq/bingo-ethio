@@ -46,8 +46,16 @@
             cursor: pointer; border: none; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
             box-shadow: 0 3px 0px #cbd5e1;
         }
+        
+        /* Bingo Card Colors */
+        .col-0 { border: 2px solid #3b82f6 !important; color: #1e40af; } /* B */
+        .col-1 { border: 2px solid #ef4444 !important; color: #991b1b; } /* I */
+        .col-2 { border: 2px solid #facc15 !important; color: #854d0e; } /* N */
+        .col-3 { border: 2px solid #22c55e !important; color: #166534; } /* G */
+        .col-4 { border: 2px solid #a855f7 !important; color: #6b21a8; } /* O */
+
         .cell:active { transform: scale(0.9); box-shadow: 0 0px 0px transparent; }
-        .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 3px 0px #991b1b !important; transform: scale(0.92); }
+        .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 3px 0px #991b1b !important; transform: scale(0.92); border: none !important; }
         
         #board-list { 
             grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px; 
@@ -108,7 +116,7 @@
         <div style="text-align: right;"><div id="u-bal" style="font-weight: 900; font-size: 1.2rem; color: #facc15;">0.00 ETB</div></div>
     </div>
 
-    <div id="timer-display">ቀጣይ ጨዋታ ለመጀመር: <span id="timer-sec" style="font-size: 1.4rem;">120</span> ሰከንድ</div>
+    <div id="timer-display">ቀጣይ ጨዋታ ለመጀመር: <span id="timer-sec" style="font-size: 1.4rem;">30</span> ሰከንድ</div>
 
     <div id="home-page" class="page active">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
@@ -119,6 +127,7 @@
         </div>
         <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('finance-page')">💸 ብር ገቢ / ወጪ</button>
         <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር (History)</button>
+        <button class="btn" style="background:#0ea5e9; color:white;" onclick="window.open('https://t.me/YourBotLink', '_blank')">💬 ሀሳብ መስጫ</button>
         <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
     </div>
 
@@ -184,14 +193,10 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [];
 
-    // --- Presence System ---
     const onlineRef = db.ref('online_players/' + user.id);
     onlineRef.set(true);
     onlineRef.onDisconnect().remove();
-
-    db.ref('online_players').on('value', s => {
-        document.getElementById('player-count').innerText = s.numChildren();
-    });
+    db.ref('online_players').on('value', s => { document.getElementById('player-count').innerText = s.numChildren(); });
 
     window.onload = () => { 
         setTimeout(() => { 
@@ -199,16 +204,6 @@
             document.getElementById('main-ui').style.display = 'block'; 
         }, 2000); 
     };
-
-    function safeBackToHome() {
-        if (drawn.length > 0) {
-            if (confirm("ጨዋታ ገና አላለቀም! አሁን ከወጡ ብርዎ አይመለስም (Lost)። እርግጠኛ ነዎት መውጣት ይፈልጋሉ?")) {
-                showP('home-page');
-            }
-        } else {
-            showP('home-page');
-        }
-    }
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
@@ -227,9 +222,7 @@
         if (val !== null && val >= 0) {
             tDisp.style.display = 'block';
             document.getElementById('timer-sec').innerText = val;
-            if(user.id == ADMIN_ID && val === 0) {
-                setTimeout(() => { db.ref('game/timer').set(-1); toggleAutoDraw(true); }, 1000);
-            }
+            if(val === 0 && !autoInterval && drawn.length === 0) { toggleAutoDraw(true); }
         } else { tDisp.style.display = 'none'; }
     });
 
@@ -242,13 +235,10 @@
             over.style.display = 'flex';
             
             if(user.id == ADMIN_ID) {
-                // እዚህ ጋር ነው ስሌቱ የተስተካከለው
                 db.ref('reserved_boards').once('value', boards => {
-                    const totalBoardsReserved = boards.numChildren(); // ጠቅላላ የተገዙ ካርቴላዎች
-                    const totalPool = totalBoardsReserved * win.bet;  // ጠቅላላ ብር
-                    const commission = totalPool * 0.20;             // 20% ኮሚሽን
-                    const winnerPrize = totalPool - commission;      // ለአሸናፊው የሚሰጥ (80%)
-
+                    const totalPool = boards.numChildren() * win.bet; 
+                    const commission = totalPool * 0.20;
+                    const winnerPrize = totalPool - commission;
                     db.ref('admin/wallet').transaction(c => (c || 0) + commission);
                     db.ref('users/' + win.id + '/bal').transaction(c => (c || 0) + winnerPrize);
                     addHistory(win.id, `Bingo አሸንፈሃል! +${winnerPrize.toFixed(2)} ETB`);
@@ -257,22 +247,25 @@
 
             setTimeout(() => {
                 over.style.display = 'none';
-                if(user.id == ADMIN_ID) { resetGame(); startCountdown(); }
+                if(user.id == ADMIN_ID) { resetGame(); }
                 showP('home-page');
-            }, 6000); 
+            }, 3000); // 3 ሰከንድ ብቻ
         }
     });
 
-    function startCountdown() {
-        let timeLeft = 120;
-        db.ref('game/timer').set(timeLeft);
-        let interval = setInterval(() => {
-            db.ref('game/timer').once('value', s => {
-                let currentT = s.val();
-                if(currentT <= 0) clearInterval(interval);
-                else db.ref('game/timer').set(currentT - 1);
-            });
-        }, 1000);
+    function startAutoTimer() {
+        db.ref('game/timer').once('value', s => {
+            if(s.val() === -1) {
+                let timeLeft = 30; // 30 ሰከንድ አውቶ ማስጀመሪያ
+                db.ref('game/timer').set(timeLeft);
+                let timerInt = setInterval(() => {
+                    db.ref('game/timer').transaction(t => {
+                        if(t <= 0) { clearInterval(timerInt); return 0; }
+                        return t - 1;
+                    });
+                }, 1000);
+            }
+        });
     }
 
     db.ref('game/drawn').on('value', s => {
@@ -281,7 +274,6 @@
         const lastNum = drawn[drawn.length - 1];
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-15).join(" - ");
-
         myBoard.forEach((v, i) => {
             const el = document.getElementById('c-'+i);
             if(el && v === lastNum && !markedCells.includes(i)) {
@@ -337,7 +329,7 @@
             const list = document.getElementById('hist-list'); list.innerHTML = "";
             if(!s.exists()) { list.innerHTML = "<p style='text-align:center;'>ምንም ታሪክ የለም</p>"; return; }
             let hists = []; s.forEach(c => { hists.unshift(c.val()); });
-            hists.forEach(h => { list.innerHTML += `<div class="hist-card"><b>${h.time}</b>: ${h.msg}</div>`; });
+            hists.forEach(h => { list.innerHTML += `<div class="hist-card" style="padding:10px; border-bottom:1px solid #334155;"><b>${h.time}</b>: ${h.msg}</div>`; });
         });
     }
 
@@ -346,27 +338,6 @@
         if(!amt || amt <= 0) return alert("መጠን ያስገቡ!");
         db.ref('finance_reqs').push({ uid: user.id, name: user.first_name, amount: amt, type: type, trxId: document.getElementById('f-trx').value || "N/A", phone: document.getElementById('f-phone').value || "N/A" });
         alert("ጥያቄው ተልኳል!"); showP('home-page');
-    }
-
-    function loadRequests() {
-        db.ref('finance_reqs').on('value', s => {
-            const list = document.getElementById('all-requests-list'); list.innerHTML = "";
-            s.forEach(c => {
-                const r = c.val();
-                list.innerHTML += `<div class="req-card">
-                    <b>${r.type=='DEP'?'ገቢ':'ወጪ'}</b> | ${r.name}: ${r.amount} ETB<br>
-                    <button onclick="approveReq('${c.key}','${r.uid}',${r.amount},'${r.type}')" class="btn-green" style="padding:5px; margin-top:5px; border-radius:5px; border:none;">Approve</button>
-                    <button onclick="db.ref('finance_reqs/${c.key}').remove()" class="btn-red" style="padding:5px; border-radius:5px; border:none;">ሰርዝ</button>
-                </div>`;
-            });
-        });
-    }
-
-    function approveReq(k, u, a, t) {
-        db.ref('users/'+u+'/bal').transaction(c => t=='DEP'?(c||0)+a:(c||0)-a).then(() => {
-            addHistory(u, `${t=='DEP'?'ገቢ':'ወጪ'} ተቀባይነት አግኝቷል: ${a} ETB`);
-            db.ref('finance_reqs/'+k).remove();
-        });
     }
 
     function checkBet(amt) { 
@@ -385,10 +356,10 @@
                 b.innerText = i;
                 b.onclick = () => { 
                     if(taken[i]) return; 
-                    if(drawn.length > 0) return alert("ጨዋታ ተጀምሯል! አሁን መግዛት አይቻልም።");
                     db.ref('reserved_boards/'+i).set(user.id); 
                     db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet); 
                     addHistory(user.id, `ካርቴላ #${i} ተገዝቷል: -${currentBet} ETB`);
+                    startAutoTimer(); // የመጀመሪያው ተጫዋች ሲገዛ ይጀምራል
                     startBingo(); 
                 };
                 list.appendChild(b);
@@ -401,15 +372,14 @@
         let nums = Array.from({length: 75}, (_, i) => i+1).sort(() => Math.random()-0.5).slice(0, 24);
         myBoard = []; const grid = document.getElementById('bingo-grid'); grid.innerHTML = "";
         for(let i=0; i<25; i++) {
+            let col = i % 5;
             let val = (i === 12) ? "FREE" : nums.pop(); myBoard.push(val);
-            let c = document.createElement('div'); c.className = 'cell'+(val==="FREE"?" marked":""); c.id = 'c-'+i; c.innerText = val;
+            let c = document.createElement('div'); 
+            c.className = 'cell col-'+col+(val==="FREE"?" marked":""); 
+            c.id = 'c-'+i; c.innerText = val;
             c.onclick = () => { 
                 if(drawn.includes(val) || val === "FREE") { 
-                    if(!markedCells.includes(i)) { 
-                        c.classList.add('marked'); 
-                        c.classList.remove('hint'); 
-                        markedCells.push(i); 
-                    } 
+                    if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); } 
                 } 
             };
             grid.appendChild(c);
@@ -419,10 +389,10 @@
     function showP(id) { 
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
         document.getElementById(id).classList.add('active'); 
-        if(id==='admin-page') loadRequests(); 
         if(id==='reserve-page') loadBoards(); 
         if(id==='history-page') loadHistory();
     }
+    function safeBackToHome() { showP('home-page'); }
 </script>
 </body>
 </html>
