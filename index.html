@@ -29,7 +29,7 @@
         .req-card { background: #1e293b; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #facc15; }
         input { width: 100%; padding: 15px; border-radius: 10px; border: none; margin-bottom: 10px; background: #f1f5f9; color: #000; }
         #win-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        #timer-display { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); padding: 5px; border-radius: 5px; text-align: center; color: var(--danger); font-weight: bold; margin-bottom: 10px; display: none; }
+        #timer-display { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); padding: 5px; border-radius: 5px; text-align: center; color: var(--danger); font-weight: bold; margin: 10px; display: none; }
     </style>
 </head>
 <body>
@@ -110,7 +110,7 @@
 
     db.ref('users/' + user.id + '/bal').on('value', s => { myBal = s.val() || 0; document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; });
 
-    // የቆጣሪ ሲስተም
+    // የቆጣሪ ሲስተም (Sync across all players)
     db.ref('game/timer').on('value', s => {
         const val = s.val();
         const tDisp = document.getElementById('timer-display');
@@ -120,8 +120,8 @@
         } else {
             tDisp.style.display = 'none';
             if(val === 0 && user.id == ADMIN_ID) {
-                db.ref('game/timer').set(-1); // ቆጣሪው እንዳይደጋገም
-                toggleAutoDraw(true); // በራሱ ይጀምር
+                db.ref('game/timer').set(-1); 
+                toggleAutoDraw(true); // በራሱ ይጀምራል
             }
         }
     });
@@ -129,21 +129,23 @@
     db.ref('game/winner').on('value', s => {
         const win = s.val();
         if(win) {
-            if(autoInterval) toggleAutoDraw(false); // ቢንጎ ሲባል Auto Draw ይቆማል
+            // ቢንጎ ሲባል አውቶ ድሮው ይቆማል
+            if(autoInterval) toggleAutoDraw(false);
             const over = document.getElementById('win-overlay');
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             over.style.display = 'flex';
             setTimeout(() => {
                 over.style.display = 'none';
                 if(user.id == ADMIN_ID) {
-                    resetGame(); // ራሱ reset ያደርጋል
+                    resetGame(); 
                     startCountdown(); // 2 ደቂቃ መቁጠር ይጀምራል
                 }
                 showP('home-page');
-            }, 5000); // አሸናፊው ለ5 ሰከንድ ይታይ
+            }, 5000); 
         }
     });
 
+    // የቆጣሪ ማስጀመሪያ (ለዳኛው ብቻ)
     function startCountdown() {
         let timeLeft = 120;
         db.ref('game/timer').set(timeLeft);
@@ -182,12 +184,12 @@
             if(autoInterval) return;
             autoInterval = setInterval(drawNum, 2000);
             document.getElementById('auto-btn').innerText = "AUTO: ON";
-            document.getElementById('auto-btn').classList.replace('btn-green', 'btn-red');
+            document.getElementById('auto-btn').style.background = "#ef4444";
         } else {
             clearInterval(autoInterval);
             autoInterval = null;
             document.getElementById('auto-btn').innerText = "AUTO: OFF";
-            document.getElementById('auto-btn').classList.replace('btn-red', 'btn-green');
+            document.getElementById('auto-btn').style.background = "#22c55e";
         }
     }
     
@@ -247,6 +249,7 @@
     }
 
     function checkBet(amt) { if(myBal < amt) return alert("ባላንስ የለም!"); currentBet = amt; showP('reserve-page'); }
+    
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
             const list = document.getElementById('board-list'); list.innerHTML = "";
