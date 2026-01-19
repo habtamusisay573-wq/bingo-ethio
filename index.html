@@ -17,7 +17,6 @@
             --success: #22c55e; 
             --glass: rgba(255, 255, 255, 0.05);
             --gold-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
-            /* Bingo Column Colors - Enhanced UI */
             --b-color: #3b82f6; --i-color: #ef4444; --n-color: #facc15; --g-color: #22c55e; --o-color: #a855f7;
         }
 
@@ -40,7 +39,6 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
 
-        /* Main Bingo Grid Styling */
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; max-width: 340px; margin-left: auto; margin-right: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 15px; }
         .cell { 
             aspect-ratio: 1; background: #fff; color: #1e293b; 
@@ -50,7 +48,6 @@
             box-shadow: 0 4px 0px rgba(0,0,0,0.2); border: 3px solid transparent;
         }
         
-        /* High-Definition Column Colors */
         .col-0 { border-color: var(--b-color) !important; background: #eff6ff; color: var(--b-color); }
         .col-1 { border-color: var(--i-color) !important; background: #fef2f2; color: var(--i-color); }
         .col-2 { border-color: var(--n-color) !important; background: #fefce8; color: var(--n-color); }
@@ -59,36 +56,23 @@
 
         .cell:active { transform: scale(0.9); box-shadow: 0 0px 0px transparent; }
         .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 4px 0px #991b1b !important; transform: scale(0.92); border: none !important; animation: pop 0.3s ease; }
-        @keyframes pop { 0% { transform: scale(0.5); } 100% { transform: scale(0.92); } }
         
-        /* 200 Board Selection Styling */
         #board-list { 
             grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 15px; 
             height: 60vh; overflow-y: auto; border-radius: 20px; 
             background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1);
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
-        .board-item { 
-            background: rgba(255, 255, 255, 0.1) !important; color: #fff !important; 
-            border: 1px solid rgba(255,255,255,0.2) !important; height: 55px; font-size: 1.2rem;
-            backdrop-filter: blur(5px); box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
-        }
-        .board-item:hover { background: var(--gold) !important; color: #000 !important; }
-        .board-taken { 
-            background: rgba(239, 68, 68, 0.2) !important; color: rgba(255,255,255,0.2) !important; 
-            cursor: not-allowed; opacity: 0.4; border: 1px solid transparent !important; box-shadow: none !important;
-        }
+        .board-item { background: rgba(255, 255, 255, 0.1) !important; color: #fff !important; height: 55px; font-size: 1.2rem; }
+        .board-taken { background: rgba(239, 68, 68, 0.2) !important; color: rgba(255,255,255,0.2) !important; opacity: 0.4; border: 1px solid transparent !important; }
 
-        .hint { border: 4px solid #facc15 !important; animation: pulseGlow 0.8s infinite alternate; z-index: 5; }
-        @keyframes pulseGlow { from { box-shadow: 0 0 5px #facc15; } to { box-shadow: 0 0 25px #facc15; } }
-        
         .btn { 
             background: var(--gold); border: none; padding: 15px; border-radius: 12px; 
             font-weight: 900; color: #422006; cursor: pointer; width: 100%; 
             margin-top: 10px; font-size: 1rem; text-transform: uppercase;
             box-shadow: 0 4px 12px rgba(250, 204, 21, 0.4); transition: 0.3s;
         }
-        .btn:active { transform: translateY(3px); box-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); }
+        .btn:active { transform: translateY(3px); }
         .btn-red { background: var(--danger); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
         .btn-green { background: var(--success); color: white; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4); }
         
@@ -98,16 +82,11 @@
             font-size: 1rem; font-weight: 700; outline: none; box-sizing: border-box;
         }
 
-        #win-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        #win-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; }
         #timer-display { background: rgba(250, 204, 21, 0.1); border: 2px solid #facc15; padding: 10px; border-radius: 12px; text-align: center; color: #facc15; font-weight: 900; margin: 10px; display: none; }
-        .online-dot { height: 8px; width: 8px; background-color: #22c55e; border-radius: 50%; display: inline-block; margin-right: 4px; box-shadow: 0 0 8px #22c55e; }
+        .online-dot { height: 8px; width: 8px; background-color: #22c55e; border-radius: 50%; display: inline-block; margin-right: 4px; }
         
-        #current-ball { 
-            width: 75px; height: 75px; background: var(--gold); border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; color: #000; 
-            font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; 
-            box-shadow: 0 0 25px rgba(250, 204, 21, 0.7);
-        }
+        #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
     </style>
 </head>
 <body>
@@ -133,10 +112,34 @@
             <button class="btn" onclick="checkBet(100)">100 ETB</button>
             <button class="btn" onclick="checkBet(500)">500 ETB</button>
         </div>
-        <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('finance-page')">💸 ብር ገቢ / ወጪ</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <button class="btn btn-green" onclick="showP('deposit-page')">➕ ብር አስገባ</button>
+            <button class="btn btn-red" onclick="showP('withdraw-page')">➖ ብር አውጣ</button>
+        </div>
         <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር (History)</button>
         <button class="btn" style="background:#0ea5e9; color:white;" onclick="window.open('https://t.me/DagiBingo_Support_Bot', '_blank')">💬 ሀሳብ መስጫ (Feedback)</button>
         <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
+    </div>
+
+    <div id="deposit-page" class="page">
+        <h3 style="text-align: center; color: #22c55e;">ብር ማስገቢያ (Deposit)</h3>
+        <div style="background: var(--glass); padding: 15px; border-radius: 15px;">
+            <p style="font-size: 0.8rem; opacity: 0.8;">CBE/Telebirr በመጠቀም የላኩበትን ማስረጃ ይላኩ</p>
+            <input type="number" id="dep-amt" placeholder="የብር መጠን (ETB)">
+            <input type="text" id="dep-trx" placeholder="Transaction ID / ማስረጃ">
+            <button class="btn btn-green" onclick="reqFinance('DEP')">ጥያቄ ላክ</button>
+        </div>
+        <button class="btn" style="background:#475569; color:white; margin-top: 20px;" onclick="showP('home-page')">ተመለስ</button>
+    </div>
+
+    <div id="withdraw-page" class="page">
+        <h3 style="text-align: center; color: #ef4444;">ብር ማውጫ (Withdraw)</h3>
+        <div style="background: var(--glass); padding: 15px; border-radius: 15px;">
+            <input type="number" id="wit-amt" placeholder="የሚወጣው መጠን (ETB)">
+            <input type="text" id="wit-phone" placeholder="የተቀባይ ስልክ ቁጥር">
+            <button class="btn btn-red" onclick="reqFinance('WIT')">የማውጣት ጥያቄ ላክ</button>
+        </div>
+        <button class="btn" style="background:#475569; color:white; margin-top: 20px;" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
@@ -146,7 +149,6 @@
         </div>
         <div id="bingo-grid" class="grid"></div>
         <button id="bingo-btn" class="btn btn-red" style="height:55px; font-size:1.4rem; margin-top:12px;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
-        <button class="btn" style="background:#475569; color:white; height:40px; padding:5px; margin-top:12px; opacity: 0.8;" onclick="safeBackToHome()">⬅️ ተመለስ</button>
     </div>
 
     <div id="reserve-page" class="page">
@@ -161,19 +163,6 @@
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
-    <div id="finance-page" class="page">
-        <div style="background: var(--glass); padding: 15px; border-radius: 15px;">
-            <input type="number" id="f-amt" placeholder="የብር መጠን (ETB)">
-            <input type="text" id="f-trx" placeholder="Transaction ID">
-            <input type="text" id="f-phone" placeholder="የስልክ ቁጥር">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <button class="btn btn-green" onclick="reqFinance('DEP')">ብር አስገባ</button>
-                <button class="btn btn-red" onclick="reqFinance('WIT')">ብር አውጣ</button>
-            </div>
-        </div>
-        <button class="btn" style="background:#475569; color:white; margin-top: 20px;" onclick="showP('home-page')">ተመለስ</button>
-    </div>
-
     <div id="admin-page" class="page">
         <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding:20px; border-radius:15px; margin-bottom:15px; text-align:center; border: 1px solid #facc15;">
             <h4 style="margin:0; opacity: 0.7;">ጠቅላላ ኮሚሽን (20%)</h4>
@@ -183,7 +172,6 @@
             <button class="btn" onclick="drawNum()">Draw 1</button>
             <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
         </div>
-        <div id="all-requests-list" style="margin-top:20px;"></div>
         <button class="btn btn-red" onclick="resetGame()" style="margin-top:25px;">RESET GAME</button>
         <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
@@ -194,8 +182,6 @@
     const fb = firebase.initializeApp({ databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" });
     const db = fb.database();
     const tg = window.Telegram.WebApp; 
-    
-    // Telegram ዝግጁ መሆኑን እናረጋግጥ
     tg.ready();
     tg.expand();
 
@@ -205,21 +191,15 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [];
 
-    // Splash ስክሪኑን የማጥፊያ ተግባር
     function hideSplash() {
-        const splash = document.getElementById('splash');
-        const main = document.getElementById('main-ui');
-        splash.style.opacity = '0';
+        document.getElementById('splash').style.opacity = '0';
         setTimeout(() => {
-            splash.style.display = 'none';
-            main.style.display = 'block';
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('main-ui').style.display = 'block';
         }, 500);
     }
 
-    // ፔጁ ሲጫን የሚሰራ
-    window.addEventListener('load', () => {
-        setTimeout(hideSplash, 2500); 
-    });
+    window.addEventListener('load', () => { setTimeout(hideSplash, 2500); });
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playSfx(f, t, d) {
@@ -234,8 +214,7 @@
     }
 
     const onlineRef = db.ref('online_players/' + user.id);
-    onlineRef.set(true);
-    onlineRef.onDisconnect().remove();
+    onlineRef.set(true); onlineRef.onDisconnect().remove();
     db.ref('online_players').on('value', s => { document.getElementById('player-count').innerText = s.numChildren(); });
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
@@ -251,12 +230,11 @@
 
     db.ref('game/timer').on('value', s => {
         const val = s.val();
-        const tDisp = document.getElementById('timer-display');
         if (val !== null && val >= 0) {
-            tDisp.style.display = 'block';
+            document.getElementById('timer-display').style.display = 'block';
             document.getElementById('timer-sec').innerText = val;
             if(val === 0 && !autoInterval && drawn.length === 0) { toggleAutoDraw(true); }
-        } else { tDisp.style.display = 'none'; }
+        } else { document.getElementById('timer-display').style.display = 'none'; }
     });
 
     db.ref('game/winner').on('value', s => {
@@ -267,18 +245,16 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             over.style.display = 'flex';
             confetti(); playSfx(600, 'square', 0.5);
-            
             if(user.id == ADMIN_ID) {
                 db.ref('reserved_boards').once('value', boards => {
                     const totalPool = boards.numChildren() * win.bet; 
-                    const commission = totalPool * 0.20;
-                    const winnerPrize = totalPool - commission;
-                    db.ref('admin/wallet').transaction(c => (c || 0) + commission);
-                    db.ref('users/' + win.id + '/bal').transaction(c => (c || 0) + winnerPrize);
-                    addHistory(win.id, `Bingo አሸንፈሃል! +${winnerPrize.toFixed(2)} ETB`);
+                    const comm = totalPool * 0.20;
+                    const prize = totalPool - comm;
+                    db.ref('admin/wallet').transaction(c => (c || 0) + comm);
+                    db.ref('users/' + win.id + '/bal').transaction(c => (c || 0) + prize);
+                    addHistory(win.id, `Bingo አሸንፈሃል! +${prize.toFixed(2)} ETB`);
                 });
             }
-
             setTimeout(() => {
                 over.style.display = 'none';
                 if(user.id == ADMIN_ID) { resetGame(); }
@@ -303,19 +279,11 @@
     }
 
     db.ref('game/drawn').on('value', s => {
-        const newDrawn = s.val() || [];
-        drawn = newDrawn;
+        const newDrawn = s.val() || []; drawn = newDrawn;
         const lastNum = drawn[drawn.length - 1];
         if(lastNum) playSfx(400, 'sine', 0.1);
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-15).join(" - ");
-        myBoard.forEach((v, i) => {
-            const el = document.getElementById('c-'+i);
-            if(el && v === lastNum && !markedCells.includes(i)) {
-                el.classList.add('hint');
-                setTimeout(() => { el.classList.remove('hint'); }, 5000);
-            }
-        });
     });
 
     function checkBingoAndClaim() {
@@ -333,8 +301,7 @@
             document.getElementById('auto-btn').innerText = "AUTO: ON";
             document.getElementById('auto-btn').style.background = "#ef4444";
         } else {
-            clearInterval(autoInterval);
-            autoInterval = null;
+            clearInterval(autoInterval); autoInterval = null;
             document.getElementById('auto-btn').innerText = "AUTO: OFF";
             document.getElementById('auto-btn').style.background = "#22c55e";
         }
@@ -350,10 +317,8 @@
     }
 
     function resetGame() { 
-        db.ref('game/drawn').set([]);
-        db.ref('game/winner').set(null);
-        db.ref('game/timer').set(-1); 
-        db.ref('reserved_boards').remove(); 
+        db.ref('game/drawn').set([]); db.ref('game/winner').set(null);
+        db.ref('game/timer').set(-1); db.ref('reserved_boards').remove(); 
     }
 
     function addHistory(uid, msg) {
@@ -364,21 +329,36 @@
         db.ref('users/' + user.id + '/history').on('value', s => {
             const list = document.getElementById('hist-list'); list.innerHTML = "";
             if(!s.exists()) { list.innerHTML = "<p style='text-align:center;'>ምንም ታሪክ የለም</p>"; return; }
-            let hists = []; s.forEach(c => { hists.unshift(c.val()); });
-            hists.forEach(h => { list.innerHTML += `<div class="hist-card" style="padding:10px; border-bottom:1px solid #334155;"><b>${h.time}</b>: ${h.msg}</div>`; });
+            s.forEach(c => { 
+                let h = c.val();
+                list.innerHTML = `<div style="padding:10px; border-bottom:1px solid #334155;"><b>${h.time}</b>: ${h.msg}</div>` + list.innerHTML; 
+            });
         });
     }
 
     function reqFinance(type) {
-        const amt = parseFloat(document.getElementById('f-amt').value);
-        if(!amt || amt <= 0) return alert("መጠን ያስገቡ!");
-        db.ref('finance_reqs').push({ uid: user.id, name: user.first_name, amount: amt, type: type, trxId: document.getElementById('f-trx').value || "N/A", phone: document.getElementById('f-phone').value || "N/A" });
-        alert("ጥያቄው ተልኳል!"); showP('home-page');
+        let amt, meta;
+        if(type === 'DEP') {
+            amt = parseFloat(document.getElementById('dep-amt').value);
+            meta = document.getElementById('dep-trx').value;
+        } else {
+            amt = parseFloat(document.getElementById('wit-amt').value);
+            meta = document.getElementById('wit-phone').value;
+            if(amt > myBal) return alert("በቂ ባላንስ የለም!");
+        }
+        
+        if(!amt || amt <= 0 || !meta) return alert("እባክዎ ትክክለኛ መረጃ ያስገቡ!");
+        
+        db.ref('finance_reqs').push({ 
+            uid: user.id, name: user.first_name, amount: amt, 
+            type: type, info: meta, status: 'pending' 
+        });
+        alert("ጥያቄው ለዳኛው ተልኳል!"); showP('home-page');
     }
 
     function checkBet(amt) { 
         if(myBal < amt) return alert("ባላንስ የለም!"); 
-        if(drawn.length > 0) return alert("ጨዋታ ተጀምሯል! እባክዎ ቀጣዩን ዙር ይጠብቁ።");
+        if(drawn.length > 0) return alert("ጨዋታ ተጀምሯል! ቀጣዩን ዙር ይጠብቁ።");
         currentBet = amt; showP('reserve-page'); 
     }
     
@@ -395,8 +375,7 @@
                     db.ref('reserved_boards/'+i).set(user.id); 
                     db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet); 
                     addHistory(user.id, `ካርቴላ #${i} ተገዝቷል: -${currentBet} ETB`);
-                    startAutoTimer(); 
-                    startBingo(); 
+                    startAutoTimer(); startBingo(); 
                 };
                 list.appendChild(b);
             }
@@ -416,9 +395,7 @@
             c.onclick = () => { 
                 if(drawn.includes(val) || val === "FREE") { 
                     if(!markedCells.includes(i)) { 
-                        playSfx(800, 'sine', 0.05);
-                        c.classList.add('marked'); 
-                        markedCells.push(i); 
+                        playSfx(800, 'sine', 0.05); c.classList.add('marked'); markedCells.push(i); 
                     } 
                 } 
             };
@@ -432,7 +409,6 @@
         if(id==='reserve-page') loadBoards(); 
         if(id==='history-page') loadHistory();
     }
-    function safeBackToHome() { showP('home-page'); }
 </script>
 </body>
 </html>
