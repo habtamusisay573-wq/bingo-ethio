@@ -113,12 +113,13 @@
         </div>
         <div id="bingo-grid" class="grid"></div>
         <button id="bingo-btn" class="btn btn-red" style="height:55px; font-size:1.4rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
-        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ውጣ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ውጣ (ተመለስ)</button>
     </div>
 
     <div id="reserve-page" class="page">
         <div style="text-align: center; margin-bottom: 10px;"><h2 style="margin:0; color: #facc15;">ካርቴላ ይምረጡ</h2></div>
         <div id="board-list" class="grid"></div>
+        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="history-page" class="page">
@@ -164,7 +165,6 @@
         if(myBal < 0) { db.ref('users/' + user.id + '/bal').set(0); }
     });
 
-    // የታሪክ ማህደር ሎድ ማድረግ
     db.ref('history/' + user.id).limitToLast(10).on('value', s => {
         const list = document.getElementById('hist-list'); list.innerHTML = "";
         const data = s.val();
@@ -178,7 +178,6 @@
         }
     });
 
-    // ዳኛ Dashboard ለጥያቄዎች
     if(user.id == ADMIN_ID){
         db.ref('requests').on('value', s => {
             const list = document.getElementById('admin-req-list'); list.innerHTML = "<h3>የገቢ/ወጪ ጥያቄዎች</h3>";
@@ -205,6 +204,7 @@
         } else if (val === 0) {
             document.getElementById('timer-display').style.display = 'none';
             if(hasBoard) showP('game-page');
+            // የሰከንድ መቁጠሪያው ሲያልቅ በራሱ እጣ መውጣት ይጀምራል (System Auto Draw)
             if(user.id == ADMIN_ID) toggleAutoDraw(true);
         } else { document.getElementById('timer-display').style.display = 'none'; }
     });
@@ -216,6 +216,7 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
+            // ቢንጎ ሲባል በራሱ ጨዋታውን reset አድርጎ አዲስ ዙር ያስጀምራል
             if(user.id == ADMIN_ID) { setTimeout(() => { resetGame(); }, 5000); }
         } else { document.getElementById('win-overlay').style.display = 'none'; }
     });
@@ -226,6 +227,7 @@
         const lastNum = drawn[drawn.length - 1];
         document.getElementById('current-ball').innerText = lastNum || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-10).join(" - ");
+        if(drawn.length > 0) document.getElementById('game-status-text').innerText = "● ጨዋታ ተጀምሯል";
     });
 
     function startAutoTimer() {
@@ -269,19 +271,14 @@
 
     function buyBoard(id) {
         if(myBal < currentBet && !myBoardID) return alert("በቂ ባላንስ የለም!");
-        
-        if(myBoardID) {
-            db.ref('reserved_boards/' + myBoardID).remove();
-        } else {
-            db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c));
-        }
-
+        if(myBoardID) { db.ref('reserved_boards/' + myBoardID).remove(); }
+        else { db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c)); }
         db.ref('reserved_boards/' + id).set(user.id);
         myBoardID = id;
         hasBoard = true;
         startAutoTimer();
         startBingo();
-        showP('game-page'); // ካርቴላ እንደመረጠ ወደ ጨዋታ አስገባው
+        showP('game-page');
     }
 
     function startBingo() {
@@ -300,13 +297,11 @@
     function reqFinance(type) {
         let amt = type === 'DEP' ? document.getElementById('dep-amt').value : document.getElementById('wit-amt').value;
         let info = type === 'DEP' ? document.getElementById('dep-trx').value : document.getElementById('wit-phone').value;
-        if(!amt || !info) return alert("እባክህ መረጃውን በትክክል ሙሉ!");
-        
+        if(!amt || !info) return alert("መረጃውን በትክክል ሙሉ!");
         const reqId = Date.now();
         db.ref('requests/' + reqId).set({ uid: user.id, name: user.first_name, type: type, amt: parseFloat(amt), info: info });
         db.ref('history/' + user.id + '/' + reqId).set({ type: type, amt: amt, status: 'Pending', date: new Date().toLocaleString() });
-        
-        alert("ጥያቄው ለዳኛ ተልኳል። እባክህ ዳኛው እስኪያረጋግጥ ጠብቅ።");
+        alert("ጥያቄው ተልኳል!");
         showP('home-page');
     }
 
@@ -330,6 +325,7 @@
         db.ref('game').set({ drawn: [], timer: -1, winner: null, isStopped: false });
         db.ref('reserved_boards').remove(); 
         hasBoard = false; myBoardID = null;
+        document.getElementById('game-status-text').innerText = "● መጠባበቂያ ላይ...";
         showP('home-page');
     }
 
@@ -362,7 +358,7 @@
         document.getElementById(id).classList.add('active'); 
         if(id==='reserve-page') loadBoards(); 
     }
-    function confirmReset() { if(confirm("ጨዋታውን በሙሉ ለመቀየር እርግጠኛ ነህ?")) resetGame(); }
+    function confirmReset() { if(confirm("RESET?")) resetGame(); }
 </script>
 </body>
 </html>
