@@ -163,7 +163,6 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             over.style.display = 'flex';
             
-            // የኮሚሽን ስሌት (ዳኛው ቦታ ላይ እንዲሰራ)
             if(user.id == ADMIN_ID) {
                 db.ref('reserved_boards').once('value', boards => {
                     const playerCount = boards.numChildren();
@@ -171,12 +170,8 @@
                     const commission = totalPool * 0.20;
                     const winnerPrize = totalPool - commission;
 
-                    // ዳኛ ኮሚሽን መቀበል
                     db.ref('admin/wallet').transaction(c => (c || 0) + commission);
-                    // አሸናፊው ብር መቀበል
                     db.ref('users/' + win.id + '/bal').transaction(c => (c || 0) + winnerPrize);
-                    
-                    // ታሪክ መመዝገብ
                     addHistory(win.id, `Bingo አሸንፈሃል! +${winnerPrize.toFixed(2)} ETB (ተቆራጭ 20%)`);
                 });
             }
@@ -245,7 +240,6 @@
         db.ref('reserved_boards').remove(); 
     }
 
-    // --- Finance & History Functions ---
     function addHistory(uid, msg) {
         db.ref('users/' + uid + '/history').push({ msg: msg, time: new Date().toLocaleTimeString() });
     }
@@ -255,9 +249,7 @@
             const list = document.getElementById('hist-list'); list.innerHTML = "";
             if(!s.exists()) { list.innerHTML = "<p style='text-align:center;'>ምንም ታሪክ የለም</p>"; return; }
             let hists = []; s.forEach(c => { hists.unshift(c.val()); });
-            hists.forEach(h => {
-                list.innerHTML += `<div class="hist-card"><b>${h.time}</b>: ${h.msg}</div>`;
-            });
+            hists.forEach(h => { list.innerHTML += `<div class="hist-card"><b>${h.time}</b>: ${h.msg}</div>`; });
         });
     }
 
@@ -291,6 +283,8 @@
 
     function checkBet(amt) { 
         if(myBal < amt) return alert("ባላንስ የለም!"); 
+        // ቼክ፡ ጨዋታው ከተጀመረ (ቁጥር ከወጣ) መግባት አይቻልም
+        if(drawn.length > 0) return alert("ጨዋታ ተጀምሯል! እባክዎ ቀጣዩን ዙር ይጠብቁ።");
         currentBet = amt; showP('reserve-page'); 
     }
     
@@ -302,6 +296,8 @@
                 let b = document.createElement('div'); b.className = "cell"; b.style.background = taken[i]?"#ef4444":"#fff"; b.innerText = i;
                 b.onclick = () => { 
                     if(taken[i]) return; 
+                    // እዚህም ድጋሚ ቼክ ይደረጋል
+                    if(drawn.length > 0) return alert("ጨዋታ ተጀምሯል! አሁን መግዛት አይቻልም።");
                     db.ref('reserved_boards/'+i).set(user.id); 
                     db.ref('users/'+user.id+'/bal').transaction(c => (c||0)-currentBet); 
                     addHistory(user.id, `ካርቴላ #${i} ተገዝቷል: -${currentBet} ETB`);
