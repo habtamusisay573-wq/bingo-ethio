@@ -135,7 +135,7 @@
         </div>
         <div id="bingo-grid" class="grid"></div>
         <button id="bingo-btn" class="btn btn-red" style="height:75px; font-size:1.8rem; margin-top:25px;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
-        <button class="btn" style="background:#475569; color:white; height:50px; padding:5px; margin-top:20px; opacity: 0.8;" onclick="showP('home-page')">⬅️ ተመለስ</button>
+        <button class="btn" style="background:#475569; color:white; height:50px; padding:5px; margin-top:20px; opacity: 0.8;" onclick="safeBackToHome()">⬅️ ተመለስ</button>
     </div>
 
     <div id="reserve-page" class="page">
@@ -182,7 +182,6 @@
 </div>
 
 <script>
-    // Firebase and App Logic (Unchanged as per requirement)
     const ADMIN_ID = 8431270634; 
     const fb = firebase.initializeApp({ databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" });
     const db = fb.database();
@@ -201,6 +200,17 @@
             document.getElementById('main-ui').style.display = 'block'; 
         }, 2000); 
     };
+
+    // ጨዋታ ላይ እያለ ለመውጣት ማስጠንቀቂያ
+    function safeBackToHome() {
+        if (drawn.length > 0) {
+            if (confirm("ጨዋታ ገና አላለቀም! አሁን ከወጡ ብርዎ አይመለስም (Lost)። እርግጠኛ ነዎት መውጣት ይፈልጋሉ?")) {
+                showP('home-page');
+            }
+        } else {
+            showP('home-page');
+        }
+    }
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
