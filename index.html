@@ -27,6 +27,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
 
+        /* አዲሱ ማራኪ የካርቴላ ዲዛይን */
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 350px; margin: 15px auto; padding: 15px; background: #1e293b; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
         .cell { aspect-ratio: 1; background: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 12px; font-size: 1.2rem; cursor: pointer; transition: 0.2s; border-bottom: 4px solid rgba(0,0,0,0.2); }
         .col-0 { color: var(--b-color); } .col-1 { color: var(--i-color); } .col-2 { color: var(--n-color); } .col-3 { color: var(--g-color); } .col-4 { color: var(--o-color); }
@@ -92,7 +93,7 @@
         <div id="live-hint" style="text-align:center; color:yellow; font-weight:bold; min-height:30px;"></div>
         <div style="display: flex; align-items: center; justify-content: space-around; margin-bottom: 10px;">
             <div id="current-ball">?</div>
-            <div id="ball-history" style="font-size: 12px; color: gold; width:60%; overflow-x: auto; white-space: nowrap;"></div>
+            <div id="ball-history" style="font-size: 12px; color: gold; width:60%;"></div>
         </div>
         <div id="bingo-grid" class="grid"></div>
         <button id="bingo-btn" class="btn btn-red" style="height:60px; font-size:1.5rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
@@ -101,7 +102,6 @@
     <div id="reserve-page" class="page">
         <h2 style="text-align:center; color:gold;">ካርቴላ ይምረጡ</h2>
         <div id="board-list" class="grid" style="grid-template-columns: repeat(4, 1fr); height: 50vh; overflow-y: auto;"></div>
-        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="admin-page" class="page">
@@ -123,7 +123,7 @@
     document.getElementById('u-name').innerText = user.first_name;
     if(user.id == ADMIN_ID) document.getElementById('adm-gate').style.display = 'block';
 
-    let myBal = 0, drawn = [], markedCells = [12], currentBet = 0, myBoard = [], hasBoard = false;
+    let myBal = 0, drawn = [], markedCells = [12], currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
     window.onload = () => { setTimeout(() => { document.getElementById('splash').style.display = 'none'; document.getElementById('main-ui').style.display = 'block'; }, 2000); };
 
@@ -145,26 +145,17 @@
             let idx = myBoard.indexOf(last);
             if(idx !== -1) {
                 const el = document.getElementById('c-'+idx);
-                if(el) {
-                    el.classList.add('highlight-cell');
-                    document.getElementById('live-hint').innerText = "🔥 HIT: " + last;
-                    setTimeout(() => { el.classList.remove('highlight-cell'); document.getElementById('live-hint').innerText = ""; }, 4000);
-                }
+                el.classList.add('highlight-cell');
+                document.getElementById('live-hint').innerText = "🔥 HIT: " + last;
+                setTimeout(() => { el.classList.remove('highlight-cell'); document.getElementById('live-hint').innerText = ""; }, 4000);
             }
         }
     });
 
     db.ref('game/timer').on('value', s => {
         let t = s.val();
-        if(t > 0) { 
-            document.getElementById('timer-display').style.display='block'; 
-            document.getElementById('timer-sec').innerText=t; 
-        } else if(t === 0) {
-            document.getElementById('timer-display').style.display='none'; 
-            if(hasBoard) showP('game-page');
-        } else {
-            document.getElementById('timer-display').style.display='none';
-        }
+        if(t > 0) { document.getElementById('timer-display').style.display='block'; document.getElementById('timer-sec').innerText=t; }
+        else { document.getElementById('timer-display').style.display='none'; if(hasBoard) showP('game-page'); }
     });
 
     db.ref('game/winner').on('value', s => {
@@ -173,11 +164,7 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
-            setTimeout(() => { 
-                document.getElementById('win-overlay').style.display = 'none'; 
-                showP('home-page'); 
-                hasBoard=false; 
-            }, 5000);
+            setTimeout(() => { document.getElementById('win-overlay').style.display = 'none'; showP('home-page'); hasBoard=false; }, 5000);
         }
     });
 
@@ -192,10 +179,9 @@
         db.ref('reserved_boards').on('value', s => {
             const list = document.getElementById('board-list'); list.innerHTML = "";
             const taken = s.val() || {};
-            const takenArr = Object.values(taken);
             for(let i=1; i<=100; i++) {
                 let b = document.createElement('div');
-                let isTaken = takenArr.includes(i);
+                let isTaken = Object.values(taken).includes(i);
                 b.className = "cell " + (isTaken ? "marked" : "");
                 b.innerText = i;
                 b.onclick = () => { if(!isTaken) buyBoard(i); };
@@ -207,22 +193,17 @@
     function buyBoard(id) {
         db.ref('users/'+user.id+'/bal').transaction(c => c - currentBet);
         db.ref('reserved_boards').push(id);
-        hasBoard = true;
+        myBoardID = id; hasBoard = true;
         startBingo();
         showP('game-page');
-        db.ref('game/timer').once('value', s => {
-            if(!s.exists() || s.val() <= 0) startGlobalTimer();
-        });
+        db.ref('game/timer').once('value', s => { if(s.val() <= 0) startTimer(); });
     }
 
-    function startGlobalTimer() {
+    function startTimer() {
         let t = 30;
         let intv = setInterval(() => {
             t--; db.ref('game/timer').set(t);
-            if(t <= 0) {
-                clearInterval(intv);
-                db.ref('reserved_boards').remove(); // ቆጠራው ሲያልቅ ካርቴላዎቹን ለቀጣይ ያጸዳል
-            }
+            if(t <= 0) clearInterval(intv);
         }, 1000);
     }
 
@@ -255,13 +236,11 @@
     }
 
     function reqFinance(type) {
-        let amtField = document.getElementById(type==='DEP'?'dep-amt':'wit-amt');
-        let infoField = document.getElementById(type==='DEP'?'dep-trx':'wit-phone');
-        let amt = parseFloat(amtField.value);
-        if(!amt) return alert("እባክህ የብር መጠን አስገባ!");
+        let amt = parseFloat(document.getElementById(type==='DEP'?'dep-amt':'wit-amt').value);
+        let info = document.getElementById(type==='DEP'?'dep-trx':'wit-phone').value;
         if(type==='WIT' && amt < 50) return alert("መነሻ ማውጫ 50 ብር ነው!");
         if(type==='WIT' && amt > myBal) return alert("በቂ ባላንስ የለም!");
-        db.ref('requests').push({ uid: user.id, name: user.first_name, type: type, amt: amt, info: infoField.value });
+        db.ref('requests').push({ uid: user.id, name: user.first_name, type: type, amt: amt, info: info });
         alert("ጥያቄ ተልኳል!"); showP('home-page');
     }
 
@@ -271,9 +250,7 @@
             s.forEach(child => {
                 let r = child.val();
                 let d = document.createElement('div'); d.className = "req-card";
-                d.innerHTML = `${r.name} | ${r.type}: ${r.amt} <br> ${r.info} <br> 
-                <button class="btn btn-green" onclick="approve('${child.key}')">Approve</button>
-                <button class="btn btn-red" onclick="db.ref('requests/${child.key}').remove()">Reject</button>`;
+                d.innerHTML = `${r.name} | ${r.type}: ${r.amt} <br> ${r.info} <br> <button onclick="approve('${child.key}')">Approve</button>`;
                 list.appendChild(d);
             });
         });
@@ -282,7 +259,7 @@
     function approve(key) {
         db.ref('requests/'+key).once('value', s => {
             const r = s.val();
-            if(r.type==='WIT') db.ref('users/'+r.uid+'/bal').transaction(c => (c||0) - r.amt);
+            if(r.type==='WIT') db.ref('users/'+r.uid+'/bal').transaction(c => c - r.amt);
             else db.ref('users/'+r.uid+'/bal').transaction(c => (c||0) + r.amt);
             db.ref('requests/'+key).remove();
         });
@@ -290,8 +267,7 @@
 
     function drawNum() {
         db.ref('game/drawn').once('value', s => {
-            let d = s.val() || []; if(d.length >= 75) return;
-            let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n));
+            let d = s.val() || []; let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n));
             d.push(n); db.ref('game/drawn').set(d);
         });
     }
