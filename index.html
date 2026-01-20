@@ -57,11 +57,8 @@
         .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
         .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; transition: all 0.3s ease; }
         
-        /* አዲስ የ HIT ማሳወቂያ ስታይል */
         .board-hit { animation: flash 0.5s infinite alternate; color: #facc15 !important; text-shadow: 0 0 20px #fff; }
         @keyframes flash { from { transform: scale(1); opacity: 1; } to { transform: scale(1.1); opacity: 0.8; } }
-        
-        /* ቁጥሩ ሲገኝ (HIT) የሚታይ ቢጫ ቀለም */
         .highlight-cell { background-color: #facc15 !important; color: #000 !important; transform: scale(1.1); z-index: 5; transition: all 0.3s ease; border: 4px solid white !important; }
     </style>
 </head>
@@ -264,25 +261,17 @@
         document.getElementById('ball-history').innerText = drawn.slice(-10).join(" - ");
         if(drawn.length > 0) document.getElementById('game-status-text').innerText = "● ጨዋታ ተጀምሯል";
 
-        // ተጫዋቹ የያዘው ቁጥር ከሆነ ብቻ HIT መልዕክት እንዲያሳይ እና ካርቴላው ላይ ምልክት እንዲያሳይ
         if(drawn.length > prevCount && lastNum && hasBoard) {
             const h = document.getElementById('live-hint');
             const cellIndex = myBoard.indexOf(lastNum);
-
             if(cellIndex !== -1) {
                 h.innerHTML = `<span class="board-hit">🔥 HIT! ቁጥር ${lastNum} ካርቴላዎ ላይ አለ! 🔥</span>`;
-                
-                // ካርቴላው ላይ ቢጫ ምልክት ለ 5 ሰከንድ እንዲበራ ማድረግ
                 const cellEl = document.getElementById('c-'+cellIndex);
                 if(cellEl) {
                     cellEl.classList.add('highlight-cell');
-                    setTimeout(() => { 
-                        cellEl.classList.remove('highlight-cell'); 
-                    }, 5000);
+                    setTimeout(() => { cellEl.classList.remove('highlight-cell'); }, 5000);
                 }
-            } else {
-                h.innerText = "ቁጥር " + lastNum + " ወጥቷል";
-            }
+            } else { h.innerText = "ቁጥር " + lastNum + " ወጥቷል"; }
             setTimeout(() => { if(h.innerText.includes(lastNum)) h.innerText = ""; }, 5000);
         }
     });
@@ -328,14 +317,7 @@
         db.ref('reserved_boards/' + id).set(user.id);
         myBoardID = id;
         hasBoard = true;
-        
-        db.ref('game/timer').once('value', s => {
-            if(s.val() === -1 || s.val() === null) {
-                db.ref('game/timer').set(30);
-                startAutoTimer();
-            }
-        });
-        
+        db.ref('game/timer').once('value', s => { if(s.val() === -1 || s.val() === null) { db.ref('game/timer').set(30); startAutoTimer(); } });
         startBingo();
         showP('game-page');
     }
@@ -353,12 +335,7 @@
         }
     }
 
-    function resetPlayerLocal() {
-        hasBoard = false;
-        myBoardID = null;
-        markedCells = [12];
-        myBoard = [];
-    }
+    function resetPlayerLocal() { hasBoard = false; myBoardID = null; markedCells = [12]; myBoard = []; }
 
     function reqFinance(type) {
         let amt = type === 'DEP' ? document.getElementById('dep-amt').value : document.getElementById('wit-amt').value;
@@ -374,7 +351,13 @@
     function approveReq(id) {
         db.ref('requests/' + id).once('value', s => {
             const r = s.val();
-            if(r.type === 'DEP') db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt);
+            if(!r) return;
+            if(r.type === 'DEP') {
+                db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt);
+            } else if(r.type === 'WIT') {
+                // ብር በትክክል እንዲቀንስ የተጨመረ ኮድ
+                db.ref('users/' + r.uid + '/bal').transaction(c => (c >= r.amt ? c - r.amt : c));
+            }
             db.ref('history/' + r.uid + '/' + id + '/status').set('Approved');
             db.ref('requests/' + id).remove();
         });
@@ -420,13 +403,8 @@
     }
 
     function safeBack() {
-        if (hasBoard) {
-            if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) {
-                showP('home-page');
-            }
-        } else {
-            showP('home-page');
-        }
+        if (hasBoard) { if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) showP('home-page'); } 
+        else showP('home-page');
     }
 
     function showP(id) { 
