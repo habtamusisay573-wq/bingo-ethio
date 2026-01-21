@@ -38,12 +38,15 @@ db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
 
-    // 1. አሸናፊ ሲኖር ክፍያ እና Log
+    // 1. አሸናፊ ሲኖር ክፍያ እና History መመዝገብ
     if(game.winner && !game.isResetting) {
+        // ወዲያውኑ ሪሴቲንግ መሆኑን ማሳወቅ (ደግሞ እንዳይከፍል)
         await db.ref('game/isResetting').set(true);
         
         const winnerId = game.winner.id;
+        const winnerName = game.winner.name;
         const betPrice = game.currentBetPrice || 0;
+        
         const boardsSnap = await db.ref('reserved_boards').get();
         const playersCount = boardsSnap.numChildren();
         
@@ -52,28 +55,50 @@ db.ref('game').on('value', async (snap) => {
         const adminPay = totalPool * 0.2;
 
         try {
-            // ክፍያ ለአሸናፊ
+            // ሀ. ክፍያ ለአሸናፊ እና የታሪክ ምዝገባ
             await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + winnerPay);
             await db.ref(`history/${winnerId}`).push({
-                type: "የቢንጎ ድል 🏆", amt: winnerPay, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString()
+                type: "የቢንጎ ድል 🏆", 
+                amt: winnerPay, 
+                status: "Success",
+                date: new Date().toLocaleString()
             });
 
-            // ክፍያ ለዳኛ (20%)
+            // ለ. ክፍያ ለዳኛ (Admin Commission) እና የታሪክ ምዝገባ
             await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
+            await db.ref(`history/${ADMIN_ID}`).push({
+                type: "የዳኛ ኮሚሽን (20%) 💰", 
+                amt: adminPay, 
+                info: `ከአሸናፊ ${winnerName}`,
+                date: new Date().toLocaleString()
+            });
             
-            // ማዕከላዊ Log (Admin ብቻ የሚያየው)
+            // ሐ. ማዕከላዊ Log (ለአንተ ቁጥጥር)
             await db.ref('admin_logs').push({
-                winner: game.winner.name, total: totalPool, adminShare: adminPay, date: new Date().toLocaleString()
+                winner: winnerName, 
+                total_players: playersCount,
+                bet_amount: betPrice,
+                total_pool: totalPool, 
+                admin_share: adminPay, 
+                date: new Date().toLocaleString()
             });
 
-            console.log(`Payment Complete: Winner received ${winnerPay}`);
-        } catch (e) { console.error("Payment Failed", e); }
+            console.log(`Payment Complete: ${winnerName} won ${winnerPay}`);
+        } catch (e) { 
+            console.error("Payment Failed", e); 
+        }
 
-        // ሪሴት (ከ 5 ሰከንድ በኋላ)
+        // ጨዋታውን ሪሴት ማድረግ (ከ 5 ሰከንድ በኋላ)
         setTimeout(() => {
             db.ref('reserved_boards').remove();
             db.ref('game').set({
-                drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0
+                drawn: [], 
+                status: 'idle', 
+                winner: null, 
+                isResetting: false, 
+                timer: -1, 
+                currentBetPrice: 0,
+                isTimerRunning: false
             });
         }, 5000);
     }
@@ -101,14 +126,20 @@ function runTimer() {
 function startDrawingNumbers(existingDrawn) {
     let drawn = existingDrawn;
     const interval = setInterval(async () => {
-        const g = (await db.ref('game').get()).val();
+        const gSnap = await db.ref('game').get();
+        const g = gSnap.val();
+        
+        // ጨዋታው ካለቀ ወይም አሸናፊ ካለ ማቆም
         if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
             clearInterval(interval);
             return;
         }
 
         let n;
-        do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
+        do { 
+            n = Math.floor(Math.random() * 75) + 1; 
+        } while(drawn.includes(n));
+        
         drawn.push(n);
         db.ref('game/drawn').set(drawn);
     }, 4000);
