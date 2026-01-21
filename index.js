@@ -1,6 +1,5 @@
 const admin = require('firebase-admin');
 
-// Render ላይ የሞላናቸውን ቁልፎች እዚህ ጋር ይጠራቸዋል
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -19,18 +18,39 @@ const gamesRef = db.ref('games');
 
 console.log("--- DAGI BINGO SERVER IS STARTING ---");
 
-// ጨዋታ መኖሩን የሚከታተል (Watcher)
 gamesRef.on('value', (snapshot) => {
   const games = snapshot.val();
-  if (!games) {
-    console.log("No games found in database.");
-    return;
-  }
-  console.log("Games data updated! Checking for active games...");
-  setInterval(() => {
-  console.log("ሰርቨሩ እየሰራ ነው - " + new Date().toLocaleTimeString());
-}, 5000);
+  if (!games) return;
 
-  // እዚህ ጋር ታይመሩን የሚጀምረው ኮድህ ይቀጥላል
+  Object.keys(games).forEach(gameId => {
+    const game = games[gameId];
+
+    // ታይመሩ ገና ካልጀመረ (status waiting ሲሆን)
+    if (game.status === 'waiting' && game.players && !game.isTimerRunning) {
+      
+      // ታይመሩ ደግሞ ደግሞ እንዳይጀምር መቆለፊያ (Flag)
+      db.ref(`games/${gameId}`).update({ isTimerRunning: true });
+
+      let timeLeft = 30; // የ30 ሰከንድ ታይመር
+      console.log(`Timer started for game: ${gameId}`);
+
+      const timerInterval = setInterval(() => {
+        timeLeft--;
+
+        // በየሰከንዱ Firebase ላይ ታይመሩን አፕዴት ያደርጋል
+        db.ref(`games/${gameId}`).update({ timer: timeLeft });
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          // ታይመሩ ሲያልቅ ጨዋታውን ያስጀምራል
+          db.ref(`games/${gameId}`).update({ 
+            status: 'started', 
+            isTimerRunning: false,
+            timer: 0 
+          });
+          console.log(`Game ${gameId} has officially started!`);
+        }
+      }, 1000);
+    }
+  });
 });
-
