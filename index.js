@@ -1,6 +1,6 @@
 const admin = require('firebase-admin');
 
-// Render ላይ የሞላናቸውን Environment Variables ይጠቀማል
+// Render Environment Variables
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -15,63 +15,64 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
+const gameRef = db.ref('Game'); // ካፒታል Game መሆኑን አረጋግጠናል
 
-// ሙሉ ዳታቤዙን ('/') እንዲያዳምጥ አደረግነው የትም ቦታ ዳታ ቢገባ እንዲያገኘው
-const rootRef = db.ref('/');
+console.log("--- DAGI BINGO SERVER UPDATED & STARTING ---");
 
-console.log("--- DAGI BINGO SMART SERVER IS STARTING ---");
+// በ 'Game' ፎልደር ውስጥ ለውጥ ሲኖር ያዳምጣል
+gameRef.on('value', (snapshot) => {
+  const games = snapshot.val();
+  if (!games) {
+    console.log("No games found in /Game path.");
+    return;
+  }
 
-rootRef.on('value', (snapshot) => {
-  const data = snapshot.val();
-  if (!data) return;
+  Object.keys(games).forEach(gameId => {
+    const game = games[gameId];
 
-  // በዳታቤዙ ውስጥ 'status' የሚል ቃል ያለበትን ቦታ በሙሉ ይፈልጋል
-  searchForGames(data, '/');
+    // ታይመሩ እንዲጀምር የሚያደርግ ሁኔታ
+    // status: 'waiting' ከሆነ ወይም ዝም ብሎ መረጃ ከተገኘ
+    if ((game.status === 'waiting' || !game.status) && !game.isTimerRunning) {
+      runGameLogic(gameId);
+    }
+  });
 });
 
-function searchForGames(obj, path) {
-  for (let key in obj) {
-    if (typeof obj[key] === 'object') {
-      searchForGames(obj[key], path + key + '/');
-    } else if (key === 'status' && obj[key] === 'waiting') {
-      const gamePath = path;
-      const gameData = obj;
-      
-      // ታይመሩ ገና ካልጀመረ ያስጀምረዋል
-      if (!gameData.isTimerRunning) {
-        startBingoTimer(gamePath);
-      }
-    }
-  }
-}
-
-function startBingoTimer(gamePath) {
-  console.log(`Bingo found at ${gamePath}. Starting Timer...`);
-  db.ref(gamePath).update({ isTimerRunning: true });
+function runGameLogic(gameId) {
+  console.log(`Game found! ID: ${gameId}. Starting countdown...`);
+  
+  // ታይመሩ ደግሞ ደግሞ እንዳይጀምር መቆለፊያ
+  db.ref(`Game/${gameId}`).update({ isTimerRunning: true, status: 'waiting' });
 
   let timeLeft = 30;
   const timerInterval = setInterval(() => {
     timeLeft--;
-    db.ref(gamePath).update({ timer: timeLeft });
+
+    // Firebase ላይ ታይመሩን በየሰከንዱ መጻፍ
+    db.ref(`Game/${gameId}`).update({ timer: timeLeft });
 
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
-      db.ref(gamePath).update({ 
+      
+      // ጨዋταውን ማስጀመር
+      db.ref(`Game/${gameId}`).update({ 
         status: 'active', 
         isTimerRunning: false,
         timer: 0 
       });
-      console.log(`Game at ${gamePath} started! Drawing numbers...`);
-      startDrawingNumbers(gamePath);
+
+      console.log(`Timer finished for ${gameId}. Drawing numbers...`);
+      startDrawingNumbers(gameId);
     }
   }, 1000);
 }
 
-function startDrawingNumbers(gamePath) {
+function startDrawingNumbers(gameId) {
   let drawnNumbers = [];
   const drawInterval = setInterval(() => {
     if (drawnNumbers.length >= 75) {
       clearInterval(drawInterval);
+      db.ref(`Game/${gameId}`).update({ status: 'finished' });
       return;
     }
 
@@ -81,10 +82,13 @@ function startDrawingNumbers(gamePath) {
     } while (drawnNumbers.includes(nextNumber));
 
     drawnNumbers.push(nextNumber);
-    db.ref(gamePath).update({
+
+    // አዲሱን ቁጥር Firebase ላይ መጫን
+    db.ref(`Game/${gameId}`).update({
       currentNumber: nextNumber,
       drawnNumbers: drawnNumbers
     });
-    console.log(`Path: ${gamePath} | Drawn: ${nextNumber}`);
+
+    console.log(`Game: ${gameId} | Drawn Number: ${nextNumber}`);
   }, 5000); // በየ 5 ሰከንዱ ቁጥር ያወጣል
 }
