@@ -9,7 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <style>
-        /* CSS Styles remain the same for UI consistency */
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
         :root { 
             --gold: linear-gradient(135deg, #fceabb 0%, #fccd4d 50%, #f8b500 51%, #fbdf93 100%); 
@@ -28,11 +27,22 @@
 
         .header { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #facc15; position: sticky; top:0; z-index:100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .page { display: none; padding: 12px; box-sizing: border-box; min-height: 90vh; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
 
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; max-width: 340px; margin-left: auto; margin-right: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 15px; }
         .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 10px; font-size: 1.1rem; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 4px 0px rgba(0,0,0,0.2); border: 3px solid transparent; }
-        .marked { background: var(--danger) !important; color: white !important; transform: scale(0.92); border: none !important; }
+        .col-0 { border-color: var(--b-color) !important; background: #eff6ff; color: var(--b-color); }
+        .col-1 { border-color: var(--i-color) !important; background: #fef2f2; color: var(--i-color); }
+        .col-2 { border-color: var(--n-color) !important; background: #fefce8; color: var(--n-color); }
+        .col-3 { border-color: var(--g-color) !important; background: #f0fdf4; color: var(--g-color); }
+        .col-4 { border-color: var(--o-color) !important; background: #faf5ff; color: var(--o-color); }
+        .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 4px 0px #991b1b !important; transform: scale(0.92); border: none !important; }
+
+        #board-list { grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 15px; height: 60vh; overflow-y: auto; border-radius: 20px; background: rgba(15, 23, 42, 0.6); }
+        .board-item { background: var(--gold) !important; color: #422006 !important; height: 55px; font-size: 1.2rem; }
+        .board-taken { background: rgba(239, 68, 68, 0.2) !important; opacity: 0.4; }
+        .my-selection { border: 4px solid #fff !important; transform: scale(1.1); box-shadow: 0 0 20px #facc15 !important; z-index: 10; }
 
         .btn { background: var(--gold); border: none; padding: 15px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; text-transform: uppercase; }
         .btn-red { background: var(--danger); color: white; }
@@ -43,19 +53,25 @@
         #timer-display { background: rgba(250, 204, 21, 0.1); border: 2px solid #facc15; padding: 10px; border-radius: 12px; text-align: center; color: #facc15; font-weight: 900; margin: 10px; display: none; }
         #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
         .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
-        .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; }
+        .req-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #facc15; font-size: 13px; }
+        .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
+        .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; transition: all 0.3s ease; }
+        
+        .board-hit { animation: flash 0.5s infinite alternate; color: #facc15 !important; text-shadow: 0 0 20px #fff; }
+        @keyframes flash { from { transform: scale(1); opacity: 1; } to { transform: scale(1.1); opacity: 0.8; } }
+        .highlight-cell { background-color: #facc15 !important; color: #000 !important; transform: scale(1.1); z-index: 5; transition: all 0.3s ease; border: 4px solid white !important; }
     </style>
 </head>
 <body>
 
-<div id="splash"><div class="logo-anim">DAGI BINGO</div><p style="letter-spacing: 5px; opacity: 0.7;">SERVER SYNC V1</p></div>
+<div id="splash"><div class="logo-anim">DAGI BINGO</div><p style="letter-spacing: 5px; opacity: 0.7;">V21.5 STABLE</p></div>
 <div id="win-overlay"><h1 id="win-name" style="color: #facc15; font-size: 3rem; text-shadow: 0 0 30px gold;">BINGO! 🏆</h1></div>
 
 <div id="main-ui" style="display:none;">
     <div class="header">
         <div>
             <div id="u-name" style="font-weight: 900; color: #facc15; font-size: 1.1rem;">---</div>
-            <div style="font-size: 10px; opacity: 0.8;">Online (<span id="player-count">0</span>)</div>
+            <div style="font-size: 10px; opacity: 0.8;"><span id="online-dot" style="height:8px; width:8px; background-color:#22c55e; border-radius:50%; display:inline-block; margin-right:4px;"></span> Online (<span id="player-count">0</span>)</div>
         </div>
         <div style="text-align: right;"><div id="u-bal" style="font-weight: 900; font-size: 1.2rem; color: #facc15;">0.00 ETB</div></div>
     </div>
@@ -63,6 +79,7 @@
     <div id="timer-display">ጨዋታ ለመጀመር: <span id="timer-sec" style="font-size: 1.4rem;">30</span> ሰከንድ</div>
 
     <div id="home-page" class="page active">
+        <div class="hint-text">💡 ፍንጭ፡ ለመጫወት የሚፈልጉትን የብር መጠን ይምረጡ!</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
             <button class="btn" onclick="checkBet(10)">10 ETB</button>
             <button class="btn" onclick="checkBet(50)">50 ETB</button>
@@ -73,49 +90,63 @@
             <button class="btn btn-green" onclick="showP('deposit-page')">➕ ብር አስገባ</button>
             <button class="btn btn-red" onclick="showP('withdraw-page')">➖ ብር አውጣ</button>
         </div>
+        <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር</button>
         <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
     </div>
 
     <div id="deposit-page" class="page">
-        <h3 style="text-align: center; color: #22c55e;">ብር ማስገቢያ</h3>
+        <div class="hint-text">💡 ፍንጭ፡ የላኩበትን ትክክለኛ Transaction ID ያስገቡ።</div>
+        <h3 style="text-align: center; color: #22c55e;">ብር ማስገቢያ (Deposit)</h3>
         <input type="number" id="dep-amt" placeholder="የብር መጠን">
         <input type="text" id="dep-trx" placeholder="Transaction ID">
         <button class="btn btn-green" onclick="reqFinance('DEP')">ጥያቄ ላክ</button>
-        <button class="btn" onclick="safeBack()">ተመለስ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="withdraw-page" class="page">
-        <h3 style="text-align: center; color: #ef4444;">ብር ማውጫ</h3>
+        <div class="hint-text">💡 ፍንጭ፡ ብር የሚቀበሉበትን ትክክለኛ ስልክ ያስገቡ።</div>
+        <h3 style="text-align: center; color: #ef4444;">ብር ማውጫ (Withdraw)</h3>
         <input type="number" id="wit-amt" placeholder="የሚወጣው መጠን">
         <input type="text" id="wit-phone" placeholder="የተቀባይ ስልክ">
         <button class="btn btn-red" onclick="reqFinance('WIT')">ጥያቄ ላክ</button>
-        <button class="btn" onclick="safeBack()">ተመለስ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
         <div id="live-hint" class="big-hint"></div>
         <div class="live-indicator">
-            <span id="game-status-text" style="color: #facc15;">● መጠባበቂያ ላይ...</span> | ወጥተዋል: <span id="balls-out-count">0</span>/75
+            <span id="game-status-text" style="color: #facc15; font-weight: bold;">● መጠባበቂያ ላይ...</span> | ወጥተዋል: <span id="balls-out-count">0</span>/75
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div id="current-ball">?</div>
-            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:8px; border-radius:10px; flex-grow:1; margin-left:10px; height:45px; font-size: 13px; color:#facc15; border:1px solid #334155;"></div>
+            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:8px; border-radius:10px; flex-grow:1; margin-left:10px; height:45px; font-size: 13px; color:#facc15; border:1px solid #334155; overflow:hidden;"></div>
         </div>
         <div id="bingo-grid" class="grid"></div>
-        <button id="bingo-btn" class="btn btn-red" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
-        <button class="btn" onclick="safeBack()">ውጣ (ተመለስ)</button>
+        <button id="bingo-btn" class="btn btn-red" style="height:55px; font-size:1.4rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ውጣ (ተመለስ)</button>
     </div>
 
     <div id="reserve-page" class="page">
+        <div class="hint-text">💡 ፍንጭ፡ ክፍት የሆነ (ነጭ) ካርቴላ ይምረጡ።</div>
+        <div style="text-align: center; margin-bottom: 10px;"><h2 style="margin:0; color: #facc15;">ካርቴላ ይምረጡ</h2></div>
         <div id="board-list" class="grid"></div>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ተመለስ</button>
+    </div>
+
+    <div id="history-page" class="page">
+        <h3 style="text-align: center; color: #facc15;">የሂሳብ እንቅስቃሴ ታሪክ</h3>
+        <div id="hist-list" style="max-height: 400px; overflow-y: auto; padding:10px;"></div>
         <button class="btn" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="admin-page" class="page">
-        <h2 style="color:#facc15; text-align:center;">Admin Dashboard</h2>
+        <h2 id="adm-commission" style="color:#facc15; text-align:center;">0.00 ETB</h2>
+        <button class="btn" onclick="drawNum()">Draw 1 (Manual)</button>
+        <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
+        <hr>
         <div id="admin-req-list"></div>
         <button class="btn btn-red" onclick="confirmReset()">RESET GAME</button>
-        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
+        <button class="btn" style="background:#3b82f6; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
 </div>
 
@@ -130,34 +161,97 @@
     document.getElementById('u-name').innerText = user.first_name;
     if(user.id == ADMIN_ID) document.getElementById('adm-gate').style.display = 'block';
 
-    let myBal = 0, drawn = [], markedCells = [12], currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
+    let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
-    // Online players
     const onlineRef = db.ref('online_players/' + user.id);
-    onlineRef.set(true); onlineRef.onDisconnect().remove();
-    db.ref('online_players').on('value', s => { document.getElementById('player-count').innerText = s.numChildren(); });
+    if(user.id != ADMIN_ID) {
+        onlineRef.set(true);
+        onlineRef.onDisconnect().remove();
+    }
 
-    window.addEventListener('load', () => { setTimeout(() => { document.getElementById('splash').style.display = 'none'; document.getElementById('main-ui').style.display = 'block'; }, 2000); });
+    db.ref('online_players').on('value', s => {
+        const count = s.numChildren();
+        document.getElementById('player-count').innerText = count;
+    });
+
+    window.addEventListener('load', () => { 
+        setTimeout(() => { 
+            document.getElementById('splash').style.display = 'none'; 
+            document.getElementById('main-ui').style.display = 'block'; 
+        }, 2000); 
+    });
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
+        if(myBal < 0) { db.ref('users/' + user.id + '/bal').set(0); }
     });
 
-    // SERVER SYNC: Listen to Timer from Render Server
+    db.ref('history/' + user.id).limitToLast(10).on('value', s => {
+        const list = document.getElementById('hist-list'); list.innerHTML = "";
+        const data = s.val();
+        if(data){
+            Object.values(data).reverse().forEach(h => {
+                let div = document.createElement('div');
+                div.className = "req-card";
+                div.innerHTML = `<b>${h.type}:</b> ${h.amt} ETB <br> <small>${h.status} | ${h.date}</small>`;
+                list.appendChild(div);
+            });
+        }
+    });
+
+    if(user.id == ADMIN_ID){
+        db.ref('requests').on('value', s => {
+            const list = document.getElementById('admin-req-list'); list.innerHTML = "<h3>የገቢ/ወጪ ጥያቄዎች</h3>";
+            const reqs = s.val();
+            if(reqs){
+                Object.keys(reqs).forEach(id => {
+                    let r = reqs[id];
+                    let div = document.createElement('div');
+                    div.className = "req-card";
+                    div.innerHTML = `User: ${r.name} | ${r.type}: ${r.amt} <br> Info: ${r.info} <br>
+                        <button onclick="approveReq('${id}')" style="background:green; color:white; border:none; padding:5px; border-radius:5px;">Approve</button>
+                        <button onclick="rejectReq('${id}')" style="background:red; color:white; border:none; padding:5px; border-radius:5px;">Reject</button>`;
+                    list.appendChild(div);
+                });
+            }
+        });
+    }
+
+    // SERVER SYNC: አድሚኑ ሲወጣ እንዳይቆም የታይመር ሎጅክ ተቀይሯል
     db.ref('game/timer').on('value', s => {
         const val = s.val();
         if (val !== null && val > 0) {
             document.getElementById('timer-display').style.display = 'block';
             document.getElementById('timer-sec').innerText = val;
-        } else {
+        } else if (val === 0) {
             document.getElementById('timer-display').style.display = 'none';
-            if(val === 0 && hasBoard) showP('game-page');
-        }
+            if(hasBoard) showP('game-page');
+            // የድሮው toggleAutoDraw(true) እዚህ ጋር ጠፍቷል - ሰርቨሩ በራሱ ይጀምራል
+        } else { document.getElementById('timer-display').style.display = 'none'; }
     });
 
-    // SERVER SYNC: Listen to Drawn Numbers from Render Server
-    db.ref('game/drawnNumbers').on('value', s => {
+    db.ref('game/winner').on('value', s => {
+        const win = s.val();
+        if(win) {
+            document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
+            document.getElementById('win-overlay').style.display = 'flex';
+            confetti();
+            
+            setTimeout(() => { 
+                if(user.id == ADMIN_ID) { 
+                    resetGame(); 
+                } else {
+                    document.getElementById('win-overlay').style.display = 'none';
+                    resetPlayerLocal();
+                    showP('home-page');
+                }
+            }, 5000); 
+        } else { document.getElementById('win-overlay').style.display = 'none'; }
+    });
+
+    // SERVER SYNC: ቁጥሮች ሲወጡ ከሰርቨሩ ጋር ማመሳሰል
+    db.ref('game/drawn').on('value', s => {
         const prevCount = drawn.length;
         drawn = s.val() || [];
         document.getElementById('balls-out-count').innerText = drawn.length;
@@ -168,45 +262,61 @@
 
         if(drawn.length > prevCount && lastNum && hasBoard) {
             const h = document.getElementById('live-hint');
-            if(myBoard.includes(lastNum)) {
-                h.innerHTML = `<span style="color: gold;">🔥 HIT! ${lastNum} 🔥</span>`;
-                const cellIndex = myBoard.indexOf(lastNum);
-                document.getElementById('c-'+cellIndex).style.backgroundColor = "gold";
-                setTimeout(() => { document.getElementById('c-'+cellIndex).style.backgroundColor = "white"; }, 3000);
-            }
+            const cellIndex = myBoard.indexOf(lastNum);
+            if(cellIndex !== -1) {
+                h.innerHTML = `<span class="board-hit">🔥 HIT! ቁጥር ${lastNum} ካርቴላዎ ላይ አለ! 🔥</span>`;
+                const cellEl = document.getElementById('c-'+cellIndex);
+                if(cellEl) {
+                    cellEl.classList.add('highlight-cell');
+                    setTimeout(() => { cellEl.classList.remove('highlight-cell'); }, 5000);
+                }
+            } else { h.innerText = "ቁጥር " + lastNum + " ወጥቷል"; }
+            setTimeout(() => { if(h.innerText.includes(lastNum)) h.innerText = ""; }, 5000);
         }
     });
 
-    db.ref('game/winner').on('value', s => {
-        const win = s.val();
-        if(win) {
-            document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
-            document.getElementById('win-overlay').style.display = 'flex';
-            confetti();
-            setTimeout(() => { 
-                document.getElementById('win-overlay').style.display = 'none';
-                resetPlayerLocal();
-                showP('home-page');
-            }, 5000);
-        }
-    });
-
+    // የድሮው startAutoTimer አሁን በሰርቨሩ ስለሚሰራ ለግጭት እንዳይሆን ተሰርዟል
     function checkBet(amt) { 
         if(myBal < amt) return alert("በቂ ባላንስ የለም!"); 
-        db.ref('game/status').once('value', s => {
-            if(s.val() === 'active') return alert("ጨዋታ ተጀምሯል! ቀጣዩን ዙር ጠብቅ።");
+        db.ref('game/drawn').once('value', s => { 
+            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል! እባክህ ቀጣዩን ዙር ጠብቅ።"); 
             currentBet = amt; 
             showP('reserve-page'); 
+        }); 
+    }
+
+    function loadBoards() {
+        db.ref('reserved_boards').on('value', s => {
+            const list = document.getElementById('board-list'); list.innerHTML = "";
+            const taken = s.val() || {};
+            for(let i=1; i<=100; i++) {
+                let b = document.createElement('div'); 
+                let isTaken = taken[i] && taken[i] !== user.id;
+                let isMine = taken[i] === user.id;
+                b.className = "cell board-item" + (isTaken ? " board-taken" : "") + (isMine ? " my-selection" : "");
+                b.innerText = i;
+                b.onclick = () => { if(!isTaken) buyBoard(i); };
+                list.appendChild(b);
+            }
         });
     }
 
     function buyBoard(id) {
-        db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c));
+        if(myBal < currentBet && !myBoardID) return alert("በቂ ባላንስ የለም!");
+        if(myBoardID) { db.ref('reserved_boards/' + myBoardID).remove(); }
+        else { db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c)); }
         db.ref('reserved_boards/' + id).set(user.id);
-        myBoardID = id; hasBoard = true;
-        // Trigger Server: Start game timer
-        db.ref('game/status').set('waiting');
-        startBingo(); showP('game-page');
+        myBoardID = id;
+        hasBoard = true;
+        // ሰርቨሩ ታይመሩን እንዲጀምር ምልክት መስጠት (status = waiting)
+        db.ref('game/timer').once('value', s => { 
+            if(s.val() === -1 || s.val() === null) { 
+                db.ref('game/timer').set(30); 
+                db.ref('game/status').set('waiting');
+            } 
+        });
+        startBingo();
+        showP('game-page');
     }
 
     function startBingo() {
@@ -222,27 +332,76 @@
         }
     }
 
+    function resetPlayerLocal() { hasBoard = false; myBoardID = null; markedCells = [12]; myBoard = []; }
+
+    function reqFinance(type) {
+        let amt = type === 'DEP' ? document.getElementById('dep-amt').value : document.getElementById('wit-amt').value;
+        let info = type === 'DEP' ? document.getElementById('dep-trx').value : document.getElementById('wit-phone').value;
+        if(!amt || !info) return alert("መረጃውን በትክክል ሙሉ!");
+        const reqId = Date.now();
+        db.ref('requests/' + reqId).set({ uid: user.id, name: user.first_name, type: type, amt: parseFloat(amt), info: info });
+        db.ref('history/' + user.id + '/' + reqId).set({ type: type, amt: amt, status: 'Pending', date: new Date().toLocaleString() });
+        alert("ጥያቄው ተልኳል!");
+        showP('home-page');
+    }
+
+    function approveReq(id) {
+        db.ref('requests/' + id).once('value', s => {
+            const r = s.val();
+            if(!r) return;
+            if(r.type === 'DEP') {
+                db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt);
+            } else if(r.type === 'WIT') {
+                db.ref('users/' + r.uid + '/bal').transaction(c => (c >= r.amt ? c - r.amt : c));
+            }
+            db.ref('history/' + r.uid + '/' + id + '/status').set('Approved');
+            db.ref('requests/' + id).remove();
+        });
+    }
+
+    function rejectReq(id) {
+        db.ref('requests/' + id).once('value', s => {
+            db.ref('history/' + s.val().uid + '/' + id + '/status').set('Rejected');
+            db.ref('requests/' + id).remove();
+        });
+    }
+
+    function resetGame() { 
+        db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle' });
+        db.ref('reserved_boards').remove(); 
+        resetPlayerLocal();
+        document.getElementById('game-status-text').innerText = "● መጠባበቂያ ላይ...";
+        showP('home-page');
+    }
+
     function checkBingoAndClaim() {
         const lines = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
-        if(lines.some(l => l.every(idx => markedCells.includes(idx)))) { db.ref('game/winner').set({ name: user.first_name, id: user.id }); }
+        if(lines.some(l => l.every(idx => markedCells.includes(idx)))) { db.ref('game/winner').set({ name: user.first_name, id: user.id, bet: currentBet }); }
         else alert("ቢንጎ ገና ነህ!");
     }
 
-    function resetPlayerLocal() { hasBoard = false; myBoardID = null; markedCells = [12]; myBoard = []; }
+    // Manual Admin Functions (ለአስቸኳይ ጊዜ ብቻ)
+    function toggleAutoDraw(f = null) {
+        if(f === true || (!autoInterval && f === null)) {
+            autoInterval = setInterval(drawNum, 2500);
+            if(document.getElementById('auto-btn')) document.getElementById('auto-btn').innerText = "AUTO: ON";
+        } else {
+            clearInterval(autoInterval); autoInterval = null;
+            if(document.getElementById('auto-btn')) document.getElementById('auto-btn').innerText = "AUTO: OFF";
+        }
+    }
 
-    function loadBoards() {
-        db.ref('reserved_boards').on('value', s => {
-            const list = document.getElementById('board-list'); list.innerHTML = "";
-            const taken = s.val() || {};
-            for(let i=1; i<=100; i++) {
-                let b = document.createElement('div'); 
-                let isTaken = taken[i] && taken[i] !== user.id;
-                b.className = "cell board-item" + (isTaken ? " board-taken" : "");
-                b.innerText = i;
-                b.onclick = () => { if(!isTaken) buyBoard(i); };
-                list.appendChild(b);
-            }
+    function drawNum() {
+        db.ref('game/drawn').once('value', s => {
+            let d = s.val() || []; if(d.length >= 75) return;
+            let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n));
+            d.push(n); db.ref('game/drawn').set(d);
         });
+    }
+
+    function safeBack() {
+        if (hasBoard) { if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) showP('home-page'); } 
+        else showP('home-page');
     }
 
     function showP(id) { 
@@ -250,8 +409,7 @@
         document.getElementById(id).classList.add('active'); 
         if(id==='reserve-page') loadBoards(); 
     }
-    function safeBack() { showP('home-page'); }
-    function confirmReset() { if(confirm("RESET?")) db.ref('game').set({ status: 'idle', drawnNumbers: [], timer: -1 }); }
+    function confirmReset() { if(confirm("RESET?")) resetGame(); }
 </script>
 </body>
 </html>
