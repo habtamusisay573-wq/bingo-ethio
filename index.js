@@ -9,8 +9,9 @@ const serviceAccount = {
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: `https://${process.env.PROJECT_ID}-default-rtdb.firebaseio.com`
+  databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/"
 });
+
 
 const db = admin.database();
 const gamesRef = db.ref('games');
