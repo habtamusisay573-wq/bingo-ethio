@@ -21,34 +21,55 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
+const gameRef = db.ref('game');
+const ADMIN_ID = "8431270634"; // የዳኛው ቴሌግራም ID
 
-db.ref('game').on('value', async (snapshot) => {
+gameRef.on('value', async (snapshot) => {
   const gameData = snapshot.val();
   if (!gameData) return;
 
-  // አሸናፊ ሲኖር ሂሳብ የማስላት ስራ
+  // አሸናፊ ሲኖር ወይም ጨዋታው ሲያልቅ ክፍያ ፈጽሞ በ 3 ሰከንድ ውስጥ ሪሴት ያደርጋል
   if (gameData.winner && !gameData.isResetting) {
-    db.ref('game/isResetting').set(true);
-    
-    // 1. ሁሉንም ተጫዋች ቆጥሮ አጠቃላይ መደብ (Total Pool) ማስላት
+    await db.ref('game').update({ isResetting: true });
+
+    const winnerId = gameData.winner.id;
+    const betPrice = gameData.currentBetPrice || 0;
+
+    // ሁሉንም የተያዙ ካርቴላዎች መቁጠር
     const boardsSnap = await db.ref('reserved_boards').get();
-    const boards = boardsSnap.val() || {};
-    const totalPlayers = Object.keys(boards).length;
-    const totalPool = totalPlayers * gameData.winner.bet;
+    const boardsData = boardsSnap.val() || {};
+    const totalPlayers = Object.keys(boardsData).length;
     
-    // 2. 20% ኮሚሽን ማስላት
-    const commission = totalPool * 0.20;
-    const netWin = totalPool - commission;
+    const totalPool = totalPlayers * betPrice;
+    const winnerAmount = totalPool * 0.8; // 80% ለአሸናፊ
+    const adminAmount = totalPool * 0.2;  // 20% ለዳኛ
 
-    // 3. ኮሚሽኑን ወደ ዳኛ (Admin ID: 8431270634) ዋሌት ገቢ ማድረግ
-    db.ref('users/8431270634/bal').transaction(c => (c || 0) + commission);
-    
-    // 4. የተጣራውን (Net Win) ለአሸናፊው ገቢ ማድረግ
-    db.ref('users/' + gameData.winner.id + '/bal').transaction(b => (b || 0) + netWin);
+    try {
+      // 1. ለአሸናፊው ብር መጨመር
+      if (winnerAmount > 0) {
+        await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + winnerAmount);
+        // ታሪክ መመዝገብ
+        await db.ref(`history/${winnerId}`).push({
+            type: "BINGO WIN",
+            amt: winnerAmount,
+            status: "Success",
+            date: new Date().toLocaleString()
+        });
+      }
+      
+      // 2. ለዳኛው ኮሚሽን መጨመር
+      if (adminAmount > 0) {
+        await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminAmount);
+      }
 
-    // 5. ጨዋታውን ቶሎ ሪሴት ማድረግ (በ 4 ሰከንድ ውስጥ)
+      console.log(`Bingo Processed: TotalPool:${totalPool}, Winner:${winnerAmount}, Admin:${adminAmount}`);
+    } catch (err) {
+      console.error("Payment error:", err);
+    }
+
+    // ከክፍያ በኋላ ጨዋታውን ሪሴት ማድረግ
     setTimeout(() => {
-      db.ref('reserved_boards').remove(); // የተያዙ ካርቴላዎችን ማጥፋት
+      db.ref('reserved_boards').remove(); 
       db.ref('game').set({
         drawn: [],
         timer: -1,
@@ -56,12 +77,12 @@ db.ref('game').on('value', async (snapshot) => {
         isTimerRunning: false,
         isResetting: false,
         winner: null,
-        currentNumber: null
+        currentNumber: null,
+        currentBetPrice: 0
       });
-    }, 4000);
+    }, 4000); 
   }
 
-  // ታይመሩ እንዲጀምር
   if (gameData.status === 'waiting' && !gameData.isTimerRunning) {
     startBingoTimer();
   }
@@ -86,11 +107,18 @@ function startDrawingNumbers() {
   const drawInterval = setInterval(async () => {
     const snap = await db.ref('game/status').get();
     const winSnap = await db.ref('game/winner').get();
-    if (snap.val() !== 'active' || winSnap.val()) return clearInterval(drawInterval);
-    
+    if (snap.val() !== 'active' || winSnap.val()) {
+      clearInterval(drawInterval);
+      return;
+    }
+    if (drawn.length >= 75) {
+      clearInterval(drawInterval);
+      db.ref('game').update({ status: 'finished' });
+      return;
+    }
     let n;
     do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
     drawn.push(n);
     db.ref('game').update({ currentNumber: n, drawn: drawn });
-  }, 3500); 
+  }, 4500); 
 }
