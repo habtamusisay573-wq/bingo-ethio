@@ -27,38 +27,31 @@ gameRef.on('value', (snapshot) => {
   const gameData = snapshot.val();
   if (!gameData) return;
 
-  // አሸናፊ ሲኖር ወይም ቁጥሮች አልቀው ጨዋታው ሲጠናቀቅ ሪሴት ያደርጋል
+  // አሸናፊ ሲኖር ወይም ጨዋታው ሲያልቅ በ 3 ሰከንድ ውስጥ ሪሴት ያደርጋል
   if ((gameData.winner || gameData.status === 'finished') && !gameData.isResetting) {
-    autoResetGame();
+    db.ref('game').update({ isResetting: true });
+    setTimeout(() => {
+      db.ref('reserved_boards').remove(); 
+      db.ref('game').set({
+        drawn: [],
+        timer: -1,
+        status: 'idle',
+        isTimerRunning: false,
+        isResetting: false,
+        winner: null,
+        currentNumber: null
+      });
+    }, 3000); 
   }
 
-  // መጠባበቂያ ላይ ሲሆን ታይመሩን ያስጀምራል
   if (gameData.status === 'waiting' && !gameData.isTimerRunning) {
     startBingoTimer();
   }
 });
 
-function autoResetGame() {
-  db.ref('game').update({ isResetting: true });
-  
-  setTimeout(() => {
-    db.ref('reserved_boards').remove(); 
-    db.ref('game').set({
-      drawn: [],
-      timer: -1,
-      status: 'idle',
-      isTimerRunning: false,
-      isResetting: false,
-      winner: null,
-      currentNumber: null
-    });
-  }, 3000); // ወደ 3 ሰከንድ ተቀይሯል
-}
-
 function startBingoTimer() {
   db.ref('game').update({ isTimerRunning: true, timer: 30 });
   let timeLeft = 30;
-  
   const timerInterval = setInterval(() => {
     timeLeft--;
     db.ref('game').update({ timer: timeLeft });
@@ -75,18 +68,15 @@ function startDrawingNumbers() {
   const drawInterval = setInterval(async () => {
     const snap = await db.ref('game/status').get();
     const winSnap = await db.ref('game/winner').get();
-    
     if (snap.val() !== 'active' || winSnap.val()) {
       clearInterval(drawInterval);
       return;
     }
-
     if (drawn.length >= 75) {
       clearInterval(drawInterval);
       db.ref('game').update({ status: 'finished' });
       return;
     }
-
     let n;
     do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
     drawn.push(n);
