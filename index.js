@@ -23,17 +23,37 @@ if (!admin.apps.length) {
 const db = admin.database();
 const gameRef = db.ref('game');
 
-console.log("DAGI BINGO SERVER STARTING...");
-
 gameRef.on('value', (snapshot) => {
   const gameData = snapshot.val();
   if (!gameData) return;
 
-  // status 'waiting' ሲሆን እና ታይመሩ ካልጀመረ ያስጀምራል
+  // አሸናፊ ሲኖር ወይም ቁጥሮች አልቀው ጨዋታው ሲጠናቀቅ ሪሴት ያደርጋል
+  if ((gameData.winner || gameData.status === 'finished') && !gameData.isResetting) {
+    autoResetGame();
+  }
+
+  // መጠባበቂያ ላይ ሲሆን ታይመሩን ያስጀምራል
   if (gameData.status === 'waiting' && !gameData.isTimerRunning) {
     startBingoTimer();
   }
 });
+
+function autoResetGame() {
+  db.ref('game').update({ isResetting: true });
+  
+  setTimeout(() => {
+    db.ref('reserved_boards').remove(); 
+    db.ref('game').set({
+      drawn: [],
+      timer: -1,
+      status: 'idle',
+      isTimerRunning: false,
+      isResetting: false,
+      winner: null,
+      currentNumber: null
+    });
+  }, 3000); // ወደ 3 ሰከንድ ተቀይሯል
+}
 
 function startBingoTimer() {
   db.ref('game').update({ isTimerRunning: true, timer: 30 });
@@ -42,14 +62,9 @@ function startBingoTimer() {
   const timerInterval = setInterval(() => {
     timeLeft--;
     db.ref('game').update({ timer: timeLeft });
-
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
-      db.ref('game').update({ 
-        status: 'active', 
-        isTimerRunning: false, 
-        timer: 0 
-      });
+      db.ref('game').update({ status: 'active', isTimerRunning: false, timer: 0 });
       startDrawingNumbers();
     }
   }, 1000);
@@ -59,7 +74,9 @@ function startDrawingNumbers() {
   let drawn = [];
   const drawInterval = setInterval(async () => {
     const snap = await db.ref('game/status').get();
-    if (snap.val() !== 'active') {
+    const winSnap = await db.ref('game/winner').get();
+    
+    if (snap.val() !== 'active' || winSnap.val()) {
       clearInterval(drawInterval);
       return;
     }
@@ -71,14 +88,8 @@ function startDrawingNumbers() {
     }
 
     let n;
-    do {
-      n = Math.floor(Math.random() * 75) + 1;
-    } while (drawn.includes(n));
-
+    do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
     drawn.push(n);
-    db.ref('game').update({
-      currentNumber: n,
-      drawn: drawn // ከ HTML ጋር እንዲጣጣም ስሙ ተስተካክሏል
-    });
+    db.ref('game').update({ currentNumber: n, drawn: drawn });
   }, 5000); 
 }
