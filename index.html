@@ -12,18 +12,24 @@
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
         :root { 
             --gold: linear-gradient(135deg, #fceabb 0%, #fccd4d 50%, #f8b500 51%, #fbdf93 100%); 
-            --dark: #0f172a; --danger: #ef4444; --success: #22c55e; --glass: rgba(255, 255, 255, 0.05);
+            --dark: #0f172a; 
+            --danger: #ef4444; 
+            --success: #22c55e; 
+            --glass: rgba(255, 255, 255, 0.05);
             --gold-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
             --b-color: #3b82f6; --i-color: #ef4444; --n-color: #facc15; --g-color: #22c55e; --o-color: #a855f7;
         }
+
         body { background: var(--dark); background-image: radial-gradient(circle at top right, #1e293b, #0f172a); color: white; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; user-select: none; overflow-x: hidden; }
         #splash { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
         .logo-anim { font-size: 3.5rem; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: zoom 2s infinite; text-shadow: var(--gold-shadow); }
         @keyframes zoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
         .header { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #facc15; position: sticky; top:0; z-index:100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .page { display: none; padding: 12px; box-sizing: border-box; min-height: 90vh; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
+
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 8px; max-width: 340px; margin-left: auto; margin-right: auto; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 15px; }
         .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 10px; font-size: 1.1rem; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 4px 0px rgba(0,0,0,0.2); border: 3px solid transparent; }
         .col-0 { border-color: var(--b-color) !important; background: #eff6ff; color: var(--b-color); }
@@ -32,21 +38,26 @@
         .col-3 { border-color: var(--g-color) !important; background: #f0fdf4; color: var(--g-color); }
         .col-4 { border-color: var(--o-color) !important; background: #faf5ff; color: var(--o-color); }
         .marked { background: var(--danger) !important; color: white !important; box-shadow: 0 4px 0px #991b1b !important; transform: scale(0.92); border: none !important; }
+
         #board-list { grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 15px; height: 60vh; overflow-y: auto; border-radius: 20px; background: rgba(15, 23, 42, 0.6); }
         .board-item { background: var(--gold) !important; color: #422006 !important; height: 55px; font-size: 1.2rem; }
         .board-taken { background: rgba(239, 68, 68, 0.2) !important; opacity: 0.4; }
         .my-selection { border: 4px solid #fff !important; transform: scale(1.1); box-shadow: 0 0 20px #facc15 !important; z-index: 10; }
+
         .btn { background: var(--gold); border: none; padding: 15px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; text-transform: uppercase; }
         .btn-red { background: var(--danger); color: white; }
         .btn-green { background: var(--success); color: white; }
         input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; background: rgba(255,255,255,0.9); box-sizing: border-box; color: black; }
+
         #win-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; }
         #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
         .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
         .big-hint { color: #ffff00; font-size: 2.5rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; }
         
-        /* አዲሱ Prize Box ከታይመሩ ስር እንዲሆን */
+        /* Prize Box ዲዛይን */
         #prize-box { background: rgba(34, 197, 94, 0.15); border: 1.5px solid #22c55e; border-radius: 12px; padding: 10px; margin-bottom: 15px; display: flex; justify-content: space-around; align-items: center; }
+        .board-hit { animation: flash 0.5s infinite alternate; color: #facc15 !important; text-shadow: 0 0 20px #fff; }
+        @keyframes flash { from { transform: scale(1); opacity: 1; } to { transform: scale(1.1); opacity: 0.8; } }
     </style>
 </head>
 <body>
@@ -56,7 +67,10 @@
 
 <div id="main-ui" style="display:none;">
     <div class="header">
-        <div><div id="u-name" style="font-weight: 900; color: #facc15; font-size: 1.1rem;">---</div><div style="font-size: 10px; opacity: 0.8;">Online (<span id="player-count">0</span>)</div></div>
+        <div>
+            <div id="u-name" style="font-weight: 900; color: #facc15; font-size: 1.1rem;">---</div>
+            <div style="font-size: 10px; opacity: 0.8;">Online (<span id="player-count">0</span>)</div>
+        </div>
         <div id="u-bal" style="font-weight: 900; font-size: 1.2rem; color: #facc15;">0.00 ETB</div>
     </div>
 
@@ -72,34 +86,46 @@
             <button class="btn btn-red" onclick="showP('withdraw-page')">➖ ብር አውጣ</button>
         </div>
         <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር</button>
+        <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
     </div>
 
     <div id="deposit-page" class="page">
-        <h3>Deposit</h3>
-        <input type="number" id="dep-amt" placeholder="Amount">
-        <button class="btn" onclick="showP('home-page')">Back</button>
+        <h3 style="text-align: center; color: #22c55e;">ብር ማስገቢያ (Deposit)</h3>
+        <input type="number" id="dep-amt" placeholder="የብር መጠን">
+        <input type="text" id="dep-trx" placeholder="Transaction ID">
+        <button class="btn btn-green" onclick="alert('ጥያቄው ተልኳል!')">ጥያቄ ላክ</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="game-page" class="page">
         <div id="live-hint" class="big-hint"></div>
         
         <div id="prize-box">
-            <div style="text-align:center;"><small style="opacity:0.7;font-size:10px;">ጠቅላላ ውርርድ</small><br><b id="total-pool-display">0 ETB</b></div>
-            <div style="text-align:center;"><small style="opacity:0.7;font-size:10px;">የሚያሸንፉት (Net)</small><br><b id="win-prize-display" style="color:#facc15; font-size:1.2rem;">0 ETB</b></div>
+            <div style="text-align:center;"><small style="opacity:0.7; font-size:10px;">ጠቅላላ ውርርድ</small><br><b id="total-pool-display">0 ETB</b></div>
+            <div style="text-align:center;"><small style="opacity:0.7; font-size:10px;">የሚያሸንፉት (Net)</small><br><b id="win-prize-display" style="color:#facc15; font-size:1.2rem;">0 ETB</b></div>
         </div>
 
         <div class="live-indicator">ወጥተዋል: <span id="balls-out-count">0</span>/75</div>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div id="current-ball">?</div>
-            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:8px; border-radius:10px; flex-grow:1; margin-left:10px; height:45px; font-size: 13px; color:#facc15; overflow:hidden;"></div>
+            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:8px; border-radius:10px; flex-grow:1; margin-left:10px; height:45px; font-size: 13px; color:#facc15; border:1px solid #334155; overflow:hidden;"></div>
         </div>
         <div id="bingo-grid" class="grid"></div>
-        <button id="bingo-btn" class="btn btn-red" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        <button id="bingo-btn" class="btn btn-red" style="height:55px; font-size:1.4rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
         <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ውጣ</button>
     </div>
 
     <div id="reserve-page" class="page">
         <div id="board-list" class="grid"></div>
+        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
+    </div>
+
+    <div id="withdraw-page" class="page">
+        <h3 style="text-align: center;">ብር ማውጫ</h3>
+        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
+    </div>
+    <div id="history-page" class="page">
+        <h3 style="text-align: center;">የታሪክ ማህደር</h3>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
 </div>
@@ -117,20 +143,21 @@
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; 
     });
 
-    // የገንዘብ ስሌት እና 200 ካርቴላ
+    // የገንዘብ ስሌት እና 200 ካርቴላ (አንድም ያልተቀነሰ)
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
             const taken = s.val() || {};
             const playerCount = Object.keys(taken).length;
             
-            // ሁሉም ተጫዋቾች ተደምረው 20% ሲቀነስ
+            // የገንዘብ ድምር እና 20% ቅናሽ ስሌት
             let totalPool = playerCount * currentBet;
             let netWin = (totalPool <= 50) ? 50 : (totalPool * 0.80);
             
             document.getElementById('total-pool-display').innerText = totalPool + " ETB";
             document.getElementById('win-prize-display').innerText = netWin.toFixed(2) + " ETB";
 
-            const list = document.getElementById('board-list'); list.innerHTML = "";
+            const list = document.getElementById('board-list'); if(!list) return;
+            list.innerHTML = "";
             for(let i=1; i<=200; i++) {
                 let b = document.createElement('div');
                 let isTaken = taken[i] && taken[i] !== user.id;
@@ -152,8 +179,10 @@
     db.ref('game/drawn').on('value', s => {
         drawn = s.val() || [];
         document.getElementById('balls-out-count').innerText = drawn.length;
-        document.getElementById('current-ball').innerText = drawn[drawn.length-1] || "?";
+        const last = drawn[drawn.length-1];
+        document.getElementById('current-ball').innerText = last || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-8).join(" - ");
+        if(last && hasBoard && myBoard.includes(last)) document.getElementById('live-hint').innerHTML = "🔥 " + last + " 🔥";
     });
 
     db.ref('game/winner').on('value', s => {
