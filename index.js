@@ -23,13 +23,33 @@ if (!admin.apps.length) {
 const db = admin.database();
 const gameRef = db.ref('game');
 
-gameRef.on('value', (snapshot) => {
+gameRef.on('value', async (snapshot) => {
   const gameData = snapshot.val();
   if (!gameData) return;
 
-  // አሸናፊ ሲኖር ወይም ጨዋታው ሲያልቅ በ 3 ሰከንድ ውስጥ ሪሴት ያደርጋል
-  if ((gameData.winner || gameData.status === 'finished') && !gameData.isResetting) {
+  // አሸናፊ ሲኖር የሚከናወን ክፍያ እና ሪሴት
+  if (gameData.winner && !gameData.isResetting) {
     db.ref('game').update({ isResetting: true });
+    
+    // የክፍያ ስሌት (20% logic)
+    const boardsSnap = await db.ref('reserved_boards').get();
+    const boards = boardsSnap.val() || {};
+    const playerCount = Object.keys(boards).length;
+    const totalPool = playerCount * gameData.winner.bet;
+    
+    let finalPrize = 0;
+    if (totalPool <= 50) {
+      finalPrize = 50;
+    } else {
+      finalPrize = totalPool * 0.80; // 20% ቅናሽ
+      const commission = totalPool * 0.20;
+      db.ref('admin/commission').transaction(c => (c || 0) + commission);
+    }
+
+    // ለአሸናፊው ገቢ ማድረግ
+    db.ref('users/' + gameData.winner.id + '/bal').transaction(current => (current || 0) + finalPrize);
+
+    // ከ 3 ሰከንድ በኋላ ሪሴት
     setTimeout(() => {
       db.ref('reserved_boards').remove(); 
       db.ref('game').set({
@@ -81,5 +101,5 @@ function startDrawingNumbers() {
     do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
     drawn.push(n);
     db.ref('game').update({ currentNumber: n, drawn: drawn });
-  }, 2000); // ፍጥነቱ 2 ሰከንድ
+  }, 2000); // 2 ሰከንድ ፍጥነት
 }
