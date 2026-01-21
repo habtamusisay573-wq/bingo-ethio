@@ -1,16 +1,16 @@
 const admin = require('firebase-admin');
 const http = require('http');
 
-// 1. Render ሰርቨሩ እንዳይዘጋ (Timeout እንዳይል) ይህ የግድ ያስፈልጋል
+// 1. Render ሰርቨሩ በ Port ምክንያት እንዳይዘጋ (Timeout ስህተትን ይፈታል)
 const port = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end('Bingo Server is Running\n');
 }).listen(port, () => {
-  console.log(`Server is listening on port ${port}`);
+  console.log(`Server listening on port ${port}`);
 });
 
-// 2. Firebase አጀማመር
+// 2. Firebase አጀማመር (Environment Variables ይጠቀማል)
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -25,11 +25,12 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
-const gameRef = db.ref('game'); // በትንሽ ፊደል 'game' መሆኑን አረጋግጥ
+// አንተ ጋር ባለው መሰረት በትንሽ ፊደል 'game' እንዲያነብ ተደርጓል
+const gameRef = db.ref('game'); 
 
 console.log("--- DAGI BINGO MASTER SERVER IS STARTING ---");
 
-// 3. ዳታቤዙን በንቃት መከታተል
+// 3. የዳታቤዝ ክትትል
 gameRef.on('value', (snapshot) => {
   const games = snapshot.val();
   if (!games) {
@@ -39,7 +40,7 @@ gameRef.on('value', (snapshot) => {
 
   Object.keys(games).forEach(gameId => {
     const gameData = games[gameId];
-    // status: 'waiting' ከሆነ ታይመሩ ይጀምራል
+    // status: 'waiting' ከሆነ እና ታይመሩ ካልሮጠ ያስጀምረዋል
     if (gameData.status === 'waiting' && !gameData.isTimerRunning) {
       startBingoTimer(gameId);
     }
@@ -47,8 +48,13 @@ gameRef.on('value', (snapshot) => {
 });
 
 function startBingoTimer(gameId) {
-  console.log(`Bingo found! Starting timer for Game: ${gameId}`);
-  db.ref(`game/${gameId}`).update({ isTimerRunning: true, timer: 30 });
+  console.log(`Bingo found! Starting timer for Game ID: ${gameId}`);
+  
+  // ዳታው እንዳይጠፋ .update() እንጠቀማለን
+  db.ref(`game/${gameId}`).update({ 
+    isTimerRunning: true,
+    timer: 30 
+  });
 
   let timeLeft = 30;
   const timerInterval = setInterval(() => {
@@ -57,11 +63,14 @@ function startBingoTimer(gameId) {
 
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
+      
+      // ታይመሩ ሲያልቅ ሁኔታውን ወደ 'active' ይቀይራል
       db.ref(`game/${gameId}`).update({ 
         status: 'active', 
-        isTimerRunning: false, 
+        isTimerRunning: false,
         timer: 0 
       });
+
       console.log(`Timer finished for ${gameId}. Drawing numbers...`);
       startDrawingNumbers(gameId);
     }
@@ -83,10 +92,12 @@ function startDrawingNumbers(gameId) {
     } while (drawnNumbers.includes(nextNumber));
 
     drawnNumbers.push(nextNumber);
+
     db.ref(`game/${gameId}`).update({
       currentNumber: nextNumber,
       drawnNumbers: drawnNumbers
     });
-    console.log(`Game: ${gameId} | New Number: ${nextNumber}`);
-  }, 5000);
+
+    console.log(`Game: ${gameId} | Drawn Number: ${nextNumber}`);
+  }, 5000); // በየ 5 ሰከንዱ ቁጥር ያወጣል
 }
