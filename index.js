@@ -27,6 +27,10 @@ gamesRef.on('value', (snapshot) => {
     return;
   }
   console.log("Games data updated! Checking for active games...");
-  
+  setInterval(() => {
+  console.log("ሰርቨሩ እየሰራ ነው - " + new Date().toLocaleTimeString());
+}, 5000);
+
   // እዚህ ጋር ታይመሩን የሚጀምረው ኮድህ ይቀጥላል
 });
+
