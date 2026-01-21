@@ -1,20 +1,22 @@
-// በዋና.html ውስጥ የሚገኙት ቁልፍ ሊስተነሮች (listeners) እንዲህ ተስተካክለዋል፡
+// በዋና.html ውስጥ ያሉትን የቆዩ ሊስተነሮች በእነዚህ ተካቸው፦
 
-// 1. ታይመሩን በ HIT ቦታ ላይ ማሳያ
+// 1. ታይመሩን በ "HIT" ቦታ ላይ ማሳያ
 db.ref('game/timer').on('value', s => {
     const val = s.val();
     const hintEl = document.getElementById('live-hint'); 
     if (val !== null && val > 0) {
-        hintEl.innerHTML = `<span style="color: #ef4444; font-size: 2.2rem; font-weight: 900; animation: pulse 1s infinite;">⏳ ${val}</span>`;
+        // ታይመሩ በ "HIT" ቦታ በትልቁ እንዲታይ
+        hintEl.innerHTML = `<span style="color: #ef4444; font-size: 2.5rem; font-weight: 900;">⏳ ${val}</span>`;
         document.getElementById('timer-display').style.display = 'none'; 
     } else if (val === 0) {
         hintEl.innerHTML = `<span style="color: #22c55e; font-weight: 900; font-size: 1.5rem;">🚀 ጀምር!</span>`;
+        if(hasBoard) showP('game-page');
     } else {
         if(drawn.length === 0) hintEl.innerHTML = "";
     }
 });
 
-// 2. ቁጥር ሲገጥም HIT ሳይል በእሳት ማሳያ
+// 2. ቁጥር ሲገጥም "HIT!" ሳይል በእሳት ምልክት ብቻ ማሳያ
 db.ref('game/drawn').on('value', s => {
     const prevCount = drawn.length;
     drawn = s.val() || [];
@@ -27,7 +29,7 @@ db.ref('game/drawn').on('value', s => {
         const h = document.getElementById('live-hint');
         const cellIndex = myBoard.indexOf(lastNum);
         if(cellIndex !== -1) {
-            // HIT የሚለው ጽሁፍ ተወግዶ በእሳት ምልክት ብቻ
+            // "HIT!" የሚለው ጽሑፍ ተወግዶ ቁጥሩ ብቻ
             h.innerHTML = `<span class="board-hit" style="font-size: 2.5rem;">🔥 ${lastNum} 🔥</span>`;
             const cellEl = document.getElementById('c-'+cellIndex);
             if(cellEl) {
