@@ -81,5 +81,5 @@ function startDrawingNumbers() {
     do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
     drawn.push(n);
     db.ref('game').update({ currentNumber: n, drawn: drawn });
-  }, 2000); // <-- እዚህ ጋር ፍጥነቱ 2 ሰከንድ ሆኗል
+  }, 2000); // ፍጥነቱ 2 ሰከንድ
 }
