@@ -27,6 +27,7 @@ gameRef.on('value', (snapshot) => {
   const gameData = snapshot.val();
   if (!gameData) return;
 
+  // አሸናፊ ሲኖር ወይም ጨዋታው ሲያልቅ በ 3 ሰከንድ ውስጥ ሪሴት ያደርጋል
   if ((gameData.winner || gameData.status === 'finished') && !gameData.isResetting) {
     db.ref('game').update({ isResetting: true });
     setTimeout(() => {
@@ -80,5 +81,5 @@ function startDrawingNumbers() {
     do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
     drawn.push(n);
     db.ref('game').update({ currentNumber: n, drawn: drawn });
-  }, 2000); // ፍጥነቱ ወደ 2 ሰከንድ ተቀይሯል
+  }, 2000); // <-- እዚህ ጋር ፍጥነቱ 2 ሰከንድ ሆኗል
 }
