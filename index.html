@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DAGI BINGO V21.5 STABLE</title>
+    <title>DAGI BINGO V21.5 STABLE - SERVER SYNC</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -25,8 +25,6 @@
         .marked { background: var(--danger) !important; color: white !important; transform: scale(0.92); border: none !important; }
         .btn { background: var(--gold); border: none; padding: 15px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 1rem; text-transform: uppercase; }
         #live-hint { color: #ffff00; font-size: 2.5rem; font-weight: 900; text-align: center; min-height: 50px; text-shadow: 0 0 15px #facc15; }
-        .board-hit { animation: flash 0.5s infinite alternate; }
-        @keyframes flash { from { transform: scale(1); } to { transform: scale(1.1); } }
         #prize-box { background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; border-radius: 12px; padding: 10px; margin-bottom: 10px; display: flex; justify-content: space-around; align-items: center; }
     </style>
 </head>
@@ -54,11 +52,12 @@
             <div style="text-align:center;"><span style="font-size:10px; opacity:0.7;">የሚያሸንፉት</span><br><b id="win-prize" style="color:#facc15; font-size:1.2rem;">0 ETB</b></div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <div id="current-ball" style="width:60px; height:60px; background:var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; color:black; font-size:1.8rem; font-weight:900;">?</div>
-            <div id="ball-history" style="font-size:12px; opacity:0.8;"></div>
+            <div id="current-ball" style="width:65px; height:65px; background:var(--gold); border-radius:50%; display:flex; align-items:center; justify-content:center; color:black; font-size:1.8rem; font-weight:900;">?</div>
+            <div id="ball-history" style="font-size:11px; opacity:0.7; max-width: 200px; overflow: hidden;"></div>
         </div>
         <div id="bingo-grid" class="grid"></div>
-        <button class="btn" style="background:var(--danger); color:white;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        <button class="btn" style="background:var(--danger); color:white; height: 60px;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
+        <button class="btn" style="background:#475569; color:white;" onclick="safeBack()">ውጣ</button>
     </div>
 
     <div id="reserve-page" class="page">
@@ -77,24 +76,23 @@
 
     db.ref('users/' + user.id + '/bal').on('value', s => { myBal = s.val() || 0; document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB"; });
 
-    // የገንዘብ ስሌት እና 200 ካርቴላ
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
             const taken = s.val() || {};
             const playerCount = Object.keys(taken).length;
             
-            // የገንዘብ Box ማዘመኛ
+            // የገንዘብ ስሌት Logic
             let total = playerCount * currentBet;
             let net = (total <= 50) ? 50 : (total * 0.80);
             document.getElementById('total-pool').innerText = total + " ETB";
             document.getElementById('win-prize').innerText = net.toFixed(2) + " ETB";
 
-            const list = document.getElementById('board-list'); if(!list) return;
-            list.innerHTML = "";
+            const list = document.getElementById('board-list'); list.innerHTML = "";
             for(let i=1; i<=200; i++) {
                 let b = document.createElement('div');
                 let isTaken = taken[i] && taken[i] !== user.id;
-                b.className = "cell " + (isTaken ? "marked" : "");
+                b.className = "cell " + (taken[i] === user.id ? "marked" : (isTaken ? "marked" : ""));
+                if(isTaken) b.style.opacity = "0.3";
                 b.innerText = i;
                 b.onclick = () => { if(!isTaken) buyBoard(i); };
                 list.appendChild(b);
@@ -102,19 +100,18 @@
         });
     }
 
-    // ታይመር በ HIT ቦታ
     db.ref('game/timer').on('value', s => {
         const v = s.val(); const h = document.getElementById('live-hint');
         if(v > 0) h.innerHTML = "⏳ " + v;
-        else if(v === 0) { h.innerHTML = "🚀 ተጀመረ!"; if(hasBoard) showP('game-page'); }
+        else if(v === 0) { h.innerHTML = "🚀 GO!"; if(hasBoard) showP('game-page'); }
         else h.innerHTML = "";
     });
 
-    // ቁጥር ሲወጣ
     db.ref('game/drawn').on('value', s => {
         drawn = s.val() || [];
         const last = drawn[drawn.length-1];
         document.getElementById('current-ball').innerText = last || "?";
+        document.getElementById('ball-history').innerText = drawn.slice(-8).join(" - ");
         if(last && hasBoard) {
             const idx = myBoard.indexOf(last);
             if(idx !== -1) document.getElementById('live-hint').innerHTML = "🔥 " + last + " 🔥";
@@ -149,4 +146,8 @@
     }
 
     function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='reserve-page') loadBoards(); }
-    function checkBet(a) { currentBet = a; show
+    function checkBet(a) { currentBet = a; showP('reserve-page'); }
+    function safeBack() { if(confirm("መውጣት ትፈልጋለህ?")) { location.reload(); } }
+</script>
+</body>
+</html>
