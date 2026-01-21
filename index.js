@@ -21,45 +21,37 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
-const gameRef = db.ref('game');
 
-gameRef.on('value', async (snapshot) => {
+db.ref('game').on('value', async (snapshot) => {
   const gameData = snapshot.val();
   if (!gameData) return;
 
-  // አሸናፊ ሲኖር የሚከናወን ክፍያ
+  // አሸናፊ ሲኖር ክፍያ የመፈጸም ስራ
   if (gameData.winner && !gameData.isResetting) {
-    db.ref('game').update({ isResetting: true });
-
+    db.ref('game/isResetting').set(true);
+    
     const boardsSnap = await db.ref('reserved_boards').get();
     const boards = boardsSnap.val() || {};
-    const playerCount = Object.keys(boards).length;
-    const totalPool = playerCount * gameData.winner.bet;
+    const totalPlayers = Object.keys(boards).length;
+    const totalPool = totalPlayers * gameData.winner.bet;
     
-    let finalPrize = 0;
+    let winAmount = 0;
     if (totalPool <= 50) {
-      finalPrize = 50; // ከ 50 በታች ከሆነ 50 ብር
+      winAmount = 50;
     } else {
-      finalPrize = totalPool * 0.80; // 20% ቅናሽ
+      winAmount = totalPool * 0.80; // 20% ቅናሽ
       const commission = totalPool * 0.20;
       db.ref('admin/commission').transaction(c => (c || 0) + commission);
     }
 
-    // ለአሸናፊው መክፈል
-    db.ref('users/' + gameData.winner.id + '/bal').transaction(current => (current || 0) + finalPrize);
+    db.ref('users/' + gameData.winner.id + '/bal').transaction(b => (b || 0) + winAmount);
 
     setTimeout(() => {
-      db.ref('reserved_boards').remove(); 
+      db.ref('reserved_boards').remove();
       db.ref('game').set({
-        drawn: [],
-        timer: -1,
-        status: 'idle',
-        isTimerRunning: false,
-        isResetting: false,
-        winner: null,
-        currentNumber: null
+        drawn: [], timer: -1, status: 'idle', isTimerRunning: false, isResetting: false, winner: null
       });
-    }, 4000); 
+    }, 4000);
   }
 
   if (gameData.status === 'waiting' && !gameData.isTimerRunning) {
@@ -70,34 +62,31 @@ gameRef.on('value', async (snapshot) => {
 function startBingoTimer() {
   db.ref('game').update({ isTimerRunning: true, timer: 30 });
   let timeLeft = 30;
-  const timerInterval = setInterval(() => {
+  const interval = setInterval(() => {
     timeLeft--;
-    db.ref('game').update({ timer: timeLeft });
+    db.ref('game/timer').set(timeLeft);
     if (timeLeft <= 0) {
-      clearInterval(timerInterval);
-      db.ref('game').update({ status: 'active', isTimerRunning: false, timer: 0 });
-      startDrawingNumbers();
+      clearInterval(interval);
+      db.ref('game').update({ status: 'active', isTimerRunning: false });
+      startDrawing();
     }
   }, 1000);
 }
 
-function startDrawingNumbers() {
+function startDrawing() {
   let drawn = [];
   const drawInterval = setInterval(async () => {
-    const snap = await db.ref('game/status').get();
-    const winSnap = await db.ref('game/winner').get();
-    if (snap.val() !== 'active' || winSnap.val()) {
-      clearInterval(drawInterval);
-      return;
-    }
+    const game = (await db.ref('game').get()).val();
+    if (game.status !== 'active' || game.winner) return clearInterval(drawInterval);
+    
     if (drawn.length >= 75) {
-      clearInterval(drawInterval);
-      db.ref('game').update({ status: 'finished' });
-      return;
+      db.ref('game/status').set('finished');
+      return clearInterval(drawInterval);
     }
+    
     let n;
     do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
     drawn.push(n);
     db.ref('game').update({ currentNumber: n, drawn: drawn });
-  }, 2000); // 2 ሰከንድ ፍጥነት
+  }, 2000);
 }
