@@ -1,5 +1,6 @@
 const admin = require('firebase-admin');
 
+// Render ላይ የሞላናቸውን Environment Variables ይጠቀማል
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -14,43 +15,76 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
-const gamesRef = db.ref('games');
 
-console.log("--- DAGI BINGO SERVER IS STARTING ---");
+// ሙሉ ዳታቤዙን ('/') እንዲያዳምጥ አደረግነው የትም ቦታ ዳታ ቢገባ እንዲያገኘው
+const rootRef = db.ref('/');
 
-gamesRef.on('value', (snapshot) => {
-  const games = snapshot.val();
-  if (!games) return;
+console.log("--- DAGI BINGO SMART SERVER IS STARTING ---");
 
-  Object.keys(games).forEach(gameId => {
-    const game = games[gameId];
+rootRef.on('value', (snapshot) => {
+  const data = snapshot.val();
+  if (!data) return;
 
-    // ታይመሩ ገና ካልጀመረ (status waiting ሲሆን)
-    if (game.status === 'waiting' && game.players && !game.isTimerRunning) {
-      
-      // ታይመሩ ደግሞ ደግሞ እንዳይጀምር መቆለፊያ (Flag)
-      db.ref(`games/${gameId}`).update({ isTimerRunning: true });
-
-      let timeLeft = 30; // የ30 ሰከንድ ታይመር
-      console.log(`Timer started for game: ${gameId}`);
-
-      const timerInterval = setInterval(() => {
-        timeLeft--;
-
-        // በየሰከንዱ Firebase ላይ ታይመሩን አፕዴት ያደርጋል
-        db.ref(`games/${gameId}`).update({ timer: timeLeft });
-
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          // ታይመሩ ሲያልቅ ጨዋታውን ያስጀምራል
-          db.ref(`games/${gameId}`).update({ 
-            status: 'started', 
-            isTimerRunning: false,
-            timer: 0 
-          });
-          console.log(`Game ${gameId} has officially started!`);
-        }
-      }, 1000);
-    }
-  });
+  // በዳታቤዙ ውስጥ 'status' የሚል ቃል ያለበትን ቦታ በሙሉ ይፈልጋል
+  searchForGames(data, '/');
 });
+
+function searchForGames(obj, path) {
+  for (let key in obj) {
+    if (typeof obj[key] === 'object') {
+      searchForGames(obj[key], path + key + '/');
+    } else if (key === 'status' && obj[key] === 'waiting') {
+      const gamePath = path;
+      const gameData = obj;
+      
+      // ታይመሩ ገና ካልጀመረ ያስጀምረዋል
+      if (!gameData.isTimerRunning) {
+        startBingoTimer(gamePath);
+      }
+    }
+  }
+}
+
+function startBingoTimer(gamePath) {
+  console.log(`Bingo found at ${gamePath}. Starting Timer...`);
+  db.ref(gamePath).update({ isTimerRunning: true });
+
+  let timeLeft = 30;
+  const timerInterval = setInterval(() => {
+    timeLeft--;
+    db.ref(gamePath).update({ timer: timeLeft });
+
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      db.ref(gamePath).update({ 
+        status: 'active', 
+        isTimerRunning: false,
+        timer: 0 
+      });
+      console.log(`Game at ${gamePath} started! Drawing numbers...`);
+      startDrawingNumbers(gamePath);
+    }
+  }, 1000);
+}
+
+function startDrawingNumbers(gamePath) {
+  let drawnNumbers = [];
+  const drawInterval = setInterval(() => {
+    if (drawnNumbers.length >= 75) {
+      clearInterval(drawInterval);
+      return;
+    }
+
+    let nextNumber;
+    do {
+      nextNumber = Math.floor(Math.random() * 75) + 1;
+    } while (drawnNumbers.includes(nextNumber));
+
+    drawnNumbers.push(nextNumber);
+    db.ref(gamePath).update({
+      currentNumber: nextNumber,
+      drawnNumbers: drawnNumbers
+    });
+    console.log(`Path: ${gamePath} | Drawn: ${nextNumber}`);
+  }, 5000); // በየ 5 ሰከንዱ ቁጥር ያወጣል
+}
