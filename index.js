@@ -27,11 +27,10 @@ gameRef.on('value', async (snapshot) => {
   const gameData = snapshot.val();
   if (!gameData) return;
 
-  // አሸናፊ ሲኖር የሚከናወን ክፍያ እና ሪሴት
+  // አሸናፊ ሲኖር የሚከናወን ክፍያ
   if (gameData.winner && !gameData.isResetting) {
     db.ref('game').update({ isResetting: true });
-    
-    // የክፍያ ስሌት (20% logic)
+
     const boardsSnap = await db.ref('reserved_boards').get();
     const boards = boardsSnap.val() || {};
     const playerCount = Object.keys(boards).length;
@@ -39,17 +38,16 @@ gameRef.on('value', async (snapshot) => {
     
     let finalPrize = 0;
     if (totalPool <= 50) {
-      finalPrize = 50;
+      finalPrize = 50; // ከ 50 በታች ከሆነ 50 ብር
     } else {
       finalPrize = totalPool * 0.80; // 20% ቅናሽ
       const commission = totalPool * 0.20;
       db.ref('admin/commission').transaction(c => (c || 0) + commission);
     }
 
-    // ለአሸናፊው ገቢ ማድረግ
+    // ለአሸናፊው መክፈል
     db.ref('users/' + gameData.winner.id + '/bal').transaction(current => (current || 0) + finalPrize);
 
-    // ከ 3 ሰከንድ በኋላ ሪሴት
     setTimeout(() => {
       db.ref('reserved_boards').remove(); 
       db.ref('game').set({
@@ -61,7 +59,7 @@ gameRef.on('value', async (snapshot) => {
         winner: null,
         currentNumber: null
       });
-    }, 3000); 
+    }, 4000); 
   }
 
   if (gameData.status === 'waiting' && !gameData.isTimerRunning) {
