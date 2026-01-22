@@ -57,7 +57,6 @@
         .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
         .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; transition: all 0.3s ease; }
         
-        /* እሳት አኒሜሽን ተወግዷል */
         .highlight-cell { background-color: #facc15 !important; color: #000 !important; transform: scale(1.1); z-index: 5; transition: all 0.3s ease; border: 4px solid white !important; }
         
         .prize-box { background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; border-radius: 10px; padding: 5px 10px; margin-top: 5px; text-align: center; }
@@ -168,6 +167,7 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
+    // --- ተጫዋች ሲወጣ ራሱን የሚያጠፋበት ክፍል ---
     const onlineRef = db.ref('online_players/' + user.id);
     if(user.id != ADMIN_ID) {
         onlineRef.set(true);
@@ -227,13 +227,11 @@
         const val = s.val();
         const hintEl = document.getElementById('live-hint'); 
         if (val !== null && val > 0) {
-            document.getElementById('timer-display').style.display = 'none';
-            hintEl.innerHTML = `<span style="color: #ef4444; font-size: 2.5rem; font-weight: 900; animation: pulse 1s infinite;">⏳ ${val}</span>`;
+            hintEl.innerHTML = `<span style="color: #ef4444; font-size: 2.5rem; font-weight: 900;">⏳ ${val}</span>`;
         } else if (val === 0) {
             hintEl.innerHTML = `<span style="color: #22c55e; font-weight: 900; font-size: 1.5rem;">🚀 ጀምር!</span>`;
             if(hasBoard) showP('game-page');
         } else {
-            document.getElementById('timer-display').style.display = 'none';
             if(drawn.length === 0) hintEl.innerHTML = "";
         }
     });
@@ -267,18 +265,18 @@
         if(drawn.length > prevCount && lastNum && hasBoard) {
             const h = document.getElementById('live-hint');
             const cellIndex = myBoard.indexOf(lastNum);
+            
+            // እሳቱ (🔥) ተወግዷል
+            h.innerHTML = `<span style="color:#facc15; font-size:1.5rem;">${lastNum}</span>`;
+            
             if(cellIndex !== -1) {
-                // እሳት (🔥) እና ጽሑፍ ተወግዷል
-                h.innerHTML = `<span style="color:#facc15; font-size:1.5rem;">${lastNum}</span>`;
                 const cellEl = document.getElementById('c-'+cellIndex);
                 if(cellEl) {
                     cellEl.classList.add('highlight-cell');
                     setTimeout(() => { cellEl.classList.remove('highlight-cell'); }, 1500);
                 }
-            } else { 
-                h.innerHTML = `<span style="color:#facc15; font-size:1.5rem;">${lastNum}</span>`;
             }
-            setTimeout(() => { if(h.innerHTML && h.innerHTML.includes(lastNum)) h.innerHTML = ""; }, 1800);
+            setTimeout(() => { if(h.innerHTML.includes(lastNum)) h.innerHTML = ""; }, 1800);
         }
     });
 
