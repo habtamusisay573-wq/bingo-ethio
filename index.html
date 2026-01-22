@@ -55,7 +55,9 @@
         .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
         .req-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #facc15; font-size: 13px; }
         .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
-        .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; transition: all 0.3s ease; }
+        
+        /* Hit ማሳያ እዚህ ጋር ተወግዷል */
+        .big-hint { display: none !important; }
         
         .board-hit { animation: flash 0.5s infinite alternate; color: #facc15 !important; text-shadow: 0 0 20px #fff; }
         @keyframes flash { from { transform: scale(1); opacity: 1; } to { transform: scale(1.1); opacity: 0.8; } }
@@ -119,7 +121,6 @@
     </div>
 
     <div id="game-page" class="page">
-        <div id="live-hint" class="big-hint"></div>
         <div class="live-indicator">
             <span id="game-status-text" style="color: #facc15; font-weight: bold;">● መጠባበቂያ ላይ...</span> | ወጥተዋል: <span id="balls-out-count">0</span>/75
         </div>
@@ -193,7 +194,6 @@
         if(myBal < 0) { db.ref('users/' + user.id + '/bal').set(0); }
     });
 
-    // History listener
     db.ref('history/' + user.id).limitToLast(10).on('value', s => {
         const list = document.getElementById('hist-list'); list.innerHTML = "";
         const data = s.val();
@@ -227,16 +227,8 @@
 
     db.ref('game/timer').on('value', s => {
         const val = s.val();
-        const hintEl = document.getElementById('live-hint'); 
-        if (val !== null && val > 0) {
-            document.getElementById('timer-display').style.display = 'none';
-            hintEl.innerHTML = `<span style="color: #ef4444; font-size: 2.5rem; font-weight: 900; animation: pulse 1s infinite;">⏳ ${val}</span>`;
-        } else if (val === 0) {
-            hintEl.innerHTML = `<span style="color: #22c55e; font-weight: 900; font-size: 1.5rem;">🚀 ጀምር!</span>`;
+        if (val === 0) {
             if(hasBoard) showP('game-page');
-        } else {
-            document.getElementById('timer-display').style.display = 'none';
-            if(drawn.length === 0) hintEl.innerHTML = "";
         }
     });
 
@@ -267,19 +259,14 @@
         if(drawn.length > 0) document.getElementById('game-status-text').innerText = "● ጨዋታ ተጀምሯል";
 
         if(drawn.length > prevCount && lastNum && hasBoard) {
-            const h = document.getElementById('live-hint');
             const cellIndex = myBoard.indexOf(lastNum);
             if(cellIndex !== -1) {
-                h.innerHTML = `<span class="board-hit">🔥 ${lastNum} 🔥</span>`;
                 const cellEl = document.getElementById('c-'+cellIndex);
                 if(cellEl) {
                     cellEl.classList.add('highlight-cell');
                     setTimeout(() => { cellEl.classList.remove('highlight-cell'); }, 1500);
                 }
-            } else { 
-                h.innerHTML = `<span style="color:#facc15; font-size:1.5rem;">${lastNum}</span>`;
             }
-            setTimeout(() => { if(h.innerHTML && h.innerHTML.includes(lastNum)) h.innerHTML = ""; }, 1800);
         }
     });
 
@@ -292,18 +279,14 @@
         }); 
     }
 
-    // *** አስተካክለው ያልከው ክፍል (Jackpot Display Fix) ***
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
             const list = document.getElementById('board-list'); list.innerHTML = "";
             const taken = s.val() || {};
-            
-            // እውነተኛ ድምርን መደመር (በተጫዋች ብዛት ብቻ ሳይሆን በቆረጡት ብር)
             let totalCollected = 0;
             
             for(let i=1; i<=200; i++) {
                 let b = document.createElement('div'); 
-                // እዚህ ጋር taken[i] አሁን object ስለሆነ userId ን ቼክ እናደርጋለን
                 let boardData = taken[i];
                 let isTaken = boardData && boardData.userId !== user.id;
                 let isMine = boardData && boardData.userId === user.id;
@@ -323,13 +306,11 @@
         });
     }
 
-    // *** ካርቴላ ግዢ ላይ የቆረጠውን ብር አብሮ መመዝገብ ***
     function buyBoard(id) {
         if(myBal < currentBet && !myBoardID) return alert("በቂ ባላንስ የለም!");
         if(myBoardID) { db.ref('reserved_boards/' + myBoardID).remove(); }
         else { db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c)); }
         
-        // እዚህ ጋር userId እና የቆረጠውን ብር (betAmount) አብሮ ያስቀምጣል
         db.ref('reserved_boards/' + id).set({
             userId: user.id,
             betAmount: currentBet
