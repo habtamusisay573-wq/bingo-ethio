@@ -1,7 +1,7 @@
 const admin = require('firebase-admin');
 const http = require('http');
 
-// ሰርቨር እንዳይዘጋ
+// ሰርቨር እንዳይዘጋ (For Hosting)
 http.createServer((req, res) => {
   res.writeHead(200); res.end('Bingo Server Active');
 }).listen(process.env.PORT || 3000);
@@ -22,28 +22,38 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// --- አዲስ የተጨመረ፡ ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ Logic ---
+// --- አዲስ የተጨመረ፡ ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ ማሻሻያ ---
 let resetTimeout = null;
 
 db.ref('online_players').on('value', (snapshot) => {
     const playerCount = snapshot.numChildren();
     
+    // በሲስተሙ ውስጥ ተጫዋች ከሌለ (0 ከሆነ)
     if (playerCount === 0) {
         if (resetTimeout) clearTimeout(resetTimeout);
         
+        // 3 ሰከንድ (3000ms) ጠብቆ Reset ያደርጋል
         resetTimeout = setTimeout(async () => {
             const gameSnap = await db.ref('game').get();
             const gameData = gameSnap.val();
             
+            // ጨዋታው ገና ካላለቀ (Active ከሆነ) ብቻ Reset ያድርግ
             if (gameData && gameData.status !== 'idle') {
                 await db.ref('reserved_boards').remove();
                 await db.ref('game').update({
-                    drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
+                    drawn: [],
+                    status: 'idle',
+                    winner: null,
+                    isResetting: false,
+                    timer: -1,
+                    currentBetPrice: 0,
+                    isTimerRunning: false
                 });
-                console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ Reset ሆኗል።");
+                console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ በ3 ሰከንድ ውስጥ Reset ሆኗል።");
             }
         }, 3000);
     } else {
+        // ተጫዋች Reset ሳይደረግ ከተመለሰ ቆጠራውን ያቋርጣል
         if (resetTimeout) {
             clearTimeout(resetTimeout);
             resetTimeout = null;
@@ -51,27 +61,31 @@ db.ref('online_players').on('value', (snapshot) => {
     }
 });
 
-// --- SERVER RECOVERY ---
+// --- SERVER RECOVERY (የነበረው) ---
 async function checkServerRecovery() {
     const gameSnap = await db.ref('game').get();
     const gameData = gameSnap.val();
     if(gameData && gameData.status === 'active' && !gameData.winner) {
+        console.log("Resuming interrupted game...");
         startDrawingNumbers(gameData.drawn || []);
     }
 }
 checkServerRecovery();
 
-// --- MAIN GAME MONITOR ---
+// --- MAIN GAME MONITOR (የነበረው) ---
 db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
 
+    // 1. አሸናፊ ሲኖር ክፍያ እና Log
     if(game.winner && !game.isResetting) {
         await db.ref('game/isResetting').set(true);
+        
         const winnerId = game.winner.id;
         const betPrice = game.currentBetPrice || 0;
         const boardsSnap = await db.ref('reserved_boards').get();
         const playersCount = boardsSnap.numChildren();
+        
         const totalPool = playersCount * betPrice;
         const winnerPay = totalPool * 0.8;
         const adminPay = totalPool * 0.2;
@@ -81,10 +95,14 @@ db.ref('game').on('value', async (snap) => {
             await db.ref(`history/${winnerId}`).push({
                 type: "የቢንጎ ድል 🏆", amt: winnerPay, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString()
             });
+
             await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
+            
             await db.ref('admin_logs').push({
                 winner: game.winner.name, total: totalPool, adminShare: adminPay, date: new Date().toLocaleString()
             });
+
+            console.log(`Payment Complete: Winner received ${winnerPay}`);
         } catch (e) { console.error("Payment Failed", e); }
 
         setTimeout(() => {
@@ -95,11 +113,13 @@ db.ref('game').on('value', async (snap) => {
         }, 5000);
     }
 
+    // 2. Timer ማስጀመር
     if(game.status === 'waiting' && !game.isTimerRunning) {
         runTimer();
     }
 });
 
+// --- የጨዋታ መጀመሪያ ታይመር ---
 function runTimer() {
     db.ref('game').update({ isTimerRunning: true });
     let sec = 30;
@@ -114,6 +134,7 @@ function runTimer() {
     }, 1000);
 }
 
+// --- ቁጥሮችን በየ 4 ሰከንዱ የመጣል ሂደት ---
 function startDrawingNumbers(existingDrawn) {
     let drawn = existingDrawn;
     const interval = setInterval(async () => {
@@ -122,6 +143,7 @@ function startDrawingNumbers(existingDrawn) {
             clearInterval(interval);
             return;
         }
+
         let n;
         do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
