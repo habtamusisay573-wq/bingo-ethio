@@ -387,7 +387,8 @@
     }
 
     function resetGame() { 
-        db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 });
+        isTimerRunning: false
+    //db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 });
         db.ref('reserved_boards').remove(); 
         resetPlayerLocal();
         document.getElementById('game-status-text').innerText = "● መጠባበቂያ ላይ...";
