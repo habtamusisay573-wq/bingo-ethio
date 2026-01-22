@@ -20,7 +20,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
-const ADMIN_ID = "8431270634";
+//const ADMIN_ID = "8431270634";
 
 // --- አዲስ የተጨመረ፡ ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ Logic ---
 let resetTimeout = null;
