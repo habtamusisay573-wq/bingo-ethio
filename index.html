@@ -321,9 +321,15 @@
         if(myBoardID) { db.ref('reserved_boards/' + myBoardID).remove(); }
         else { db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c)); }
         
-        db.ref('reserved_boards/' + id).set({
-            userId: user.id,
-            betAmount: currentBet
+     db.ref('reserved_boards/' + id).transaction(curr => {
+      if (curr) return; // አስቀድሞ ተይዟል
+
+  return {
+    userId: user.id,
+    betAmount: currentBet
+  };
+});
+        
         });
         
         db.ref('game/currentBetPrice').set(currentBet);
