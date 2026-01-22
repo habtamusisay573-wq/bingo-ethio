@@ -48,7 +48,7 @@ db.ref('online_players').on('value', (snapshot) => {
                 });
                 console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ Reset ሆኗል።");
             }
-        }, 3000); 
+        }, 1000); 
     } else {
         if (resetTimeout) {
             clearTimeout(resetTimeout);
