@@ -22,40 +22,14 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// --- አዲስ የተጨመረ፡ ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ Logic ---
-let resetTimeout = null;
+// --- የፍጥነት ተለዋዋጭ ---
+let drawIntervalTime = 4000; // Default 4 ሰከንድ
 
-db.ref('online_players').on('value', (snapshot) => {
-    const playerCount = snapshot.numChildren();
-    
-    // Admin (ዳኛው) ብቻውን ከሆነ ወይም ማንም ከሌለ ቆጠራ ይጀምራል
-    if (playerCount === 0) {
-        if (resetTimeout) clearTimeout(resetTimeout);
-        
-        resetTimeout = setTimeout(async () => {
-            const gameSnap = await db.ref('game').get();
-            const gameData = gameSnap.val();
-            
-            if (gameData && gameData.status !== 'idle') {
-                await db.ref('reserved_boards').remove();
-                await db.ref('game').update({
-                    drawn: [],
-                    status: 'idle',
-                    winner: null,
-                    isResetting: false,
-                    timer: -1,
-                    currentBetPrice: 0,
-                    isTimerRunning: false
-                });
-                console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ Reset ሆኗል።");
-            }
-        }, 3000); // 3 ሰከንድ
-    } else {
-        // ተጫዋች ከተመለሰ Reset እንዳይሆን ቆጠራውን ያቋርጣል
-        if (resetTimeout) {
-            clearTimeout(resetTimeout);
-            resetTimeout = null;
-        }
+// የአስተዳዳሪውን የፍጥነት ምርጫ መከታተል
+db.ref('game/drawSpeed').on('value', (snap) => {
+    if(snap.exists()) {
+        drawIntervalTime = snap.val();
+        console.log("የመጥሪያ ፍጥነት ተቀይሯል: " + drawIntervalTime + "ms");
     }
 });
 
@@ -75,7 +49,6 @@ db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
 
-    // 1. አሸናፊ ሲኖር ክፍያ እና Log
     if(game.winner && !game.isResetting) {
         await db.ref('game/isResetting').set(true);
         
@@ -95,7 +68,6 @@ db.ref('game').on('value', async (snap) => {
             });
 
             await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
-            
             await db.ref('admin_logs').push({
                 winner: game.winner.name, total: totalPool, adminShare: adminPay, date: new Date().toLocaleString()
             });
@@ -111,7 +83,6 @@ db.ref('game').on('value', async (snap) => {
         }, 5000);
     }
 
-    // 2. Timer ማስጀመር
     if(game.status === 'waiting' && !game.isTimerRunning) {
         runTimer();
     }
@@ -133,10 +104,12 @@ function runTimer() {
 
 function startDrawingNumbers(existingDrawn) {
     let drawn = existingDrawn;
-    const interval = setInterval(async () => {
+    if (global.gameInterval) clearInterval(global.gameInterval);
+
+    global.gameInterval = setInterval(async () => {
         const g = (await db.ref('game').get()).val();
         if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
-            clearInterval(interval);
+            clearInterval(global.gameInterval);
             return;
         }
 
@@ -144,5 +117,5 @@ function startDrawingNumbers(existingDrawn) {
         do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
         db.ref('game/drawn').set(drawn);
-    }, 4000);
+    }, drawIntervalTime); // አዲሱን ፍጥነት እዚህ ይጠቀማል
 }
