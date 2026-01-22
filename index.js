@@ -124,7 +124,7 @@ function runTimer() {
             db.ref('game').update({ status: 'active', isTimerRunning: false });
             startDrawingNumbers([]);
         }
-    }, 1000);
+    }, 2000);
 }
 
 function startDrawingNumbers(existingDrawn) {
@@ -141,5 +141,5 @@ function startDrawingNumbers(existingDrawn) {
         do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
         db.ref('game/drawn').set(drawn);
-    }, 1000); 
+    }, 2000); 
 }
