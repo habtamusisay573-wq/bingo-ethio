@@ -1,145 +1,69 @@
-const admin = require('firebase-admin');
-const http = require('http');
+<!-- ⚠️ NOTE:
+Draw, Auto Draw, Timer Start, Reset Game
+አሁን ሁሉም server.js ላይ ብቻ ነው
+UI እና listener ብቻ ቀርቷል
+-->
 
-// ሰርቨር እንዳይዘጋ (For Hosting)
-http.createServer((req, res) => {
-  res.writeHead(200); res.end('Bingo Server Active');
-}).listen(process.env.PORT || 3000);
+<script>
+/* ========= ADMIN CONTROLS (SERVER-ONLY MODE) ========= */
 
-const serviceAccount = {
-  projectId: process.env.PROJECT_ID,
-  clientEmail: process.env.CLIENT_EMAIL,
-  privateKey: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
-};
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com"
-  });
+function drawNum() {
+    alert("ℹ️ Draw አሁን በServer ብቻ ይከናወናል");
 }
 
-const db = admin.database();
-const ADMIN_ID = "8431270634";
+function toggleAutoDraw() {
+    alert("ℹ️ AUTO DRAW በServer ብቻ ነው");
+}
 
-// --- ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ Logic ---
-let resetTimeout = null;
+function resetGame() {
+    alert("ℹ️ RESET በServer ራሱ ይከናወናል");
+}
 
-db.ref('online_players').on('value', (snapshot) => {
-    const playerCount = snapshot.numChildren();
-    
-    if (playerCount === 0) {
-        if (resetTimeout) clearTimeout(resetTimeout);
-        
-        resetTimeout = setTimeout(async () => {
-            const gameSnap = await db.ref('game').get();
-            const gameData = gameSnap.val();
-            
-            if (gameData && gameData.status !== 'idle') {
-                await db.ref('reserved_boards').remove();
-                await db.ref('game').update({
-                    drawn: [],
-                    status: 'idle',
-                    winner: null,
-                    isResetting: false,
-                    timer: -1,
-                    currentBetPrice: 0,
-                    isTimerRunning: false
-                });
-                console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ Reset ሆኗል።");
-            }
-        }, 1000); 
+/* ========= TIMER (DISPLAY ONLY) ========= */
+
+db.ref('game/timer').on('value', s => {
+    const v = s.val();
+    const t = document.getElementById('timer-display');
+    const sec = document.getElementById('timer-sec');
+
+    if (v > 0) {
+        t.style.display = 'block';
+        sec.innerText = v;
     } else {
-        if (resetTimeout) {
-            clearTimeout(resetTimeout);
-            resetTimeout = null;
-        }
+        t.style.display = 'none';
     }
 });
 
-// --- SERVER RECOVERY ---
-async function checkServerRecovery() {
-    const gameSnap = await db.ref('game').get();
-    const gameData = gameSnap.val();
-    if(gameData && gameData.status === 'active' && !gameData.winner) {
-        console.log("Resuming interrupted game...");
-        startDrawingNumbers(gameData.drawn || []);
+/* ========= GAME STATUS ========= */
+
+db.ref('game/status').on('value', s => {
+    const st = s.val();
+    if(st === 'waiting') {
+        document.getElementById('game-status-text').innerText = "● መጠባበቂያ ላይ...";
     }
-}
-checkServerRecovery();
-
-// --- MAIN GAME MONITOR ---
-db.ref('game').on('value', async (snap) => {
-    const game = snap.val();
-    if(!game) return;
-
-    if(game.winner && !game.isResetting) {
-        await db.ref('game/isResetting').set(true);
-        
-        const winnerId = game.winner.id;
-        const betPrice = game.currentBetPrice || 0;
-        const boardsSnap = await db.ref('reserved_boards').get();
-        const playersCount = boardsSnap.numChildren();
-        
-        const totalPool = playersCount * betPrice;
-        const winnerPay = totalPool * 0.8;
-        const adminPay = totalPool * 0.2;
-
-        try {
-            await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + winnerPay);
-            await db.ref(`history/${winnerId}`).push({
-                type: "የቢንጎ ድል 🏆", amt: winnerPay, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString()
-            });
-
-            await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
-            
-            await db.ref('admin_logs').push({
-                winner: game.winner.name, total: totalPool, adminShare: adminPay, date: new Date().toLocaleString()
-            });
-
-            console.log(`Payment Complete: Winner received ${winnerPay}`);
-        } catch (e) { console.error("Payment Failed", e); }
-
-        setTimeout(() => {
-            db.ref('reserved_boards').remove();
-            db.ref('game').set({
-                drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0
-            });
-        }, 5000);
-    }
-
-    if(game.status === 'waiting' && !game.isTimerRunning) {
-        runTimer();
+    if(st === 'active') {
+        document.getElementById('game-status-text').innerText = "● ጨዋታ ተጀምሯል";
     }
 });
 
-function runTimer() {
-    db.ref('game').update({ isTimerRunning: true });
-    let sec = 30;
-    const interval = setInterval(() => {
-        sec--;
-        db.ref('game/timer').set(sec);
-        if(sec <= 0) {
-            clearInterval(interval);
-            db.ref('game').update({ status: 'active', isTimerRunning: false });
-            startDrawingNumbers([]);
-        }
-    }, 2000);
-}
+/* ========= WINNER ========= */
 
-function startDrawingNumbers(existingDrawn) {
-    let drawn = existingDrawn;
-    // እዚህ ጋር የጊዜው መጠን ወደ 1000 (1 ሰከንድ) ተቀይሯል
-    const interval = setInterval(async () => {
-        const g = (await db.ref('game').get()).val();
-        if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
-            clearInterval(interval);
-            return;
-        }
+function checkBingoAndClaim() {
+    const lines = [
+        [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],
+        [15,16,17,18,19],[20,21,22,23,24],
+        [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],
+        [3,8,13,18,23],[4,9,14,19,24],
+        [0,6,12,18,24],[4,8,12,16,20]
+    ];
 
-        let n;
-        do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
-        drawn.push(n);
-        db.ref('game/drawn').set(drawn);
-    }, 2000); 
+    if(lines.some(l => l.every(i => markedCells.includes(i)))) {
+        db.ref('game/winner').set({
+            id: user.id,
+            name: user.first_name
+        });
+    } else {
+        alert("ቢንጎ ገና አልሆነም!");
+    }
 }
+</script>
