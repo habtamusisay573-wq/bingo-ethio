@@ -22,22 +22,20 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// --- አዲስ የተጨመረ፡ ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ ማሻሻያ ---
+// --- አዲስ የተጨመረ፡ ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ Logic ---
 let resetTimeout = null;
 
 db.ref('online_players').on('value', (snapshot) => {
     const playerCount = snapshot.numChildren();
     
-    // በሲስተሙ ውስጥ ተጫዋች ከሌለ (0 ከሆነ)
+    // Admin (ዳኛው) ብቻውን ከሆነ ወይም ማንም ከሌለ ቆጠራ ይጀምራል
     if (playerCount === 0) {
         if (resetTimeout) clearTimeout(resetTimeout);
         
-        // 3 ሰከንድ (3000ms) ጠብቆ Reset ያደርጋል
         resetTimeout = setTimeout(async () => {
             const gameSnap = await db.ref('game').get();
             const gameData = gameSnap.val();
             
-            // ጨዋታው ገና ካላለቀ (Active ከሆነ) ብቻ Reset ያድርግ
             if (gameData && gameData.status !== 'idle') {
                 await db.ref('reserved_boards').remove();
                 await db.ref('game').update({
@@ -49,11 +47,11 @@ db.ref('online_players').on('value', (snapshot) => {
                     currentBetPrice: 0,
                     isTimerRunning: false
                 });
-                console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ በ3 ሰከንድ ውስጥ Reset ሆኗል።");
+                console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ Reset ሆኗል።");
             }
-        }, 3000);
+        }, 3000); // 3 ሰከንድ
     } else {
-        // ተጫዋች Reset ሳይደረግ ከተመለሰ ቆጠራውን ያቋርጣል
+        // ተጫዋች ከተመለሰ Reset እንዳይሆን ቆጠራውን ያቋርጣል
         if (resetTimeout) {
             clearTimeout(resetTimeout);
             resetTimeout = null;
@@ -61,7 +59,7 @@ db.ref('online_players').on('value', (snapshot) => {
     }
 });
 
-// --- SERVER RECOVERY (የነበረው) ---
+// --- SERVER RECOVERY ---
 async function checkServerRecovery() {
     const gameSnap = await db.ref('game').get();
     const gameData = gameSnap.val();
@@ -72,7 +70,7 @@ async function checkServerRecovery() {
 }
 checkServerRecovery();
 
-// --- MAIN GAME MONITOR (የነበረው) ---
+// --- MAIN GAME MONITOR ---
 db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
@@ -119,7 +117,6 @@ db.ref('game').on('value', async (snap) => {
     }
 });
 
-// --- የጨዋታ መጀመሪያ ታይመር ---
 function runTimer() {
     db.ref('game').update({ isTimerRunning: true });
     let sec = 30;
@@ -134,7 +131,6 @@ function runTimer() {
     }, 1000);
 }
 
-// --- ቁጥሮችን በየ 4 ሰከንዱ የመጣል ሂደት ---
 function startDrawingNumbers(existingDrawn) {
     let drawn = existingDrawn;
     const interval = setInterval(async () => {
