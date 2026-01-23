@@ -36,7 +36,7 @@ db.ref('online_players').on('value', (snapshot) => {
                 });
                 if(drawingInterval) clearInterval(drawingInterval);
             }
-        }, 10000);
+        }, 1000);
     }
 });
 
@@ -95,7 +95,7 @@ db.ref('game/claims').on('value', async (snap) => {
                 drawn: [], status: 'idle', winners: null, claims: null, timer: -1, isTimerRunning: false, currentBetPrice: 0
             });
             claimGraceTimeout = null;
-        }, 5000);
+        }, 2000);
 
     }, 1000); 
 });
