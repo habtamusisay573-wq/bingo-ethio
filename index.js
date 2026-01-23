@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const http = require('http');
 
+// ሰርቨር እንዳይዘጋ
 http.createServer((req, res) => {
   res.writeHead(200); res.end('Bingo Server Active');
 }).listen(process.env.PORT || 3000);
@@ -21,59 +22,67 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// --- ተጫዋች ሲወጣ CLEANUP ---
-let resetTimeout = null;
-db.ref('online_players').on('value', (snapshot) => {
-    if (snapshot.numChildren() === 0) {
-        resetTimeout = setTimeout(async () => {
-            const gameSnap = await db.ref('game').get();
-            if (gameSnap.val() && gameSnap.val().status !== 'idle') {
-                await db.ref('reserved_boards').remove();
-                await db.ref('game').update({
-                    drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
-                });
-                console.log("System Idle Reset.");
-            }
-        }, 5000);
-    } else if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
+// --- አዲስ የተጨመረ፡ ተጫዋች ከሌለ በ 1 ሰከንድ ውስጥ ሪሴት የማድረግ LOGIC ---
+db.ref('online_players').on('value', async (snapshot) => {
+    const playerCount = snapshot.numChildren();
+    
+    // ተጫዋች ከሌለ (0 ከሆነ) ወዲያውኑ ሁሉንም ነገር ያጸዳል
+    if (playerCount === 0) {
+        console.log("No players online. Resetting system in 1 second...");
+        setTimeout(async () => {
+            await db.ref('reserved_boards').remove();
+            await db.ref('game').set({
+                drawn: [], 
+                status: 'idle', 
+                winner: null, 
+                isResetting: false, 
+                timer: -1, 
+                currentBetPrice: 0,
+                isTimerRunning: false
+            });
+            console.log("System Auto-Reset Complete.");
+        }, 1000); // 1 ሰከንድ ቆይታ
+    }
 });
 
-// --- GLOBAL RESET (JS በኩል የሚሰራ) ---
+// --- አድሚኑ ራሱ እንዲያጸዳ (Global Reset Command) ---
 db.ref('admin_commands/global_reset').on('value', async (snap) => {
     if(!snap.val()) return;
-    console.log("Global System Reset Triggered by Admin.");
-    
-    // ሁሉንም ካርቴላዎች፣ ጥያቄዎች እና የጨዋታ ሁኔታዎችን ያጠፋል
     await db.ref('game').set({ drawn: [], status: 'idle', winner: null, timer: -1, currentBetPrice: 0 });
     await db.ref('reserved_boards').remove();
     await db.ref('requests').remove();
-    // ማሳሰቢያ፡ የተጫዋቾች ባላንስ እና ታሪክ ለደህንነት ሲባል አልጠፋም (አስፈላጊ ከሆነ .remove() መጨመር ይቻላል)
-    
     await db.ref('admin_commands/global_reset').remove();
 });
 
-// --- MAIN GAME MONITOR ---
+// --- የጨዋታው ዋና ተግባራት (ክፍያ እና ታሪክ መመዝገብ) ---
 db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
 
+    // አሸናፊ ሲኖር ክፍያ መፈጸም እና ታሪክ መመዝገብ
     if(game.winner && !game.isResetting) {
         await db.ref('game/isResetting').set(true);
         const winnerId = game.winner.id;
-        const betPrice = game.currentBetPrice || 0;
         const boardsSnap = await db.ref('reserved_boards').get();
-        const playersCount = boardsSnap.numChildren();
-        const totalPool = playersCount * betPrice;
+        const betPrice = game.currentBetPrice || 0;
+        const totalPool = boardsSnap.numChildren() * betPrice;
+        
         const winnerPay = totalPool * 0.8;
         const adminPay = totalPool * 0.2;
 
         try {
-            await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + winnerPay);
+            // የአሸናፊውን ባላንስ መጨመር
+            await db.ref(`users/${winnerId}/bal`).transaction(c => (c || 0) + winnerPay);
+            // የአሸናፊውን ታሪክ መመዝገብ
             await db.ref(`history/${winnerId}`).push({
-                type: "ቢንጎ ድል 🏆", amt: winnerPay, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString()
+                type: "ቢንጎ ድል 🏆", 
+                amt: winnerPay, 
+                info: `ከ ${boardsSnap.numChildren()} ተጫዋቾች የተገኘ ድል`, 
+                date: new Date().toLocaleString()
             });
-            await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
-        } catch (e) { console.error("Payment Error", e); }
+            // የአድሚን ኮሚሽን መጨመር
+            await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + adminPay);
+        } catch (e) { console.error("Payment error:", e); }
 
         setTimeout(async () => {
             await db.ref('reserved_boards').remove();
@@ -81,13 +90,16 @@ db.ref('game').on('value', async (snap) => {
         }, 5000);
     }
 
-    if(game.status === 'waiting' && !game.isTimerRunning) { runTimer(); }
+    // የጨዋታ ቆጠራ (Timer)
+    if(game.status === 'waiting' && !game.isTimerRunning) {
+        runTimer();
+    }
 });
 
 function runTimer() {
-    db.ref('game').update({ isTimerRunning: true });
+    db.ref('game/isTimerRunning').set(true);
     let sec = 30;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
         sec--;
         db.ref('game/timer').set(sec);
         if(sec <= 0) {
@@ -102,7 +114,10 @@ function startDrawingNumbers() {
     let drawn = [];
     const interval = setInterval(async () => {
         const g = (await db.ref('game').get()).val();
-        if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) { clearInterval(interval); return; }
+        if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
+            clearInterval(interval);
+            return;
+        }
         let n;
         do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
