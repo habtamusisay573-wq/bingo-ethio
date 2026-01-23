@@ -24,6 +24,7 @@ const ADMIN_ID = process.env.ADMIN_ID || "8431270634";
 
 let drawingInterval = null;
 let claimGraceTimeout = null;
+let isProcessingPayout = false; // ክፍያ እንዳይደራረብ የሚከላከል መቆለፊያ
 
 // --- 1. CLEANUP Logic (ተጫዋች በማይኖርበት ጊዜ ሰሌዳውን ማጽዳት) ---
 db.ref('online_players').on('value', (snapshot) => {
@@ -41,18 +42,26 @@ db.ref('online_players').on('value', (snapshot) => {
                     timer: -1, isTimerRunning: false, currentBetPrice: 0
                 });
             }
-        }, 5000); // 5 ሰከንድ ፋታ መስጠት (Network ፍጥነት ታሳቢ በማድረግ)
+        }, 5000); // 5 ሰከንድ ፋታ መስጠት
     }
 });
 
-// --- 2. CLAIMS MONITOR (የአሸናፊዎች አያያዝ) ---
+// --- 2. CLAIMS MONITOR (የአሸናፊዎች አያያዝ - መደራረብ የተስተካከለበት) ---
 db.ref('game/claims').on('value', async (snap) => {
     const claims = snap.val();
-    if (!claims || claimGraceTimeout) return;
+    
+    // ክፍያ እየተፈጸመ ከሆነ ወይም አዲስ ክሌይም ከሌለ አትቀጥል
+    if (!claims || claimGraceTimeout || isProcessingPayout) return;
 
     // የመጀመሪያው አሸናፊ ሲመጣ 3 ሰከንድ መጠበቅ (ሌሎች አብረው ቢንጎ ካሉ እንዲመዘገቡ)
     claimGraceTimeout = setTimeout(async () => {
+        if (isProcessingPayout) return; // ሁለተኛ ጥበቃ
+        isProcessingPayout = true; // ክፍያ ጀመርኩ - Lock ተቆልፏል
+
         try {
+            // ቢንጎ ስለተባለ ቁጥር ማውጣቱን ወዲያውኑ አቁም
+            if (drawingInterval) clearInterval(drawingInterval);
+
             const currentClaimsSnap = await db.ref('game/claims').get();
             const allClaims = currentClaimsSnap.val() || {};
             const winnersList = Object.values(allClaims);
@@ -64,6 +73,7 @@ db.ref('game/claims').on('value', async (snap) => {
             const boardsData = boardsSnap.val();
 
             if (!gameData || !boardsData) {
+                isProcessingPayout = false;
                 claimGraceTimeout = null;
                 return;
             }
@@ -72,9 +82,7 @@ db.ref('game/claims').on('value', async (snap) => {
             const totalPlayers = boardsSnap.numChildren();
             const totalPool = totalPlayers * betPrice;
 
-            if (drawingInterval) clearInterval(drawingInterval);
-
-            // ክፍፍል
+            // --- የክፍያ ክፍፍል Logic ---
             if (winnersCount >= 3) {
                 // Refund (ከ 3 በላይ አሸናፊ ካለ ገንዘብ ይመለሳል)
                 const refundPromises = Object.values(boardsData).map(player => {
@@ -85,7 +93,7 @@ db.ref('game/claims').on('value', async (snap) => {
                 });
                 await Promise.all(refundPromises);
             } else {
-                // የሽልማት ክፍፍል
+                // የሽልማት ክፍፍል (1 አሸናፊ 80% | 2 አሸናፊ እያንዳንዳቸው 40%)
                 const winnerShareRatio = winnersCount === 2 ? 0.4 : 0.8; 
                 const adminShareRatio = 0.2;
 
@@ -102,18 +110,21 @@ db.ref('game/claims').on('value', async (snap) => {
 
             await db.ref('game/winners').set(allClaims);
             
-            // የ3 ሰከንድ እረፍት ተጫዋቾች ውጤቱን እንዲያዩ
+            // የ4 ሰከንድ እረፍት ተጫዋቾች ውጤቱን እንዲያዩ
             setTimeout(async () => {
                 await db.ref('reserved_boards').remove();
                 await db.ref('game').update({
                     drawn: [], status: 'idle', winners: null, claims: null, 
                     timer: -1, isTimerRunning: false, currentBetPrice: 0
                 });
+                // ክፍያ ተፈጽሞ ሲያልቅ መቆለፊያውን ክፈት
+                isProcessingPayout = false;
                 claimGraceTimeout = null;
             }, 4000);
 
         } catch (error) {
             console.error("Payout Error:", error);
+            isProcessingPayout = false;
             claimGraceTimeout = null;
         }
     }, 3000); 
@@ -161,22 +172,5 @@ function startDrawingNumbers() {
         
         drawn.push(n);
         await db.ref('game/drawn').set(drawn);
-    }, 2000); // በየ 4 ሰከንዱ ቁጥር ማውጣት
+    }, 4000); // በየ 4 ሰከንዱ ቁጥር ማውጣት
 }
-// ጨዋታውን ለመዝጋት እና ለማጽዳት
-setTimeout(async () => {
-    await db.ref('reserved_boards').remove();
-    await db.ref('game').update({
-        drawn: [], 
-        status: 'idle', // ይህ የግድ 'idle' መሆን አለበት
-        winners: null, 
-        claims: null, 
-        timer: -1, 
-        isTimerRunning: false, 
-        currentBetPrice: 0
-    });
-    claimGraceTimeout = null;
-    console.log("Game fully reset to idle.");
-}, 2000);
-
-          
