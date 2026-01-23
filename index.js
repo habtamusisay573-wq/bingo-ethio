@@ -163,3 +163,20 @@ function startDrawingNumbers() {
         await db.ref('game/drawn').set(drawn);
     }, 2000); // በየ 4 ሰከንዱ ቁጥር ማውጣት
 }
+// ጨዋታውን ለመዝጋት እና ለማጽዳት
+setTimeout(async () => {
+    await db.ref('reserved_boards').remove();
+    await db.ref('game').update({
+        drawn: [], 
+        status: 'idle', // ይህ የግድ 'idle' መሆን አለበት
+        winners: null, 
+        claims: null, 
+        timer: -1, 
+        isTimerRunning: false, 
+        currentBetPrice: 0
+    });
+    claimGraceTimeout = null;
+    console.log("Game fully reset to idle.");
+}, 2000);
+
+          
