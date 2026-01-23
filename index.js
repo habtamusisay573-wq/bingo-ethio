@@ -97,7 +97,7 @@ db.ref('game/claims').on('value', async (snap) => {
             claimGraceTimeout = null;
         }, 5000);
 
-    }, 2000); 
+    }, 1000); 
 });
 
 db.ref('game').on('value', (snap) => {
