@@ -24,44 +24,47 @@ const ADMIN_ID = process.env.ADMIN_ID || "8431270634";
 
 let drawingInterval = null;
 let claimGraceTimeout = null;
-let isProcessingPayout = false; // ክፍያ እንዳይደራረብ የሚከላከል መቆለፊያ
+let isProcessingPayout = false;
 
-// --- 1. CLEANUP Logic (ተጫዋች በማይኖርበት ጊዜ ሰሌዳውን ማጽዳት) ---
+// --- 1. CLEANUP Logic ---
 db.ref('online_players').on('value', (snapshot) => {
     if (snapshot.numChildren() === 0) {
         setTimeout(async () => {
             const snap = await db.ref('game').get();
             const onlineSnap = await db.ref('online_players').get();
-            
-            // ተጫዋቾች ተመልሰው ካልመጡ ብቻ አጽዳ
             if (onlineSnap.numChildren() === 0 && snap.val() && snap.val().status !== 'idle') {
-                if(drawingInterval) clearInterval(drawingInterval);
+                stopDrawing(); // ማውጫውን ወዲያውኑ ማቆሚያ ተግባር
                 await db.ref('reserved_boards').remove();
                 await db.ref('game').update({
                     drawn: [], status: 'idle', winners: null, claims: null, 
                     timer: -1, isTimerRunning: false, currentBetPrice: 0
                 });
             }
-        }, 5000); // 5 ሰከንድ ፋታ መስጠት
+        }, 5000);
     }
 });
 
-// --- 2. CLAIMS MONITOR (የአሸናፊዎች አያያዝ - መደራረብ የተስተካከለበት) ---
+// ቁጥር ማውጣቱን ወዲያውኑ ለማቆም የምትረዳ ተግባር
+function stopDrawing() {
+    if (drawingInterval) {
+        clearInterval(drawingInterval);
+        drawingInterval = null;
+    }
+}
+
+// --- 2. CLAIMS MONITOR ---
 db.ref('game/claims').on('value', async (snap) => {
     const claims = snap.val();
-    
-    // ክፍያ እየተፈጸመ ከሆነ ወይም አዲስ ክሌይም ከሌለ አትቀጥል
     if (!claims || claimGraceTimeout || isProcessingPayout) return;
 
-    // የመጀመሪያው አሸናፊ ሲመጣ 3 ሰከንድ መጠበቅ (ሌሎች አብረው ቢንጎ ካሉ እንዲመዘገቡ)
+    // *** ዋና ለውጥ፡ ቢንጎ እንደተባለ (Claim እንደመጣ) ወዲያውኑ ቁጥር ማውጣቱን አቁም ***
+    stopDrawing();
+
     claimGraceTimeout = setTimeout(async () => {
-        if (isProcessingPayout) return; // ሁለተኛ ጥበቃ
-        isProcessingPayout = true; // ክፍያ ጀመርኩ - Lock ተቆልፏል
+        if (isProcessingPayout) return;
+        isProcessingPayout = true;
 
         try {
-            // ቢንጎ ስለተባለ ቁጥር ማውጣቱን ወዲያውኑ አቁም
-            if (drawingInterval) clearInterval(drawingInterval);
-
             const currentClaimsSnap = await db.ref('game/claims').get();
             const allClaims = currentClaimsSnap.val() || {};
             const winnersList = Object.values(allClaims);
@@ -82,9 +85,7 @@ db.ref('game/claims').on('value', async (snap) => {
             const totalPlayers = boardsSnap.numChildren();
             const totalPool = totalPlayers * betPrice;
 
-            // --- የክፍያ ክፍፍል Logic ---
             if (winnersCount >= 3) {
-                // Refund (ከ 3 በላይ አሸናፊ ካለ ገንዘብ ይመለሳል)
                 const refundPromises = Object.values(boardsData).map(player => {
                     return db.ref(`users/${player.userId}/bal`).transaction(c => (c || 0) + player.betAmount)
                         .then(() => db.ref(`history/${player.userId}`).push({
@@ -93,7 +94,6 @@ db.ref('game/claims').on('value', async (snap) => {
                 });
                 await Promise.all(refundPromises);
             } else {
-                // የሽልማት ክፍፍል (1 አሸናፊ 80% | 2 አሸናፊ እያንዳንዳቸው 40%)
                 const winnerShareRatio = winnersCount === 2 ? 0.4 : 0.8; 
                 const adminShareRatio = 0.2;
 
@@ -104,20 +104,17 @@ db.ref('game/claims').on('value', async (snap) => {
                         type: "Bingo Win 🏆", amt: prize, status: "Completed", date: new Date().toLocaleString()
                     });
                 }
-                // የአድሚን ድርሻ
                 await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + (totalPool * adminShareRatio));
             }
 
             await db.ref('game/winners').set(allClaims);
             
-            // የ4 ሰከንድ እረፍት ተጫዋቾች ውጤቱን እንዲያዩ
             setTimeout(async () => {
                 await db.ref('reserved_boards').remove();
                 await db.ref('game').update({
                     drawn: [], status: 'idle', winners: null, claims: null, 
                     timer: -1, isTimerRunning: false, currentBetPrice: 0
                 });
-                // ክፍያ ተፈጽሞ ሲያልቅ መቆለፊያውን ክፈት
                 isProcessingPayout = false;
                 claimGraceTimeout = null;
             }, 4000);
@@ -154,16 +151,17 @@ function runTimer() {
 
 // --- 4. NUMBER DRAWING Logic ---
 function startDrawingNumbers() {
-    if (drawingInterval) clearInterval(drawingInterval); // ድግግሞሽን ለመከላከል
+    stopDrawing(); // አዲስ ከመጀመሩ በፊት የቆየውን አጽዳ
     
     let drawn = [];
     drawingInterval = setInterval(async () => {
+        // ቁጥር ከማውጣቱ በፊት አሸናፊ መኖሩን በሰከንድ ውስጥ ቼክ ያደርጋል
         const gameSnap = await db.ref('game').get();
         const g = gameSnap.val();
 
-        // ጨዋታው ከቆመ ወይም አሸናፊ ካለ አቁም
-        if (!g || g.winners || g.status !== 'active' || drawn.length >= 75) {
-            clearInterval(drawingInterval);
+        // አሸናፊ ካለ ወይም ጨዋታው ካበቃ ወዲያውኑ ቁልፉን ይዘጋል
+        if (!g || g.winners || g.claims || g.status !== 'active' || drawn.length >= 75) {
+            stopDrawing();
             return;
         }
 
@@ -172,5 +170,5 @@ function startDrawingNumbers() {
         
         drawn.push(n);
         await db.ref('game/drawn').set(drawn);
-    }, 4000); // በየ 4 ሰከንዱ ቁጥር ማውጣት
+    }, 4000);
 }
