@@ -30,7 +30,8 @@
         #top-timer-fill { height: 100%; background: #facc15; width: 0%; transition: width 1s linear; }
         #timer-display { background: #facc15; color: #000; padding: 4px 12px; border-radius: 0 0 10px 10px; font-weight: 900; position: fixed; top: 0; left: 50%; transform: translateX(-50%); z-index: 1002; display: none; box-shadow: 0 4px 15px rgba(250,204,21,0.5); }
 
-        .header { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #facc15; position: sticky; top:0; z-index:100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-top: 5px; }
+        /* ቦርደር የተወገደበት Header */
+        .header { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: none; position: sticky; top:0; z-index:100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-top: 5px; }
         .page { display: none; padding: 12px; box-sizing: border-box; min-height: 90vh; animation: fadeIn 0.4s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .active { display: block; }
@@ -56,7 +57,10 @@
 
         #win-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 20000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; }
         #current-ball { width: 75px; height: 75px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.3rem; font-weight: 900; border: 4px solid #fff; }
-        .live-indicator { background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
+        
+        /* ቦርደር የተወገደበት Indicator */
+        .live-indicator { background: rgba(0,0,0,0.3); border: none; border-radius: 10px; padding: 8px; margin-bottom: 10px; font-size: 12px; text-align: center; }
+        
         .req-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #facc15; font-size: 13px; }
         .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; }
         .highlight-cell { background-color: #facc15 !important; color: #000 !important; transform: scale(1.1); z-index: 5; border: 4px solid white !important; }
@@ -123,7 +127,7 @@
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
             <div id="current-ball">?</div>
-            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:8px; border-radius:10px; flex-grow:1; margin-left:10px; height:45px; font-size: 13px; color:#facc15; border:1px solid #334155; overflow:hidden;"></div>
+            <div id="ball-history" style="background:rgba(30,41,59,0.9); padding:8px; border-radius:10px; flex-grow:1; margin-left:10px; height:45px; font-size: 13px; color:#facc15; border:none; overflow:hidden;"></div>
         </div>
         <div id="bingo-grid" class="grid"></div>
         <button id="bingo-btn" class="btn btn-red" style="height:55px; font-size:1.4rem;" onclick="checkBingoAndClaim()">BINGO! 🏆</button>
@@ -208,14 +212,12 @@
         if(winners) {
             let names = Object.values(winners).map(w => w.name).join(" & ");
             let mode = Object.keys(winners).length;
-            
             if(mode >= 3) {
                 document.getElementById('win-name').innerHTML = "BINGO DRAW! 🤝<br><small>Refunded to everyone</small>";
             } else {
                 document.getElementById('win-name').innerText = names + " BINGO! 🏆";
                 confetti();
             }
-            
             document.getElementById('win-overlay').style.display = 'flex';
             setTimeout(() => { 
                 document.getElementById('win-overlay').style.display = 'none';
@@ -315,7 +317,6 @@
         const lines = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
         if(lines.some(line => line.every(idx => markedCells.includes(idx)))) {
             if(markedCells.every(idx => myBoard[idx] === "FREE" || drawn.includes(myBoard[idx]))) {
-                // ለተለያዩ አሸናፊዎች እድል ለመስጠት Push እንጠቀማለን
                 db.ref('game/claims').push({ id: userIdStr, name: user.first_name });
             } else alert("የተሳሳተ ምልክት!");
         } else alert("ቢንጎ ገና ነህ!");
@@ -324,8 +325,6 @@
     function resetPlayerLocal() { hasBoard = false; myBoardID = null; markedCells = [12]; myBoard = []; }
     function safeBack() { if (hasBoard) { if (confirm("መውጣት ትፈልጋለህ?")) showP('home-page'); } else showP('home-page'); }
     function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='reserve-page') loadBoards(); }
-    
-    // Admin Functions
     function reqFinance(type) {
         let amt = type === 'DEP' ? document.getElementById('dep-amt').value : document.getElementById('wit-amt').value;
         let info = type === 'DEP' ? document.getElementById('dep-trx').value : document.getElementById('wit-phone').value;
