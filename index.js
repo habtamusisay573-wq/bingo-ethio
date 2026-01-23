@@ -21,101 +21,78 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-let drawingInterval = null;
-let claimGraceTimeout = null;
-
 // --- ተጫዋች ሲወጣ CLEANUP ---
+let resetTimeout = null;
 db.ref('online_players').on('value', (snapshot) => {
     if (snapshot.numChildren() === 0) {
-        setTimeout(async () => {
-            const snap = await db.ref('game').get();
-            if (snap.val() && snap.val().status !== 'idle') {
+        resetTimeout = setTimeout(async () => {
+            const gameSnap = await db.ref('game').get();
+            if (gameSnap.val() && gameSnap.val().status !== 'idle') {
                 await db.ref('reserved_boards').remove();
                 await db.ref('game').update({
-                    drawn: [], status: 'idle', winners: null, claims: null, timer: -1, isTimerRunning: false
+                    drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
                 });
-                if(drawingInterval) clearInterval(drawingInterval);
+                console.log("System Idle Reset.");
             }
-        }, 10000);
-    }
+        }, 5000);
+    } else if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
 });
 
-// --- CLAIMS MONITOR ---
-db.ref('game/claims').on('value', async (snap) => {
-    const claims = snap.val();
-    if(!claims || claimGraceTimeout) return;
+// --- GLOBAL RESET (JS በኩል የሚሰራ) ---
+db.ref('admin_commands/global_reset').on('value', async (snap) => {
+    if(!snap.val()) return;
+    console.log("Global System Reset Triggered by Admin.");
+    
+    // ሁሉንም ካርቴላዎች፣ ጥያቄዎች እና የጨዋታ ሁኔታዎችን ያጠፋል
+    await db.ref('game').set({ drawn: [], status: 'idle', winner: null, timer: -1, currentBetPrice: 0 });
+    await db.ref('reserved_boards').remove();
+    await db.ref('requests').remove();
+    // ማሳሰቢያ፡ የተጫዋቾች ባላንስ እና ታሪክ ለደህንነት ሲባል አልጠፋም (አስፈላጊ ከሆነ .remove() መጨመር ይቻላል)
+    
+    await db.ref('admin_commands/global_reset').remove();
+});
 
-    claimGraceTimeout = setTimeout(async () => {
-        const currentClaimsSnap = await db.ref('game/claims').get();
-        const allClaims = currentClaimsSnap.val();
-        const winnersList = Object.values(allClaims);
-        const winnersCount = winnersList.length;
+// --- MAIN GAME MONITOR ---
+db.ref('game').on('value', async (snap) => {
+    const game = snap.val();
+    if(!game) return;
 
-        const gameSnap = await db.ref('game').get();
+    if(game.winner && !game.isResetting) {
+        await db.ref('game/isResetting').set(true);
+        const winnerId = game.winner.id;
+        const betPrice = game.currentBetPrice || 0;
         const boardsSnap = await db.ref('reserved_boards').get();
-        const gameData = gameSnap.val();
-        const boardsData = boardsSnap.val();
+        const playersCount = boardsSnap.numChildren();
+        const totalPool = playersCount * betPrice;
+        const winnerPay = totalPool * 0.8;
+        const adminPay = totalPool * 0.2;
 
-        if(!gameData || !boardsData) return;
-
-        const betPrice = gameData.currentBetPrice || 0;
-        const totalPlayers = boardsSnap.numChildren();
-        const totalPool = totalPlayers * betPrice;
-
-        if(drawingInterval) clearInterval(drawingInterval);
-
-        if(winnersCount >= 3) {
-            const promises = [];
-            Object.values(boardsData).forEach(player => {
-                promises.push(db.ref(`users/${player.userId}/bal`).transaction(c => (c || 0) + player.betAmount));
-                promises.push(db.ref(`history/${player.userId}`).push({
-                    type: "Refund (Draw)", amt: player.betAmount, status: "Completed", date: new Date().toLocaleString()
-                }));
+        try {
+            await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + winnerPay);
+            await db.ref(`history/${winnerId}`).push({
+                type: "ቢንጎ ድል 🏆", amt: winnerPay, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString()
             });
-            await Promise.all(promises);
-        } else {
-            const winnerShareRatio = winnersCount === 2 ? 0.4 : 0.8; 
-            const adminShareRatio = 0.2; 
+            await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
+        } catch (e) { console.error("Payment Error", e); }
 
-            for(const winner of winnersList) {
-                const prize = totalPool * winnerShareRatio;
-                await db.ref(`users/${winner.id}/bal`).transaction(c => (c || 0) + prize);
-                await db.ref(`history/${winner.id}`).push({
-                    type: "Bingo Win 🏆", amt: prize, status: "Completed", date: new Date().toLocaleString()
-                });
-            }
-            await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + (totalPool * adminShareRatio));
-        }
-
-        await db.ref('game/winners').set(allClaims);
-        
         setTimeout(async () => {
             await db.ref('reserved_boards').remove();
-            await db.ref('game').update({
-                drawn: [], status: 'idle', winners: null, claims: null, timer: -1, isTimerRunning: false, currentBetPrice: 0
-            });
-            claimGraceTimeout = null;
+            await db.ref('game').set({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0 });
         }, 5000);
-
-    }, 2000); 
-});
-
-db.ref('game').on('value', (snap) => {
-    const game = snap.val();
-    if(game && game.status === 'waiting' && !game.isTimerRunning) {
-        runTimer();
     }
+
+    if(game.status === 'waiting' && !game.isTimerRunning) { runTimer(); }
 });
 
 function runTimer() {
     db.ref('game').update({ isTimerRunning: true });
     let sec = 30;
-    const interval = setInterval(async () => {
+    const interval = setInterval(() => {
         sec--;
-        await db.ref('game/timer').set(sec);
+        db.ref('game/timer').set(sec);
         if(sec <= 0) {
             clearInterval(interval);
-            await db.ref('game').update({ status: 'active', isTimerRunning: false });
+            db.ref('game').update({ status: 'active', isTimerRunning: false });
             startDrawingNumbers();
         }
     }, 1000);
@@ -123,15 +100,12 @@ function runTimer() {
 
 function startDrawingNumbers() {
     let drawn = [];
-    drawingInterval = setInterval(async () => {
+    const interval = setInterval(async () => {
         const g = (await db.ref('game').get()).val();
-        if(!g || g.winners || g.status !== 'active' || drawn.length >= 75) {
-            clearInterval(drawingInterval);
-            return;
-        }
+        if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) { clearInterval(interval); return; }
         let n;
         do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
-        await db.ref('game/drawn').set(drawn);
+        db.ref('game/drawn').set(drawn);
     }, 4000);
 }
