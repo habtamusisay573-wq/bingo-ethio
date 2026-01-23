@@ -133,6 +133,6 @@ function startDrawingNumbers() {
         do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
         await db.ref('game/drawn').set(drawn);
-    }, 4000);
+    }, 2000);
 }
-ገምግመህ ችግር ከለ ወዬ በለኝ
+
