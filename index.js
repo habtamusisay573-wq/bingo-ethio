@@ -1,9 +1,9 @@
 const admin = require('firebase-admin');
 const http = require('http');
 
-// ሰርቨር እንዳይዘጋ (Keeping it alive)
+// ሰርቨር እንዳይዘጋ (For Hosting)
 http.createServer((req, res) => {
-  res.writeHead(200); res.end('Bingo Logic Engine Active 🚀');
+  res.writeHead(200); res.end('Bingo Server Active');
 }).listen(process.env.PORT || 3000);
 
 const serviceAccount = {
@@ -22,117 +22,100 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-let timerInterval = null;
-let drawingInterval = null;
+// --- 1. ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ Logic ---
+let resetTimeout = null;
+db.ref('online_players').on('value', (snapshot) => {
+    const playerCount = snapshot.numChildren();
+    if (playerCount === 0) {
+        if (resetTimeout) clearTimeout(resetTimeout);
+        resetTimeout = setTimeout(async () => {
+            const gameSnap = await db.ref('game').get();
+            const gameData = gameSnap.val();
+            if (gameData && gameData.status !== 'idle') {
+                await db.ref('reserved_boards').remove();
+                await db.ref('game').update({
+                    drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
+                });
+                console.log("System Reset: No players online.");
+            }
+        }, 3000);
+    } else { if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; } }
+});
 
-// --- 1. የጨዋታውን ሁኔታ ተቆጣጣሪ (Main Monitor) ---
-db.ref('game').on('value', async (snap) => {
-    const game = snap.val();
-    if (!game) return;
-
-    // ሀ. አሸናፊ ሲኖር ክፍያ መፈጸም (አንዴ ብቻ እንዲሰራ isResetting እንጠቀማለን)
-    if (game.winner && !game.isResetting) {
-        await processWinner(game);
-    }
-
-    // ለ. ካርቴላ ተገዝቶ ጨዋታው 'idle' ከሆነ ቆጠራ ጀምር
-    if (game.status === 'idle') {
-        const boardsSnap = await db.ref('reserved_boards').get();
-        if (boardsSnap.exists()) {
-            startWaitingTimer();
+// --- 2. አንድ ሰው ቦርድ ሲገዛ ሰርቨሩ ራሱ ቆጠራ እንዲጀምር (Auto-Trigger) ---
+db.ref('reserved_boards').on('value', async (snap) => {
+    if (snap.exists()) {
+        const gameSnap = await db.ref('game').get();
+        const game = gameSnap.val() || {};
+        if (game.status === 'idle' || !game.status) {
+            await db.ref('game').update({ status: 'waiting', timer: 30, isTimerRunning: false });
         }
     }
 });
 
-// --- 2. ቆጠራ መጀመሪያ (30 Seconds Timer) ---
-function startWaitingTimer() {
-    if (timerInterval) return; 
+// --- 3. MAIN GAME MONITOR ---
+db.ref('game').on('value', async (snap) => {
+    const game = snap.val();
+    if(!game) return;
 
-    db.ref('game').update({ status: 'waiting', isTimerRunning: true, timer: 30 });
+    // አሸናፊ ሲኖር ክፍያ
+    if(game.winner && !game.isResetting) {
+        await processWinnerPayment(game);
+    }
+
+    // ቆጠራ መጀመር
+    if(game.status === 'waiting' && !game.isTimerRunning) {
+        runTimer();
+    }
+});
+
+function runTimer() {
+    db.ref('game').update({ isTimerRunning: true });
     let sec = 30;
-
-    timerInterval = setInterval(async () => {
+    const interval = setInterval(async () => {
         sec--;
         await db.ref('game/timer').set(sec);
-
-        if (sec <= 0) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-            startDrawingNumbers();
+        if(sec <= 0) {
+            clearInterval(interval);
+            await db.ref('game').update({ status: 'active', isTimerRunning: false, timer: 0 });
+            startDrawingNumbers([]);
         }
     }, 1000);
 }
 
-// --- 3. ኳስ ማውጣት (Drawing Logic) ---
-async function startDrawingNumbers() {
-    await db.ref('game').update({ status: 'active', isTimerRunning: false, drawn: [] });
-    let drawn = [];
-
-    if (drawingInterval) clearInterval(drawingInterval);
-
-    drawingInterval = setInterval(async () => {
-        const gameSnap = await db.ref('game').get();
-        const g = gameSnap.val();
-
-        if (!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
-            clearInterval(drawingInterval);
-            drawingInterval = null;
+function startDrawingNumbers(existingDrawn) {
+    let drawn = existingDrawn;
+    const interval = setInterval(async () => {
+        const gSnap = await db.ref('game').get();
+        const g = gSnap.val();
+        if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
+            clearInterval(interval);
             return;
         }
-
         let n;
-        do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
+        do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
         await db.ref('game/drawn').set(drawn);
-    }, 4000); 
+    }, 4000);
 }
 
-// --- 4. የአሸናፊ ክፍያ (Payment Transaction) ---
-async function processWinner(game) {
+async function processWinnerPayment(game) {
     await db.ref('game/isResetting').set(true);
     const winnerId = game.winner.id;
     const betPrice = game.currentBetPrice || 0;
-    
     const boardsSnap = await db.ref('reserved_boards').get();
-    const playersCount = boardsSnap.numChildren();
+    const totalPool = boardsSnap.numChildren() * betPrice;
     
-    const totalPool = playersCount * betPrice;
-    const winnerPay = totalPool * 0.8;
-    const adminPay = totalPool * 0.2;
-
     try {
-        // ለአሸናፊው
-        await db.ref(`users/${winnerId}/bal`).transaction(c => (c || 0) + winnerPay);
-        // ለዳኛው
-        await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + adminPay);
-        
-        await db.ref('history/' + winnerId).push({
-            type: "ቢንጎ ድል 🏆", amt: winnerPay, status: "ተከፍሏል", date: new Date().toLocaleString()
+        await db.ref(`users/${winnerId}/bal`).transaction(c => (c || 0) + (totalPool * 0.8));
+        await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + (totalPool * 0.2));
+        await db.ref(`history/${winnerId}`).push({
+            type: "የቢንጎ ድል 🏆", amt: (totalPool * 0.8), status: "ተከፍሏል", date: new Date().toLocaleString()
         });
+    } catch (e) { console.error("Payment Error", e); }
 
-        console.log(`ክፍያ ተፈጽሟል ለ፡ ${game.winner.name}`);
-    } catch (e) { console.error("ክፍያ ተቋርጧል", e); }
-
-    // ከ 5 ሰከንድ በኋላ ጨዋታውን Reset አድርግ
-    setTimeout(async () => {
-        await db.ref('reserved_boards').remove();
-        await db.ref('game').set({
-            drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0
-        });
+    setTimeout(() => {
+        db.ref('reserved_boards').remove();
+        db.ref('game').set({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false });
     }, 5000);
 }
-
-// --- 5. ተጫዋች ከሌለ Reset የማድረግ Logic ---
-db.ref('online_players').on('value', (snapshot) => {
-    if (snapshot.numChildren() === 0) {
-        setTimeout(async () => {
-            const s = await db.ref('online_players').get();
-            if(!s.exists()) {
-                clearInterval(timerInterval); clearInterval(drawingInterval);
-                timerInterval = null; drawingInterval = null;
-                await db.ref('game').update({ status: 'idle', timer: -1, isTimerRunning: false });
-                await db.ref('reserved_boards').remove();
-            }
-        }, 5000);
-    }
-});
