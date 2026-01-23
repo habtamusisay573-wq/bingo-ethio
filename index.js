@@ -40,12 +40,11 @@ db.ref('online_players').on('value', (snapshot) => {
     }
 });
 
-// --- CLAIMS MONITOR (Multi-winner Logic) ---
+// --- CLAIMS MONITOR ---
 db.ref('game/claims').on('value', async (snap) => {
     const claims = snap.val();
     if(!claims || claimGraceTimeout) return;
 
-    // የመጀመሪያው ሰው ቢንጎ ሲል ለሌሎች 2 ሰከንድ እድል መስጠት (Network Latency)
     claimGraceTimeout = setTimeout(async () => {
         const currentClaimsSnap = await db.ref('game/claims').get();
         const allClaims = currentClaimsSnap.val();
@@ -66,8 +65,6 @@ db.ref('game/claims').on('value', async (snap) => {
         if(drawingInterval) clearInterval(drawingInterval);
 
         if(winnersCount >= 3) {
-            // REFUND LOGIC (3+ Winners)
-            console.log("3+ Winners detected. Refunding...");
             const promises = [];
             Object.values(boardsData).forEach(player => {
                 promises.push(db.ref(`users/${player.userId}/bal`).transaction(c => (c || 0) + player.betAmount));
@@ -77,7 +74,6 @@ db.ref('game/claims').on('value', async (snap) => {
             });
             await Promise.all(promises);
         } else {
-            // PRIZE SPLIT (1 or 2 Winners)
             const winnerShareRatio = winnersCount === 2 ? 0.4 : 0.8; 
             const adminShareRatio = 0.2; 
 
@@ -88,14 +84,11 @@ db.ref('game/claims').on('value', async (snap) => {
                     type: "Bingo Win 🏆", amt: prize, status: "Completed", date: new Date().toLocaleString()
                 });
             }
-            // Admin Commission
             await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + (totalPool * adminShareRatio));
         }
 
-        // ውጤቱን ለሁሉም እንዲታይ ማድረግ
         await db.ref('game/winners').set(allClaims);
         
-        // ጨዋታውን Reset ማድረግ
         setTimeout(async () => {
             await db.ref('reserved_boards').remove();
             await db.ref('game').update({
@@ -104,10 +97,9 @@ db.ref('game/claims').on('value', async (snap) => {
             claimGraceTimeout = null;
         }, 5000);
 
-    }, 2000); // የ2 ሰከንድ የቆይታ ጊዜ
+    }, 2000); 
 });
 
-// --- TIMER & DRAWING ---
 db.ref('game').on('value', (snap) => {
     const game = snap.val();
     if(game && game.status === 'waiting' && !game.isTimerRunning) {
