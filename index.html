@@ -321,15 +321,9 @@
         if(myBoardID) { db.ref('reserved_boards/' + myBoardID).remove(); }
         else { db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c)); }
         
-     db.ref('reserved_boards/' + id).transaction(curr => {
-      if (curr) return; // አስቀድሞ ተይዟል
-
-  return {
-    userId: user.id,
-    betAmount: currentBet
-  };
-});
-        
+        db.ref('reserved_boards/' + id).set({
+            userId: user.id,
+            betAmount: currentBet
         });
         
         db.ref('game/currentBetPrice').set(currentBet);
@@ -393,8 +387,7 @@
     }
 
     function resetGame() { 
-        isTimerRunning: false
-    //db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 });
+        db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 });
         db.ref('reserved_boards').remove(); 
         resetPlayerLocal();
         document.getElementById('game-status-text').innerText = "● መጠባበቂያ ላይ...";
