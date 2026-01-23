@@ -161,5 +161,5 @@ function startDrawingNumbers() {
         
         drawn.push(n);
         await db.ref('game/drawn').set(drawn);
-    }, 4000); // በየ 4 ሰከንዱ ቁጥር ማውጣት
+    }, 2000); // በየ 4 ሰከንዱ ቁጥር ማውጣት
 }
