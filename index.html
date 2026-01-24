@@ -83,19 +83,22 @@
     <div id="timer-display" style="display:none;">ጨዋታ ለመጀመር: <span id="timer-sec" style="font-size: 1.4rem;">30</span> ሰከንድ</div>
 
     <div id="home-page" class="page active">
-        <div class="hint-text">💡 ፍንጭ፡ ለመጫወት የሚፈልጉትን የብር መጠን ይምረጡ!</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
-            <button class="btn" onclick="checkBet(10)">10 ETB</button>
-            <button class="btn" onclick="checkBet(50)">50 ETB</button>
-            <button class="btn" onclick="checkBet(100)">100 ETB</button>
-            <button class="btn" onclick="checkBet(500)">500 ETB</button>
+        <button id="adm-gate" class="btn btn-red" style="display:none; margin-bottom: 20px;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
+
+        <div id="player-zone">
+            <div class="hint-text">💡 ፍንጭ፡ ለመጫወት የሚፈልጉትን የብር መጠን ይምረጡ!</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
+                <button class="btn" onclick="checkBet(10)">10 ETB</button>
+                <button class="btn" onclick="checkBet(50)">50 ETB</button>
+                <button class="btn" onclick="checkBet(100)">100 ETB</button>
+                <button class="btn" onclick="checkBet(500)">500 ETB</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <button class="btn btn-green" onclick="showP('deposit-page')">➕ ብር አስገባ</button>
+                <button class="btn btn-red" onclick="showP('withdraw-page')">➖ ብር አውጣ</button>
+            </div>
+            <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር</button>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <button class="btn btn-green" onclick="showP('deposit-page')">➕ ብር አስገባ</button>
-            <button class="btn btn-red" onclick="showP('withdraw-page')">➖ ብር አውጣ</button>
-        </div>
-        <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር</button>
-        <button id="adm-gate" class="btn btn-red" style="display:none;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
     </div>
 
     <div id="deposit-page" class="page">
@@ -145,8 +148,7 @@
 
     <div id="admin-page" class="page">
         <h2 id="adm-commission" style="color:#facc15; text-align:center;">0.00 ETB</h2>
-        <button class="btn" onclick="drawNum()">Draw 1 (Manual)</button>
-        <button id="auto-btn" class="btn btn-green" onclick="toggleAutoDraw()">AUTO: OFF</button>
+        
         <hr>
         <div id="admin-req-list"></div>
         <button class="btn btn-red" onclick="confirmReset()">RESET GAME</button>
@@ -163,11 +165,16 @@
 
     const user = tg.initDataUnsafe.user || { id: "GUEST_" + Date.now(), first_name: "Player" };
     document.getElementById('u-name').innerText = user.first_name;
-    if(user.id == ADMIN_ID) document.getElementById('adm-gate').style.display = 'block';
+    
+    // --- ዳኛ Dashboard Logic ---
+    if(user.id == ADMIN_ID) {
+        document.getElementById('adm-gate').style.display = 'block';
+        // አድሚን ሲሆን የመጫወቻ በተኖቹን እንደበቃለን (Comment እናረጋቸዋለን በኮድ)
+        document.getElementById('player-zone').style.display = 'none';
+    }
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
-    // --- ተጫዋች ሲወጣ ራሱን የሚያጠፋበት ክፍል ---
     const onlineRef = db.ref('online_players/' + user.id);
     if(user.id != ADMIN_ID) {
         onlineRef.set(true);
@@ -266,7 +273,6 @@
             const h = document.getElementById('live-hint');
             const cellIndex = myBoard.indexOf(lastNum);
             
-            // እሳቱ (🔥) ተወግዷል
             h.innerHTML = `<span style="color:#facc15; font-size:1.5rem;">${lastNum}</span>`;
             
             if(cellIndex !== -1) {
@@ -331,20 +337,11 @@
         myBoardID = id;
         hasBoard = true;
         
-        // --- መስተካከል ያለበት፡ ደንበኛው Timer Reset ማድረግ የለበትም ---
-        // db.ref('game/timer').once('value', s => { 
-        //     if(s.val() === -1 || s.val() === null) { 
-        //         db.ref('game/timer').set(30); 
-        //         db.ref('game/status').set('waiting');
-        //     } 
-        // });
-        
-        // ይልቁንስ፣ ጨዋታው 'idle' ከሆነ ወደ 'waiting' ብቻ ይቀይር። Timerን ሰርቨሩ ያስጀምረዋል።
         db.ref('game').transaction(currentGame => {
              if (currentGame && currentGame.status === 'idle') {
-                 return { ...currentGame, status: 'waiting', timer: 30 }; // Initialize if idle
+                 return { ...currentGame, status: 'waiting', timer: 30 }; 
              }
-             return currentGame; // Do nothing if already waiting or active
+             return currentGame; 
         });
 
         startBingo();
