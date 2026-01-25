@@ -77,36 +77,19 @@ app.post('/request-withdraw', async (req, res) => {
 
 app.listen(process.env.PORT || 3000);
 
-// --- Firebase Admin Logic ---
 const serviceAccount = { projectId: process.env.PROJECT_ID, clientEmail: process.env.CLIENT_EMAIL, privateKey: process.env.PRIVATE_KEY.replace(/\\n/g, '\n') };
 if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(serviceAccount), databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com" });
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-let drawingInterval = null, timerInterval = null, resetTimeout = null;
+let drawingInterval = null, timerInterval = null;
 
-// --- የመስመር ላይ ተጫዋቾች ቁጥጥር (ምንም ሳይቀንስ የታከለ) ---
-db.ref('online_players').on('value', (snapshot) => {
-    const playerCount = snapshot.numChildren();
-    if (playerCount === 0) {
-        if (resetTimeout) clearTimeout(resetTimeout);
-        resetTimeout = setTimeout(async () => {
-            const gameSnap = await db.ref('game').get();
-            const gameData = gameSnap.val();
-            if (gameData && gameData.status !== 'idle') {
-                await db.ref('reserved_boards').remove();
-                await db.ref('game').update({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false });
-            }
-        }, 3000); 
-    } else if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
-});
-
-// --- ዋናው የጨዋታ መቆጣጠሪያ (Fixes Included) ---
+// ጨዋታ ክትትል (1 Sec Auto Reset Logic Included)
 db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
 
-    // ጨዋታው ከተቋረጠ ሰርቨር ላይ ያሉ ቲመሮችን አቁም
+    // ጨዋታው ከተቋረጠ ወዲያውኑ ሰርቨር ቲመሮችን አቁም
     if (game.status === 'idle') {
         if (drawingInterval) { clearInterval(drawingInterval); drawingInterval = null; }
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
@@ -124,14 +107,15 @@ db.ref('game').on('value', async (snap) => {
 
         try {
             await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.8));
-            await db.ref(`history/${winnerId}`).push({ type: "የቢንጎ ድል 🏆", amt: totalPool * 0.8, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString() });
+            await db.ref(`history/${winnerId}`).push({ type: "የቢንጎ ድል 🏆", amt: totalPool * 0.8, info: "80% ድርሻ", date: new Date().toLocaleString() });
             await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.2));
-        } catch (e) { console.error("Payment Error"); }
+        } catch (e) { console.error("Payout Error"); }
 
+        // --- ማስተካከያ: 1 ሰከንድ Auto Reset ---
         setTimeout(async () => {
             await db.ref('reserved_boards').remove();
             await db.ref('game').set({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false });
-        }, 5000);
+        }, 1000); 
     }
 
     if(game.status === 'waiting' && !game.isTimerRunning && !timerInterval) {
