@@ -16,38 +16,56 @@ app.post('/sms-webhook', async (req, res) => {
     if (sender.includes("telebirr") || message.includes("ብር") || message.includes("ETB")) {
         console.log(`ትክክለኛ የቴሌብር መልእክት ደርሷል!`);
 
-        // 1. የብሩን መጠን መለየት (Regex)
+        // 1. Transaction ID መለየት (መለያ ቁጥር) - 10-12 ፊደልና ቁጥር
+        const txIdMatch = message.match(/[A-Z0-9]{10,12}/i); 
+        const txId = txIdMatch ? txIdMatch[0] : null;
+
+        // 2. የብሩን መጠን መለየት
         const amountMatch = message.match(/(\d+(?:\.\d+)?)\s?ETB/i) || message.match(/ብር\s?(\d+(?:\.\d+)?)/);
         const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
 
-        // 2. የተጫዋቹን ስልክ ቁጥር ከሪማርክ ውስጥ መፈለግ (09 ወይም 07 የሚጀምር)
+        // 3. የተጫዋቹን ስልክ ከሪማርክ መፈለግ
         const playerPhoneMatch = message.match(/(09\d{8}|07\d{8})/);
         const playerPhone = playerPhoneMatch ? playerPhoneMatch[0] : null;
 
-        if (amount > 0 && playerPhone) {
+        if (txId && amount > 0) {
             try {
-                const userRef = db.ref('users');
-                // በስልክ ቁጥር ተጫዋቹን መፈለግ
-                const snapshot = await userRef.orderByChild('phone').equalTo(playerPhone).once('value');
+                // መጀመሪያ ቁጥሩ ቀድሞ ጥቅም ላይ መዋሉን ቼክ ማድረግ
+                const txCheck = await db.ref(`used_transactions/${txId}`).get();
                 
-                if (snapshot.exists()) {
-                    const userId = Object.keys(snapshot.val())[0];
-                    // ብሩን መጨመር
-                    await db.ref(`users/${userId}/bal`).transaction(curr => (curr || 0) + amount);
+                if (txCheck.exists()) {
+                    console.log(`ማስጠንቀቂያ፡ ይህ መለያ ቁጥር (${txId}) ቀድሞ ተገኝቷል!`);
+                    return res.status(200).json({ status: "duplicate" });
+                }
+
+                // ቁጥሩን እንደ ተጠቀመበት መመዝገብ (ደግመው እንዳይጠቀሙ)
+                await db.ref(`used_transactions/${txId}`).set({
+                    amount: amount,
+                    date: new Date().toLocaleString(),
+                    status: "used"
+                });
+
+                if (playerPhone) {
+                    const userRef = db.ref('users');
+                    const snapshot = await userRef.orderByChild('phone').equalTo(playerPhone).once('value');
                     
-                    // ለታሪክ (History) መመዝገብ
-                    await db.ref(`history/${userId}`).push({
-                        type: "የቴሌብር ተቀማጭ 💰",
-                        amt: amount,
-                        info: "በራስ-ሰር የተጨመረ",
-                        date: new Date().toLocaleString()
-                    });
-                    console.log(`ተሳክቷል፡ ለተጫዋች ${playerPhone} ብር ${amount} ተጨምሯል።`);
-                } else {
-                    console.log(`ስህተት፡ ስልክ ${playerPhone} በዳታቤዝ ውስጥ የለም።`);
+                    if (snapshot.exists()) {
+                        const userId = Object.keys(snapshot.val())[0];
+                        await db.ref(`users/${userId}/bal`).transaction(curr => (curr || 0) + amount);
+                        
+                        await db.ref(`history/${userId}`).push({
+                            type: "የቴሌብር ተቀማጭ 💰",
+                            amt: amount,
+                            info: `Transaction ID: ${txId}`,
+                            date: new Date().toLocaleString()
+                        });
+                        console.log(`ተሳክቷል፡ ለተጫዋች ${playerPhone} ብር ${amount} ተጨምሯል።`);
+                    } else {
+                        console.log(`ስህተት፡ ስልክ ${playerPhone} በዳታቤዝ የለም።`);
+                    }
                 }
             } catch (error) {
-                console.error("Firebase Error:", error);
+                console.error("Firebase Process Error:", error);
             }
         }
     }
