@@ -1,9 +1,8 @@
 const admin = require('firebase-admin');
 const http = require('http');
-const express = require('express'); // አዲስ የተጨመረ
-const app = express(); // አዲስ የተጨመረ
+const express = require('express'); 
+const app = express(); 
 
-// Middleware ለ JSON (አፑ የሚልከውን ዳታ እንዲረዳ)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -14,17 +13,47 @@ app.post('/sms-webhook', async (req, res) => {
     const sender = req.body.from || "";
     const message = req.body.text || "";
 
-    // የቴሌብር መልእክት መሆኑን ቼክ ማድረግ (አማርኛውንም ሆነ እንግሊዝኛውን እንዲረዳ)
     if (sender.includes("telebirr") || message.includes("ብር") || message.includes("ETB")) {
-        console.log(`ትክክለኛ የቴሌብር መልእክት ደርሷል! ከ: ${sender}`);
-        
-        // እዚህ ጋር ብሩንና ስልኩን ለይተን ለተጫዋቹ የምንጨምርበትን ኮድ ወደፊት እንጨምራለን
-    }
+        console.log(`ትክክለኛ የቴሌብር መልእክት ደርሷል!`);
 
+        // 1. የብሩን መጠን መለየት (Regex)
+        const amountMatch = message.match(/(\d+(?:\.\d+)?)\s?ETB/i) || message.match(/ብር\s?(\d+(?:\.\d+)?)/);
+        const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+
+        // 2. የተጫዋቹን ስልክ ቁጥር ከሪማርክ ውስጥ መፈለግ (09 ወይም 07 የሚጀምር)
+        const playerPhoneMatch = message.match(/(09\d{8}|07\d{8})/);
+        const playerPhone = playerPhoneMatch ? playerPhoneMatch[0] : null;
+
+        if (amount > 0 && playerPhone) {
+            try {
+                const userRef = db.ref('users');
+                // በስልክ ቁጥር ተጫዋቹን መፈለግ
+                const snapshot = await userRef.orderByChild('phone').equalTo(playerPhone).once('value');
+                
+                if (snapshot.exists()) {
+                    const userId = Object.keys(snapshot.val())[0];
+                    // ብሩን መጨመር
+                    await db.ref(`users/${userId}/bal`).transaction(curr => (curr || 0) + amount);
+                    
+                    // ለታሪክ (History) መመዝገብ
+                    await db.ref(`history/${userId}`).push({
+                        type: "የቴሌብር ተቀማጭ 💰",
+                        amt: amount,
+                        info: "በራስ-ሰር የተጨመረ",
+                        date: new Date().toLocaleString()
+                    });
+                    console.log(`ተሳክቷል፡ ለተጫዋች ${playerPhone} ብር ${amount} ተጨምሯል።`);
+                } else {
+                    console.log(`ስህተት፡ ስልክ ${playerPhone} በዳታቤዝ ውስጥ የለም።`);
+                }
+            } catch (error) {
+                console.error("Firebase Error:", error);
+            }
+        }
+    }
     res.status(200).json({ status: "success" });
 });
 
-// ሰርቨሩን ማስነሳት (አሮጌውን http.createServer ተክቶታል)
 const server = app.listen(process.env.PORT || 3000, () => {
     console.log('Bingo Server Active and Listening for SMS...');
 });
@@ -47,7 +76,6 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// --- አዲስ የተጨመረ፡ ተጫዋች ሲወጣ 3 ሰከንድ ጠብቆ RESET የማድረግ Logic ---
 let resetTimeout = null;
 
 db.ref('online_players').on('value', (snapshot) => {
