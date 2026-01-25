@@ -56,25 +56,15 @@
         .req-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #facc15; font-size: 13px; }
         .hint-text { color: #ffff00; font-weight: bold; font-size: 12px; text-align: center; margin-bottom: 5px; text-shadow: 0 0 5px rgba(255, 255, 0, 0.5); }
         .big-hint { color: #ffff00; font-size: 1.8rem; font-weight: 900; text-align: center; min-height: 40px; margin-bottom: 10px; text-shadow: 0 0 15px #facc15; transition: all 0.3s ease; }
-        
         .highlight-cell { background-color: #facc15 !important; color: #000 !important; transform: scale(1.1); z-index: 5; transition: all 0.3s ease; border: 4px solid white !important; }
-        
         .prize-box { background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; border-radius: 10px; padding: 5px 10px; margin-top: 5px; text-align: center; }
 
-        /* አዲስ የተጨመረ - የስልክ መመዝገቢያ Overlay ስታይል */
-        #reg-overlay {
-            position: fixed; inset: 0; background: #0f172a; z-index: 50000;
-            display: none; flex-direction: column; justify-content: center;
-            align-items: center; padding: 20px;
-        }
-        .reg-box {
-            background: rgba(30, 41, 59, 0.95); padding: 30px; border-radius: 20px;
-            width: 100%; max-width: 320px; border: 2px solid #facc15; text-align: center;
-        }
-        .reg-input {
-            width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #facc15;
-            margin: 20px 0; font-size: 1.2rem; text-align: center; color: black !important;
-        }
+        #reg-overlay { position: fixed; inset: 0; background: #0f172a; z-index: 50000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .reg-box { background: rgba(30, 41, 59, 0.95); padding: 30px; border-radius: 20px; width: 100%; max-width: 320px; border: 2px solid #facc15; text-align: center; }
+        .reg-input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #facc15; margin: 20px 0; font-size: 1.2rem; text-align: center; color: black !important; }
+        
+        /* ዲፖዚት ገጽ ላይ ቁጥር ማሳያ ሳጥን */
+        .pay-info-card { background: rgba(250, 204, 21, 0.1); border: 2px dashed #facc15; padding: 15px; border-radius: 15px; margin-bottom: 15px; text-align: center; }
     </style>
 </head>
 <body>
@@ -108,7 +98,6 @@
 
     <div id="home-page" class="page active">
         <button id="adm-gate" class="btn btn-red" style="display:none; margin-bottom: 20px;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
-
         <div id="player-zone">
             <div class="hint-text">💡 ፍንጭ፡ ለመጫወት የሚፈልጉትን የብር መጠን ይምረጡ!</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
@@ -126,8 +115,15 @@
     </div>
 
     <div id="deposit-page" class="page">
-        <div class="hint-text">💡 ፍንጭ፡ የላኩበትን ትክክለኛ Transaction ID ያስገቡ።</div>
         <h3 style="text-align: center; color: #22c55e;">ብር ማስገቢያ (Deposit)</h3>
+        
+        <div class="pay-info-card">
+            <p style="margin:0; font-size:0.8rem;">በዚህ የቴሌብር ቁጥር ይላኩ፡</p>
+            <h2 id="display-admin-phone" style="margin:5px 0; color:#facc15;">0991243423</h2>
+            <p id="display-admin-name" style="margin:0; font-weight:bold; color:white;">ዲዲ ዲዲ ዳዳ</p>
+        </div>
+
+        <div class="hint-text">💡 ፍንጭ፡ የላኩበትን ትክክለኛ Transaction ID ያስገቡ።</div>
         <input type="number" id="dep-amt" placeholder="የብር መጠን">
         <input type="text" id="dep-trx" placeholder="Transaction ID">
         <button class="btn btn-green" onclick="reqFinance('DEP')">ጥያቄ ላክ</button>
@@ -173,6 +169,13 @@
     <div id="admin-page" class="page">
         <h2 id="adm-commission" style="color:#facc15; text-align:center;">0.00 ETB</h2>
         
+        <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:15px; margin-bottom:20px;">
+            <h4 style="margin:0 0 10px 0; color:#facc15;">የክፍያ መቀበያ አድራሻ ይቀይሩ</h4>
+            <input type="text" id="set-admin-phone" placeholder="የቴሌብር ስልክ ቁጥር">
+            <input type="text" id="set-admin-name" placeholder="የባለቤቱ ስም">
+            <button class="btn btn-green" style="padding:10px;" onclick="updatePaymentSettings()">ለውጦችን አዝምን (Update)</button>
+        </div>
+
         <hr>
         <div id="admin-req-list"></div>
         <button class="btn btn-red" onclick="confirmReset()">RESET GAME</button>
@@ -190,13 +193,31 @@
     const user = tg.initDataUnsafe.user || { id: "GUEST_" + Date.now(), first_name: "Player" };
     document.getElementById('u-name').innerText = user.first_name;
     
-    // --- ዳኛ Dashboard Logic ---
     if(user.id == ADMIN_ID) {
         document.getElementById('adm-gate').style.display = 'block';
         document.getElementById('player-zone').style.display = 'none';
     }
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
+
+    // --- የክፍያ መረጃዎችን ከዳታቤዝ ማንበብ ---
+    db.ref('settings/payment').on('value', s => {
+        const data = s.val() || { phone: "0991243423", name: "ዲዲ ዲዲ ዳዳ" };
+        document.getElementById('display-admin-phone').innerText = data.phone;
+        document.getElementById('display-admin-name').innerText = data.name;
+        if(user.id == ADMIN_ID) {
+            document.getElementById('set-admin-phone').value = data.phone;
+            document.getElementById('set-admin-name').value = data.name;
+        }
+    });
+
+    function updatePaymentSettings() {
+        const p = document.getElementById('set-admin-phone').value;
+        const n = document.getElementById('set-admin-name').value;
+        if(!p || !n) return alert("እባክህ ሁለቱንም ሳጥኖች ሙላ!");
+        db.ref('settings/payment').set({ phone: p, name: n })
+        .then(() => alert("የክፍያ መረጃው ተቀይሯል!"));
+    }
 
     const onlineRef = db.ref('online_players/' + user.id);
     if(user.id != ADMIN_ID) {
@@ -209,13 +230,11 @@
         document.getElementById('player-count').innerText = count;
     });
 
-    // --- 🎯 አዲስ የተጨመረ፡ ምዝገባ ቼክ ማድረጊያ ---
     function checkUserRegistration() {
         if(user.id == ADMIN_ID) { showMain(); return; }
         db.ref('users/' + user.id + '/phone').once('value', s => {
-            if (s.exists()) { 
-                showMain(); 
-            } else { 
+            if (s.exists()) { showMain(); } 
+            else { 
                 document.getElementById('reg-overlay').style.display = 'flex';
                 document.getElementById('splash').style.display = 'none';
             }
@@ -224,7 +243,7 @@
 
     function savePhone() {
         const phone = document.getElementById('user-phone-input').value;
-        if (!/^(09|07)\d{8}$/.test(phone)) return alert("ትክክለኛ ስልክ ያስገቡ (09... ወይም 07...)!");
+        if (!/^(09|07)\d{8}$/.test(phone)) return alert("ትክክለኛ ስልክ ያስገቡ!");
         db.ref('users/' + user.id).update({ phone: phone, first_name: user.first_name, id: user.id })
         .then(() => {
             document.getElementById('reg-overlay').style.display = 'none';
@@ -242,7 +261,6 @@
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
-        if(myBal < 0) { db.ref('users/' + user.id + '/bal').set(0); }
     });
 
     db.ref('history/' + user.id).limitToLast(10).on('value', s => {
@@ -318,9 +336,7 @@
         if(drawn.length > prevCount && lastNum && hasBoard) {
             const h = document.getElementById('live-hint');
             const cellIndex = myBoard.indexOf(lastNum);
-            
             h.innerHTML = `<span style="color:#facc15; font-size:1.5rem;">${lastNum}</span>`;
-            
             if(cellIndex !== -1) {
                 const cellEl = document.getElementById('c-'+cellIndex);
                 if(cellEl) {
@@ -335,7 +351,7 @@
     function checkBet(amt) { 
         if(myBal < amt) return alert("በቂ ባላንስ የለም!"); 
         db.ref('game/drawn').once('value', s => { 
-            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል! እባክህ ቀጣዩን ዙር ጠብቅ።"); 
+            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል!"); 
             currentBet = amt; 
             showP('reserve-page'); 
         }); 
@@ -346,25 +362,18 @@
             const list = document.getElementById('board-list'); list.innerHTML = "";
             const taken = s.val() || {};
             let totalCollected = 0;
-            
             for(let i=1; i<=200; i++) {
                 let b = document.createElement('div'); 
                 let boardData = taken[i];
                 let isTaken = boardData && boardData.userId !== user.id;
                 let isMine = boardData && boardData.userId === user.id;
-                
-                if(boardData && boardData.betAmount) {
-                    totalCollected += boardData.betAmount;
-                }
-
+                if(boardData && boardData.betAmount) { totalCollected += boardData.betAmount; }
                 b.className = "cell board-item" + (isTaken ? " board-taken" : "") + (isMine ? " my-selection" : "");
                 b.innerText = i;
                 b.onclick = () => { if(!isTaken) buyBoard(i); };
                 list.appendChild(b);
             }
-
-            const winnerShare = totalCollected * 0.8;
-            document.getElementById('jackpot-display').innerText = winnerShare.toFixed(2) + " ETB";
+            document.getElementById('jackpot-display').innerText = (totalCollected * 0.8).toFixed(2) + " ETB";
         });
     }
 
@@ -372,24 +381,11 @@
         if(myBal < currentBet && !myBoardID) return alert("በቂ ባላንስ የለም!");
         if(myBoardID) { db.ref('reserved_boards/' + myBoardID).remove(); }
         else { db.ref('users/'+user.id+'/bal').transaction(c => (c >= currentBet ? c - currentBet : c)); }
-        
-        db.ref('reserved_boards/' + id).set({
-            userId: user.id,
-            betAmount: currentBet
-        });
-        
+        db.ref('reserved_boards/' + id).set({ userId: user.id, betAmount: currentBet });
         db.ref('game/currentBetPrice').set(currentBet);
-
         myBoardID = id;
         hasBoard = true;
-        
-        db.ref('game').transaction(currentGame => {
-             if (currentGame && currentGame.status === 'idle') {
-                 return { ...currentGame, status: 'waiting', timer: 30 }; 
-             }
-             return currentGame; 
-        });
-
+        db.ref('game').transaction(g => (g && g.status === 'idle' ? {...g, status:'waiting', timer:30} : g));
         startBingo();
         showP('game-page');
     }
@@ -422,8 +418,7 @@
 
     function approveReq(id) {
         db.ref('requests/' + id).once('value', s => {
-            const r = s.val();
-            if(!r) return;
+            const r = s.val(); if(!r) return;
             if(r.type === 'DEP') { db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt); } 
             else if(r.type === 'WIT') { db.ref('users/' + r.uid + '/bal').transaction(c => (c >= r.amt ? c - r.amt : c)); }
             db.ref('history/' + r.uid + '/' + id + '/status').set('Approved');
@@ -433,18 +428,13 @@
 
     function rejectReq(id) {
         db.ref('requests/' + id).once('value', s => {
-            if(s.exists()){
-                db.ref('history/' + s.val().uid + '/' + id + '/status').set('Rejected');
-                db.ref('requests/' + id).remove();
-            }
+            if(s.exists()){ db.ref('history/' + s.val().uid + '/' + id + '/status').set('Rejected'); db.ref('requests/' + id).remove(); }
         });
     }
 
     function resetGame() { 
         db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 });
-        db.ref('reserved_boards').remove(); 
-        resetPlayerLocal();
-        document.getElementById('game-status-text').innerText = "● መጠባበቂያ ላይ...";
+        db.ref('reserved_boards').remove(); resetPlayerLocal();
         showP('home-page');
     }
 
