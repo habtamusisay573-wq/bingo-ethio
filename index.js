@@ -6,74 +6,80 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- የቴሌብር SMS መቀበያ (Webhook) ---
+// --- 1. የቴሌብር SMS መቀበያ (ከForwarder አፕ የሚመጣ) ---
 app.post('/sms-webhook', async (req, res) => {
-    console.log("ሙሉ የደረሰው መረጃ:", req.body);
-    
-    const sender = req.body.from || "";
     const message = req.body.text || "";
+    const sender = req.body.from || "";
 
     if (sender.includes("telebirr") || message.includes("ብር") || message.includes("ETB")) {
-        console.log(`ትክክለኛ የቴሌብር መልእክት ደርሷል!`);
-
-        // 1. Transaction ID መለየት (መለያ ቁጥር) - 10-12 ፊደልና ቁጥር
         const txIdMatch = message.match(/[A-Z0-9]{10,12}/i); 
         const txId = txIdMatch ? txIdMatch[0] : null;
 
-        // 2. የብሩን መጠን መለየት
         const amountMatch = message.match(/(\d+(?:\.\d+)?)\s?ETB/i) || message.match(/ብር\s?(\d+(?:\.\d+)?)/);
         const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
 
-        // 3. የተጫዋቹን ስልክ ከሪማርክ መፈለግ
         const playerPhoneMatch = message.match(/(09\d{8}|07\d{8})/);
         const playerPhone = playerPhoneMatch ? playerPhoneMatch[0] : null;
 
         if (txId && amount > 0) {
             try {
-                // መጀመሪያ ቁጥሩ ቀድሞ ጥቅም ላይ መዋሉን ቼክ ማድረግ
-                const txCheck = await db.ref(`used_transactions/${txId}`).get();
-                
-                if (txCheck.exists()) {
-                    console.log(`ማስጠንቀቂያ፡ ይህ መለያ ቁጥር (${txId}) ቀድሞ ተገኝቷል!`);
-                    return res.status(200).json({ status: "duplicate" });
-                }
-
-                // ቁጥሩን እንደ ተጠቀመበት መመዝገብ (ደግመው እንዳይጠቀሙ)
-                await db.ref(`used_transactions/${txId}`).set({
+                // መረጃውን ለጊዜው 'pending_payments' ውስጥ እናስቀምጠው (ተጫዋቹ አፑ ላይ እስኪያረጋግጥ)
+                await db.ref(`pending_payments/${txId}`).set({
                     amount: amount,
-                    date: new Date().toLocaleString(),
-                    status: "used"
+                    sender_phone: playerPhone,
+                    status: "received",
+                    timestamp: Date.now()
                 });
 
+                // ተጫዋቹ ሪማርክ ላይ ስልኩን በትክክል ጽፎ ከሆነ ወዲያውኑ ባላንስ ጨምርለት
                 if (playerPhone) {
-                    const userRef = db.ref('users');
-                    const snapshot = await userRef.orderByChild('phone').equalTo(playerPhone).once('value');
-                    
-                    if (snapshot.exists()) {
-                        const userId = Object.keys(snapshot.val())[0];
-                        await db.ref(`users/${userId}/bal`).transaction(curr => (curr || 0) + amount);
+                    const userSnap = await db.ref('users').orderByChild('phone').equalTo(playerPhone).once('value');
+                    if (userSnap.exists()) {
+                        const userId = Object.keys(userSnap.val())[0];
+                        const txCheck = await db.ref(`used_transactions/${txId}`).get();
                         
-                        await db.ref(`history/${userId}`).push({
-                            type: "የቴሌብር ተቀማጭ 💰",
-                            amt: amount,
-                            info: `Transaction ID: ${txId}`,
-                            date: new Date().toLocaleString()
-                        });
-                        console.log(`ተሳክቷል፡ ለተጫዋች ${playerPhone} ብር ${amount} ተጨምሯል።`);
-                    } else {
-                        console.log(`ስህተት፡ ስልክ ${playerPhone} በዳታቤዝ የለም።`);
+                        if (!txCheck.exists()) {
+                            await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + amount);
+                            await db.ref(`used_transactions/${txId}`).set({ userId, amount, date: new Date().toLocaleString() });
+                            console.log(`Auto-added: ${amount} to ${playerPhone}`);
+                        }
                     }
                 }
-            } catch (error) {
-                console.error("Firebase Process Error:", error);
-            }
+            } catch (e) { console.error("SMS Error:", e); }
         }
     }
     res.status(200).json({ status: "success" });
 });
 
+// --- 2. ተጫዋቹ ከአፑ ላይ "Confirm" ሲል የሚመጣ ጥሪ ---
+app.post('/confirm-payment', async (req, res) => {
+    const { phone, txId } = req.body;
+
+    try {
+        // መጀመሪያ ይህ Transaction ID ጥቅም ላይ መዋሉን ቼክ አድርግ
+        const used = await db.ref(`used_transactions/${txId}`).get();
+        if (used.exists()) return res.status(400).json({ msg: "ይህ ቁጥር አስቀድሞ ጥቅም ላይ ውሏል!" });
+
+        // SMS መድረሱን ቼክ አድርግ
+        const pending = await db.ref(`pending_payments/${txId}`).get();
+        if (!pending.exists()) return res.status(404).json({ msg: "የቴሌብር መልእክቱ ገና አልደረሰም፤ እባክዎ ጥቂት ሰከንድ ይጠብቁ።" });
+
+        const { amount } = pending.val();
+
+        // ተጫዋቹን ፈልግና ብር ጨምርለት
+        const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
+        if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋቹ አልተገኘም!" });
+
+        const userId = Object.keys(userSnap.val())[0];
+        await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + amount);
+        await db.ref(`used_transactions/${txId}`).set({ userId, amount, date: new Date().toLocaleString() });
+
+        res.status(200).json({ msg: `በተሳካ ሁኔታ ${amount} ብር ተጨምሯል!` });
+    } catch (e) { res.status(500).json({ msg: "Server Error" }); }
+});
+
 const server = app.listen(process.env.PORT || 3000, () => {
-    console.log('Bingo Server Active and Listening for SMS...');
+    console.log('Bingo Server Active...');
 });
 
 // --- ያንተ የቆየው የFirebase ኮድ ከዚህ በታች ይቀጥላል ---
@@ -111,14 +117,11 @@ db.ref('online_players').on('value', (snapshot) => {
                 await db.ref('game').update({
                     drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
                 });
-                console.log("ሁሉም ተጫዋቾች ስለወጡ ሲስተሙ Reset ሆኗል።");
+                console.log("Resetting game...");
             }
         }, 3000); 
     } else {
-        if (resetTimeout) {
-            clearTimeout(resetTimeout);
-            resetTimeout = null;
-        }
+        if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
     }
 });
 
@@ -129,7 +132,6 @@ async function checkServerRecovery() {
     const gameSnap = await db.ref('game').get();
     const gameData = gameSnap.val();
     if(gameData && gameData.status === 'active' && !gameData.winner) {
-        console.log("Resuming interrupted game...");
         startDrawingNumbers(gameData.drawn || []);
     }
 }
@@ -158,9 +160,6 @@ db.ref('game').on('value', async (snap) => {
                 type: "የቢንጎ ድል 🏆", amt: winnerPay, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString()
             });
             await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
-            await db.ref('admin_logs').push({
-                winner: game.winner.name, total: totalPool, adminShare: adminPay, date: new Date().toLocaleString()
-            });
         } catch (e) { console.error("Payment Failed", e); }
 
         setTimeout(() => {
