@@ -63,7 +63,6 @@
         .reg-box { background: rgba(30, 41, 59, 0.95); padding: 30px; border-radius: 20px; width: 100%; max-width: 320px; border: 2px solid #facc15; text-align: center; }
         .reg-input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #facc15; margin: 20px 0; font-size: 1.2rem; text-align: center; color: black !important; }
         
-        /* ዲፖዚት ገጽ ላይ ቁጥር ማሳያ ሳጥን */
         .pay-info-card { background: rgba(250, 204, 21, 0.1); border: 2px dashed #facc15; padding: 15px; border-radius: 15px; margin-bottom: 15px; text-align: center; }
     </style>
 </head>
@@ -200,7 +199,6 @@
 
     let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
-    // --- የክፍያ መረጃዎችን ከዳታቤዝ ማንበብ ---
     db.ref('settings/payment').on('value', s => {
         const data = s.val() || { phone: "0991243423", name: "ዲዲ ዲዲ ዳዳ" };
         document.getElementById('display-admin-phone').innerText = data.phone;
@@ -405,14 +403,48 @@
 
     function resetPlayerLocal() { hasBoard = false; myBoardID = null; markedCells = [12]; myBoard = []; }
 
-    function reqFinance(type) {
+    // --- የተቀናጀ የክፍያ ጥያቄ (Frontend + Backend) ---
+    async function reqFinance(type) {
         let amt = type === 'DEP' ? document.getElementById('dep-amt').value : document.getElementById('wit-amt').value;
         let info = type === 'DEP' ? document.getElementById('dep-trx').value : document.getElementById('wit-phone').value;
         if(!amt || !info) return alert("መረጃውን በትክክል ሙሉ!");
+        
         const reqId = Date.now();
+
+        if (type === 'DEP') {
+            try {
+                // ተጫዋቹ መጀመሪያ ያስመዘገበውን ስልክ ፈልገን እንውሰድ
+                const userSnap = await db.ref('users/' + user.id + '/phone').once('value');
+                const registeredPhone = userSnap.val() || "";
+
+                const response = await fetch('https://bingo-ethio.onrender.com/confirm-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: registeredPhone, txId: info })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert("✅ " + result.msg);
+                    showP('home-page');
+                } else {
+                    alert("⏳ " + result.msg + "\nጥያቄው ለዳኛ ተልኳል፤ ቴሌብር መልእክቱን ሲልክ ዳኛው ያረጋግጣል።");
+                    saveFallback(reqId, type, amt, info);
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                saveFallback(reqId, type, amt, info);
+                alert("ጥያቄው ለዳኛ ተልኳል።");
+            }
+        } else {
+            saveFallback(reqId, type, amt, info);
+            alert("የወጪ ጥያቄው ተልኳል!");
+        }
+    }
+
+    function saveFallback(reqId, type, amt, info) {
         db.ref('requests/' + reqId).set({ uid: user.id, name: user.first_name, type: type, amt: parseFloat(amt), info: info });
         db.ref('history/' + user.id + '/' + reqId).set({ type: type, amt: amt, status: 'Pending', date: new Date().toLocaleString() });
-        alert("ጥያቄው ተልኳል!");
         showP('home-page');
     }
 
@@ -443,24 +475,6 @@
         if(lines.some(l => l.every(idx => markedCells.includes(idx)))) { 
             db.ref('game/winner').set({ name: user.first_name, id: user.id, bet: currentBet }); 
         } else alert("ቢንጎ ገና ነህ!");
-    }
-
-    function toggleAutoDraw(f = null) {
-        if(f === true || (!autoInterval && f === null)) {
-            autoInterval = setInterval(drawNum, 2500);
-            if(document.getElementById('auto-btn')) document.getElementById('auto-btn').innerText = "AUTO: ON";
-        } else {
-            clearInterval(autoInterval); autoInterval = null;
-            if(document.getElementById('auto-btn')) document.getElementById('auto-btn').innerText = "AUTO: OFF";
-        }
-    }
-
-    function drawNum() {
-        db.ref('game/drawn').once('value', s => {
-            let d = s.val() || []; if(d.length >= 75) return;
-            let n; do { n = Math.floor(Math.random()*75)+1; } while(d.includes(n));
-            d.push(n); db.ref('game/drawn').set(d);
-        });
     }
 
     function safeBack() {
