@@ -64,6 +64,7 @@
         .reg-input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid #facc15; margin: 20px 0; font-size: 1.2rem; text-align: center; color: black !important; }
         
         .pay-info-card { background: rgba(250, 204, 21, 0.1); border: 2px dashed #facc15; padding: 15px; border-radius: 15px; margin-bottom: 15px; text-align: center; }
+        .limit-hint { color: #ef4444; font-size: 0.8rem; margin-bottom: 8px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -122,7 +123,7 @@
             <p id="display-admin-name" style="margin:0; font-weight:bold; color:white;">ዲዲ ዲዲ ዳዳ</p>
         </div>
 
-        <div class="hint-text">💡 ፍንጭ፡ የላኩበትን ትክክለኛ Transaction ID ያስገቡ።</div>
+        <div class="limit-hint">⚠️ ትንሹ ማስገቢያ መጠን 10 ETB ነው።</div>
         <input type="number" id="dep-amt" placeholder="የብር መጠን">
         <input type="text" id="dep-trx" placeholder="Transaction ID">
         <button class="btn btn-green" onclick="reqFinance('DEP')">ጥያቄ ላክ</button>
@@ -130,8 +131,8 @@
     </div>
 
     <div id="withdraw-page" class="page">
-        <div class="hint-text">💡 ፍንጭ፡ ብር የሚቀበሉበትን ትክክለኛ ስልክ ያስገቡ።</div>
         <h3 style="text-align: center; color: #ef4444;">ብር ማውጫ (Withdraw)</h3>
+        <div class="limit-hint">⚠️ ዝቅተኛው 50 ETB | ከፍተኛው 5000 ETB</div>
         <input type="number" id="wit-amt" placeholder="የሚወጣው መጠን">
         <input type="text" id="wit-phone" placeholder="የተቀባይ ስልክ">
         <button class="btn btn-red" onclick="reqFinance('WIT')">ጥያቄ ላክ</button>
@@ -197,7 +198,7 @@
         document.getElementById('player-zone').style.display = 'none';
     }
 
-    let myBal = 0, drawn = [], markedCells = [12], autoInterval = null, currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
+    let myBal = 0, drawn = [], markedCells = [12], currentBet = 0, myBoard = [], hasBoard = false, myBoardID = null;
 
     db.ref('settings/payment').on('value', s => {
         const data = s.val() || { phone: "0991243423", name: "ዲዲ ዲዲ ዳዳ" };
@@ -242,7 +243,7 @@
     function savePhone() {
         const phone = document.getElementById('user-phone-input').value;
         if (!/^(09|07)\d{8}$/.test(phone)) return alert("ትክክለኛ ስልክ ያስገቡ!");
-        db.ref('users/' + user.id).update({ phone: phone, first_name: user.first_name, id: user.id })
+        db.ref('users/' + user.id).update({ phone: phone, first_name: user.first_name, id: user.id, bal: 0 })
         .then(() => {
             document.getElementById('reg-overlay').style.display = 'none';
             showMain();
@@ -403,17 +404,35 @@
 
     function resetPlayerLocal() { hasBoard = false; myBoardID = null; markedCells = [12]; myBoard = []; }
 
-    // --- የተቀናጀ የክፍያ ጥያቄ (Frontend + Backend) ---
+    // --- አዲሱ የክፍያ ጥያቄ ከገደብ ጋር ---
     async function reqFinance(type) {
-        let amt = type === 'DEP' ? document.getElementById('dep-amt').value : document.getElementById('wit-amt').value;
-        let info = type === 'DEP' ? document.getElementById('dep-trx').value : document.getElementById('wit-phone').value;
-        if(!amt || !info) return alert("መረጃውን በትክክል ሙሉ!");
+        let amtInput = type === 'DEP' ? document.getElementById('dep-amt') : document.getElementById('wit-amt');
+        let infoInput = type === 'DEP' ? document.getElementById('dep-trx') : document.getElementById('wit-phone');
         
+        let amt = parseFloat(amtInput.value);
+        let info = infoInput.value;
+
+        if(!amt || !info) return alert("እባክዎን መረጃውን በትክክል ይሙሉ!");
+
+        // --- ገደቦች (Limits) ---
+        const MIN_DEPOSIT = 10;
+        const MIN_WITHDRAW = 50;
+        const MAX_WITHDRAW = 5000;
+
+        if (type === 'DEP' && amt < MIN_DEPOSIT) {
+            return alert("ስህተት፡ ዝቅተኛው ማስገቢያ " + MIN_DEPOSIT + " ብር ነው።");
+        }
+
+        if (type === 'WIT') {
+            if (amt < MIN_WITHDRAW) return alert("ስህተት፡ ዝቅተኛው ማውጫ " + MIN_WITHDRAW + " ብር ነው።");
+            if (amt > MAX_WITHDRAW) return alert("ስህተት፡ ከፍተኛው ማውጫ " + MAX_WITHDRAW + " ብር ነው።");
+            if (amt > myBal) return alert("ስህተት፡ በቂ ባላንስ የለዎትም! ያለዎት መጠን " + myBal.toFixed(2) + " ብር ነው።");
+        }
+
         const reqId = Date.now();
 
         if (type === 'DEP') {
             try {
-                // ተጫዋቹ መጀመሪያ ያስመዘገበውን ስልክ ፈልገን እንውሰድ
                 const userSnap = await db.ref('users/' + user.id + '/phone').once('value');
                 const registeredPhone = userSnap.val() || "";
 
@@ -427,23 +446,22 @@
                 if (response.ok) {
                     alert("✅ " + result.msg);
                     showP('home-page');
+                    return;
                 } else {
-                    alert("⏳ " + result.msg + "\nጥያቄው ለዳኛ ተልኳል፤ ቴሌብር መልእክቱን ሲልክ ዳኛው ያረጋግጣል።");
-                    saveFallback(reqId, type, amt, info);
+                    alert("⏳ " + result.msg);
                 }
             } catch (err) {
                 console.error("Fetch Error:", err);
-                saveFallback(reqId, type, amt, info);
-                alert("ጥያቄው ለዳኛ ተልኳል።");
             }
-        } else {
-            saveFallback(reqId, type, amt, info);
-            alert("የወጪ ጥያቄው ተልኳል!");
         }
+
+        // Fallback to Manual Admin Request
+        saveFallback(reqId, type, amt, info);
+        alert(type === 'DEP' ? "የገቢ ጥያቄው ተልኳል፤ ዳኛው ሲያረጋግጥ ይጨመርልዎታል።" : "የማውጫ ጥያቄው ተልኳል፤ ዳኛው እስኪያረጋግጥ ይጠብቁ።");
     }
 
     function saveFallback(reqId, type, amt, info) {
-        db.ref('requests/' + reqId).set({ uid: user.id, name: user.first_name, type: type, amt: parseFloat(amt), info: info });
+        db.ref('requests/' + reqId).set({ uid: user.id, name: user.first_name, type: type, amt: amt, info: info });
         db.ref('history/' + user.id + '/' + reqId).set({ type: type, amt: amt, status: 'Pending', date: new Date().toLocaleString() });
         showP('home-page');
     }
