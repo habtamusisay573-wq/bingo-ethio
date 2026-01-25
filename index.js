@@ -6,7 +6,12 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- 1. የቴሌብር SMS መቀበያ (ከForwarder አፕ የሚመጣ) ---
+// --- የገደብ መጠኖች (Limits) ---
+const MIN_DEPOSIT = 10;    // ትንሹ ማስገቢያ 10 ብር
+const MIN_WITHDRAW = 50;   // ትንሹ ማውጫ 50 ብር (አዲስ)
+const MAX_WITHDRAW = 5000; // ከፍተኛው ማውጫ 5000 ብር
+
+// --- 1. የቴሌብር SMS መቀበያ (Webhook) ---
 app.post('/sms-webhook', async (req, res) => {
     const message = req.body.text || "";
     const sender = req.body.from || "";
@@ -21,9 +26,8 @@ app.post('/sms-webhook', async (req, res) => {
         const playerPhoneMatch = message.match(/(09\d{8}|07\d{8})/);
         const playerPhone = playerPhoneMatch ? playerPhoneMatch[0] : null;
 
-        if (txId && amount > 0) {
+        if (txId && amount >= MIN_DEPOSIT) {
             try {
-                // መረጃውን ለጊዜው 'pending_payments' ውስጥ እናስቀምጠው (ተጫዋቹ አፑ ላይ እስኪያረጋግጥ)
                 await db.ref(`pending_payments/${txId}`).set({
                     amount: amount,
                     sender_phone: playerPhone,
@@ -31,7 +35,6 @@ app.post('/sms-webhook', async (req, res) => {
                     timestamp: Date.now()
                 });
 
-                // ተጫዋቹ ሪማርክ ላይ ስልኩን በትክክል ጽፎ ከሆነ ወዲያውኑ ባላንስ ጨምርለት
                 if (playerPhone) {
                     const userSnap = await db.ref('users').orderByChild('phone').equalTo(playerPhone).once('value');
                     if (userSnap.exists()) {
@@ -46,6 +49,8 @@ app.post('/sms-webhook', async (req, res) => {
                     }
                 }
             } catch (e) { console.error("SMS Error:", e); }
+        } else if (amount > 0 && amount < MIN_DEPOSIT) {
+            console.log(`ክፍያ ውድቅ ሆኗል፡ ${amount} ብር ከትንሹ ገደብ (${MIN_DEPOSIT}) በታች ነው።`);
         }
     }
     res.status(200).json({ status: "success" });
@@ -56,30 +61,73 @@ app.post('/confirm-payment', async (req, res) => {
     const { phone, txId } = req.body;
 
     try {
-        // መጀመሪያ ይህ Transaction ID ጥቅም ላይ መዋሉን ቼክ አድርግ
         const used = await db.ref(`used_transactions/${txId}`).get();
         if (used.exists()) return res.status(400).json({ msg: "ይህ ቁጥር አስቀድሞ ጥቅም ላይ ውሏል!" });
 
-        // SMS መድረሱን ቼክ አድርግ
         const pending = await db.ref(`pending_payments/${txId}`).get();
         if (!pending.exists()) return res.status(404).json({ msg: "የቴሌብር መልእክቱ ገና አልደረሰም፤ እባክዎ ጥቂት ሰከንድ ይጠብቁ።" });
 
-        const { amount } = pending.val();
+        const actualAmount = pending.val().amount;
 
-        // ተጫዋቹን ፈልግና ብር ጨምርለት
+        if (actualAmount < MIN_DEPOSIT) {
+            return res.status(400).json({ msg: `ትንሹ ማስገቢያ ${MIN_DEPOSIT} ብር ነው። የላኩት ${actualAmount} ብር ስለሆነ አይቻልም።` });
+        }
+
         const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
         if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋቹ አልተገኘም!" });
 
         const userId = Object.keys(userSnap.val())[0];
-        await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + amount);
-        await db.ref(`used_transactions/${txId}`).set({ userId, amount, date: new Date().toLocaleString() });
+        await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + actualAmount);
+        await db.ref(`used_transactions/${txId}`).set({ userId, amount: actualAmount, date: new Date().toLocaleString() });
 
-        res.status(200).json({ msg: `በተሳካ ሁኔታ ${amount} ብር ተጨምሯል!` });
+        res.status(200).json({ msg: `በተሳካ ሁኔታ ${actualAmount} ብር ተጨምሯል!` });
+    } catch (e) { res.status(500).json({ msg: "Server Error" }); }
+});
+
+// --- 3. የዊዝድሮው ገደብ እና የባላንስ ቼክ ---
+app.post('/request-withdraw', async (req, res) => {
+    const { userId, amount, phone } = req.body;
+    const withdrawAmt = parseFloat(amount);
+
+    try {
+        const userSnap = await db.ref(`users/${userId}`).get();
+        if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋቹ አልተገኘም!" });
+
+        const currentBal = userSnap.val().bal || 0;
+
+        // ሂሳብ ቼክ (ከባላንስ በላይ)
+        if (withdrawAmt > currentBal) {
+            return res.status(400).json({ msg: `በቂ ሂሳብ የለዎትም! ያለዎት መጠን ${currentBal} ብር ነው።` });
+        }
+
+        // ሚኒመም ቼክ (50 ብር)
+        if (withdrawAmt < MIN_WITHDRAW) {
+            return res.status(400).json({ msg: `ትንሹ የማውጫ መጠን ${MIN_WITHDRAW} ብር ነው።` });
+        }
+
+        // ማክሲመም ቼክ
+        if (withdrawAmt > MAX_WITHDRAW) {
+            return res.status(400).json({ msg: `ከፍተኛው ማውጫ ${MAX_WITHDRAW} ብር ነው።` });
+        }
+
+        // ጥያቄውን ለዳኛው መመዝገብ
+        const reqId = Date.now();
+        await db.ref(`requests/${reqId}`).set({
+            uid: userId,
+            name: userSnap.val().first_name,
+            type: 'WIT',
+            amt: withdrawAmt,
+            info: phone,
+            status: 'Pending'
+        });
+
+        res.status(200).json({ msg: "የማውጫ ጥያቄዎ ተልኳል፤ ዳኛው እስኪያረጋግጥ ይጠብቁ።" });
+
     } catch (e) { res.status(500).json({ msg: "Server Error" }); }
 });
 
 const server = app.listen(process.env.PORT || 3000, () => {
-    console.log('Bingo Server Active...');
+    console.log('Bingo Server Active with Balance Check...');
 });
 
 // --- ያንተ የቆየው የFirebase ኮድ ከዚህ በታች ይቀጥላል ---
