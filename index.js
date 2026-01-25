@@ -83,14 +83,30 @@ if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-let drawingInterval = null, timerInterval = null;
+let drawingInterval = null, timerInterval = null, resetTimeout = null;
 
-// ጨዋታ ክትትል (Fix: Live Update Logic)
+// --- የመስመር ላይ ተጫዋቾች ቁጥጥር (ምንም ሳይቀንስ የታከለ) ---
+db.ref('online_players').on('value', (snapshot) => {
+    const playerCount = snapshot.numChildren();
+    if (playerCount === 0) {
+        if (resetTimeout) clearTimeout(resetTimeout);
+        resetTimeout = setTimeout(async () => {
+            const gameSnap = await db.ref('game').get();
+            const gameData = gameSnap.val();
+            if (gameData && gameData.status !== 'idle') {
+                await db.ref('reserved_boards').remove();
+                await db.ref('game').update({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false });
+            }
+        }, 3000); 
+    } else if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
+});
+
+// --- ዋናው የጨዋታ መቆጣጠሪያ (Fixes Included) ---
 db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
 
-    // ጨዋታው ከተቋረጠ (Idle ከሆነ) ሰርቨሩ ላይ ያሉ ቲመሮችን ወዲያውኑ አቁም
+    // ጨዋታው ከተቋረጠ ሰርቨር ላይ ያሉ ቲመሮችን አቁም
     if (game.status === 'idle') {
         if (drawingInterval) { clearInterval(drawingInterval); drawingInterval = null; }
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
@@ -108,6 +124,7 @@ db.ref('game').on('value', async (snap) => {
 
         try {
             await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.8));
+            await db.ref(`history/${winnerId}`).push({ type: "የቢንጎ ድል 🏆", amt: totalPool * 0.8, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString() });
             await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.2));
         } catch (e) { console.error("Payment Error"); }
 
