@@ -189,6 +189,10 @@
     const db = fb.database();
     const tg = window.Telegram.WebApp; 
     tg.ready(); tg.expand();
+// ተጫዋቹ ሲገባ ኦንላይን መሆኑን ይመዘግባል
+const myOnlineRef = db.ref('online_players/' + user.id);
+myOnlineRef.set(true);
+myOnlineRef.onDisconnect().remove(); // ስልኩን ሲዘጋው ከዝርዝሩ ይጠፋል
 
     const user = tg.initDataUnsafe.user || { id: "GUEST_" + Date.now(), first_name: "Player" };
     document.getElementById('u-name').innerText = user.first_name;
