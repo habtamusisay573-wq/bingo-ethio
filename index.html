@@ -571,13 +571,18 @@ setInterval(() => {
     }
 
     // በየ 2 ሰከንድ የሚሰራው AUTO-RESET ኮድ
-    setInterval(() => {
-        db.ref('game').once('value', (snap) => {
-            const g = snap.val();
-            if(!g) return;
+    
 
-            // 1. ለሁሉም ተጫዋች፡ ጨዋታው ከተቋረጠ (idle ከሆነ) ሪሴት ያደርጋል
-            if (g.status === 'idle' && hasBoard === true) {
+    // በየ 2 ሰከንድ የሚሰራው ዋናው ተቆጣጣሪ (Monitor)
+setInterval(() => {
+    db.ref('game').once('value', (snap) => {
+        const g = snap.val();
+        if(!g) return;
+
+        // 1. ጨዋታው ከተቋረጠ ወይም ሪሴት ከተደረገ (Force Reset for all)
+        if (g.status === 'idle') {
+            if (hasBoard === true) {
+                console.log("ጨዋታው ተቋርጧል፤ ሲስተሙ በራሱ እያጸዳ ነው...");
                 hasBoard = false;
                 myBoardID = null;
                 markedCells = [12];
@@ -585,23 +590,40 @@ setInterval(() => {
                 const grid = document.getElementById('bingo-grid');
                 if(grid) grid.innerHTML = "";
             }
+        }
 
-            // 2. ለዳኛው ብቻ፡ አሸናፊ ካለ በ 3 ሰከንድ ሪሴት ያደርጋል
-            if (String(user.id) === String(ADMIN_ID)) {
-                if (g.winner && g.status !== 'idle') {
-                    setTimeout(() => {
-                        resetGame(); 
-                    }, 3000); // 3 ሰከንድ
-                }
+        // 2. ለዳኛው ብቻ፡ አሸናፊ ካለ በ 3 ሰከንድ ውስጥ በራሱ እንዲያጸዳ
+        if (String(user.id) === String(ADMIN_ID)) {
+            // አሸናፊ ካለና ሁኔታው ገና 'idle' ካልሆነ
+            if (g.winner && g.status !== 'idle') {
+                setTimeout(() => {
+                    // ዳታቤዙን Force Reset ያደርገዋል
+                    db.ref('game').update({
+                        drawn: [],
+                        timer: -1,
+                        winner: null,
+                        status: 'idle',
+                        currentBetPrice: 0
+                    });
+                    db.ref('reserved_boards').remove();
+                    console.log("አሸናፊ ተገኝቶ በ3 ሰከንድ Auto-Reset ተደርጓል።");
+                }, 3000); 
             }
-        });
-    }, 2000);
+        }
+    });
+}, 2000); // በየ 2 ሰከንዱ ፍተሻ ያደርጋል
 
-    // ገጹ ሲከፈት ተጫዋቹን ለማለፍ (ይሄ ከሌለ Splash ላይ ይቆማል)
-    checkUserRegistration();
-</script>
-</body>
-</html>
+// ዳኛው በእጁ ማጥፋት ሲፈልግ የሚጠራው
+function resetGame() { 
+    if(!confirm("ጨዋታውን በሙሉ ለማጥፋት እርግጠኛ ነህ?")) return;
+    db.ref('game').update({ 
+        drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 
+    });
+    db.ref('reserved_boards').remove(); 
+    resetPlayerLocal();
+    showP('home-page');
+}
+
 
 </script>
 </body>
