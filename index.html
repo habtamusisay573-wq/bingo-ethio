@@ -189,6 +189,10 @@
     const db = fb.database();
     const tg = window.Telegram.WebApp; 
     tg.ready(); tg.expand();
+// ተጫዋቹ ሲገባ ኦንላይን መሆኑን ይመዘግባል
+const myOnlineRef = db.ref('online_players/' + user.id);
+myOnlineRef.set(true);
+myOnlineRef.onDisconnect().remove(); // ስልኩን ሲዘጋው ከዝርዝሩ ይጠፋል
 
     const user = tg.initDataUnsafe.user || { id: "GUEST_" + Date.now(), first_name: "Player" };
     document.getElementById('u-name').innerText = user.first_name;
@@ -480,12 +484,23 @@
         db.ref('requests/' + id).once('value', s => {
             if(s.exists()){ db.ref('history/' + s.val().uid + '/' + id + '/status').set('Rejected'); db.ref('requests/' + id).remove(); }
         });
+    }    // ሰርቨሩ ሪሴት ማድረጉን ሲያውቅ ስልኩ ላይ በራሱ እንዲያጸዳ
+    if(g.status === 'idle') {
+        hasBoard = false;
+        myBoardID = null;
+        markedCells = [12];
+        showP('home-page');
+        const grid = document.getElementById('bingo-grid');
+        if(grid) grid.innerHTML = "";
+        return; 
     }
+
 
     function resetGame() { 
         db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 });
         db.ref('reserved_boards').remove(); resetPlayerLocal();
         showP('home-page');
+        
     }
 
     function checkBingoAndClaim() {
@@ -506,128 +521,7 @@
         if(id==='reserve-page') loadBoards(); 
     }
     function confirmReset() { if(confirm("RESET?")) resetGame(); }
-    setInterval(() => {
-    // 1. ለሁሉም ተጫዋች፡ ጨዋታው ከተቋረጠ ሪሴት ያደርጋል
-    db.ref('game/status').once('value', snap => {
-        const status = snap.val();
-        if (status === 'idle' && hasBoard === true) {
-            hasBoard = false;
-            myBoardID = null;
-            markedCells = [12];
-            showP('home-page');
-            const grid = document.getElementById('bingo-grid');
-            if(grid) grid.innerHTML = "";
-        }
-    });
-
-    // 2. ለዳኛው ብቻ፡ አሸናፊ ካለ ከ 3 ሰከንድ በኋላ ሪሴት ያደርጋል
-        
-    // --- የተስተካከለ Auto Reset ኮድ ---
-setInterval(() => {
-    // 1. ለተጫዋቾች በሙሉ (ጨዋታው ከተቋረጠ እንዲመለሱ)
-    db.ref('game/status').once('value', (snap) => {
-        const currentStatus = snap.val();
-        if (currentStatus === 'idle' && hasBoard === true) {
-            hasBoard = false;
-            myBoardID = null;
-            markedCells = [12];
-            showP('home-page');
-            const grid = document.getElementById('bingo-grid');
-            if(grid) grid.innerHTML = "";
-            console.log("Auto-Fix: ሰርቨሩ ሪሴት ስለሆነ ተመልሰሃል።");
-        }
-    });
-
-    // 2. ለዳኛው (አሸናፊ ሲኖር በ3 ሰከንድ ሪሴት እንዲያደርግ
-    
-     // በየ 2 ሰከንዱ ቼክ ያደርጋል
-    // --- ይሄን ብቻ ተጠቀም (ሁሉንም ስህተት ያርማል) ---
-    function resetGame() { 
-        if(!confirm("እርግጠኛ ነህ ሪሴት ይደረግ?")) return;
-        db.ref('game').set({ 
-            drawn: [], 
-            timer: -1, 
-            winner: null, 
-            status: 'idle', 
-            currentBetPrice: 0 
-        });
-        db.ref('reserved_boards').remove(); 
-        resetPlayerLocal();
-        showP('home-page');
-    }
-
-    function showP(id) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        const target = document.getElementById(id);
-        if(target) target.classList.add('active');
-    }
-
-    function safeBack() {
-        if(hasBoard) {
-            if(confirm("ጨዋታው ላይ ነህ፤ መውጣት ትፈልጋለህ?")) showP('home-page');
-        } else {
-            showP('home-page');
-        }
-    }
-
-    // በየ 2 ሰከንድ የሚሰራው ዋናው ተቆጣጣሪ (Monitor)
-setInterval(() => {
-    db.ref('game').once('value', (snap) => {
-        const g = snap.val();
-        if(!g) return;
-
-        // 1. ጨዋታው ከተቋረጠ ወይም ሪሴት ከተደረገ (Force Reset for all)
-        // በየ 2 ሰከንድ የሚሰራው ዋናው ተቆጣጣሪ (Monitor)
-setInterval(() => {
-    db.ref('game').once('value', (snap) => {
-        const g = snap.val();
-        if(!g) return;
-
-        // 1. ጨዋታው ከተቋረጠ ወይም ሪሴት ከተደረገ (Force Reset for all)
-        if (g.status === 'idle') {
-            if (hasBoard === true) {
-                console.log("ጨዋታው ተቋርጧል፤ ሲስተሙ በራሱ እያጸዳ ነው...");
-                hasBoard = false;
-                myBoardID = null;
-                markedCells = [12];
-                showP('home-page');
-                const grid = document.getElementById('bingo-grid');
-                if(grid) grid.innerHTML = "";
-            }
-        }
-
-        // 2. ለዳኛው ብቻ፡ አሸናፊ ካለ በ 3 ሰከንድ ውስጥ በራሱ እንዲያጸዳ
-        if (String(user.id) === String(ADMIN_ID)) {
-            // አሸናፊ ካለና ሁኔታው ገና 'idle' ካልሆነ
-            if (g.winner && g.status !== 'idle') {
-                setTimeout(() => {
-                    // ዳታቤዙን Force Reset ያደርገዋል
-                    db.ref('game').update({
-                        drawn: [],
-                        timer: -1,
-                        winner: null,
-                        status: 'idle',
-                        currentBetPrice: 0
-                    });
-                    db.ref('reserved_boards').remove();
-                    console.log("አሸናፊ ተገኝቶ በ3 ሰከንድ Auto-Reset ተደርጓል።");
-                }, 3000); 
-            }
-        }
-    });
-}, 2000); // በየ 2 ሰከንዱ ፍተሻ ያደርጋል
-
-// ዳኛው በእጁ ማጥፋት ሲፈልግ የሚጠራው
-function resetGame() { 
-    if(!confirm("ጨዋታውን በሙሉ ለማጥፋት እርግጠኛ ነህ?")) return;
-    db.ref('game').update({ 
-        drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 
-    });
-    db.ref('reserved_boards').remove(); 
-    resetPlayerLocal();
-    showP('home-page');
-}
-// 1. የተጠቃሚውን ምዝገባ ቼክ የሚያደርግና ሎጎውን የሚያጠፋው ፋንክሽን
+    // 1. የተጠቃሚውን ምዝገባ ቼክ የሚያደርግና ሎጎውን የሚያጠፋው ፋንክሽን
 function checkUserRegistration() {
     console.log("Checking user registration...");
     
@@ -652,6 +546,39 @@ function checkUserRegistration() {
     }
 }
 
-</scrip>
+// 2. ጨዋታው ሲቋረጥ በየ 2 ሰከንዱ Force Reset የሚያደርገው
+setInterval(() => {
+    db.ref('game/status').once('value', snap => {
+        if (snap.val() === 'idle' && hasBoard === true) {
+            hasBoard = false;
+            myBoardID = null;
+            markedCells = [12];
+            showP('home-page');
+            const grid = document.getElementById('bingo-grid');
+            if(grid) grid.innerHTML = "";
+        }
+    });
+
+    // ለአሸናፊ Auto-Reset (ለዳኛው)
+    if (String(user.id) === String(ADMIN_ID)) {
+        db.ref('game').once('value', snap => {
+            const g = snap.val();
+            if (g && g.winner && g.status !== 'idle') {
+                setTimeout(() => {
+                    db.ref('game').update({ status: 'idle', winner: null, drawn: [] });
+                    db.ref('reserved_boards').remove();
+                }, 3000);
+            }
+        });
+    }
+}, 2000);
+
+// --- ዋናው ትዕዛዝ ---
+// ፔጁ እንደተከፈተ ስራ እንዲጀምር ይሄን ጥሪ እናድርግ
+window.onload = () => {
+    checkUserRegistration();
+};
+
+</script>
 </body>
 </html>
