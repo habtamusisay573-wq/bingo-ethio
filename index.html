@@ -480,12 +480,23 @@
         db.ref('requests/' + id).once('value', s => {
             if(s.exists()){ db.ref('history/' + s.val().uid + '/' + id + '/status').set('Rejected'); db.ref('requests/' + id).remove(); }
         });
+    }    // ሰርቨሩ ሪሴት ማድረጉን ሲያውቅ ስልኩ ላይ በራሱ እንዲያጸዳ
+    if(g.status === 'idle') {
+        hasBoard = false;
+        myBoardID = null;
+        markedCells = [12];
+        showP('home-page');
+        const grid = document.getElementById('bingo-grid');
+        if(grid) grid.innerHTML = "";
+        return; 
     }
+
 
     function resetGame() { 
         db.ref('game').set({ drawn: [], timer: -1, winner: null, status: 'idle', currentBetPrice: 0 });
         db.ref('reserved_boards').remove(); resetPlayerLocal();
         showP('home-page');
+        
     }
 
     function checkBingoAndClaim() {
