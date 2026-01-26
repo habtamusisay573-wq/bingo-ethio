@@ -1,5 +1,4 @@
 const admin = require('firebase-admin');
-const http = require('http');
 const express = require('express'); 
 const app = express(); 
 
@@ -22,21 +21,24 @@ if (!admin.apps.length) {
 
 const db = admin.database();
 const ADMIN_ID = "8431270634";
-// ከ ADMIN_ID በታች ባለው ክፍት ቦታ ላይ ይሄን ጨምር
 
+// የገደብ መጠኖች
+const MIN_DEPOSIT = 10;
+const MIN_WITHDRAW = 50;
+const MAX_WITHDRAW = 5000;
+
+// --- 2. የ2-ሰከንድ Auto Reset ሎጂክ ---
 let resetTimeout = null;
 
 db.ref('online_players').on('value', (snapshot) => {
     const playerCount = snapshot.numChildren();
     
-    // ተጫዋች ከሌለ (0 ከሆነ) ሪሴት ይጀምራል
     if (playerCount === 0) {
         if (!resetTimeout) {
             resetTimeout = setTimeout(async () => {
                 const gameSnap = await db.ref('game').get();
                 const gameData = gameSnap.val();
                 
-                // ጌሙ ገና ካላለቀ ሪሴት ያደርገዋል
                 if (gameData && gameData.status !== 'idle') {
                     await db.ref('reserved_boards').remove();
                     await db.ref('game').update({
@@ -51,10 +53,9 @@ db.ref('online_players').on('value', (snapshot) => {
                     console.log("ጌሙ በ2 ሰከንድ ውስጥ ሪሴት ሆኗል");
                 }
                 resetTimeout = null;
-            }, 2000); // 2 ሰከንድ
+            }, 2000); 
         }
     } else {
-        // ተጫዋች ከመጣ ሪሴቱን ያቆመዋል
         if (resetTimeout) {
             clearTimeout(resetTimeout);
             resetTimeout = null;
@@ -62,17 +63,9 @@ db.ref('online_players').on('value', (snapshot) => {
     }
 });
 
-
-// የገደብ መጠኖች
-const MIN_DEPOSIT = 10;
-const MIN_WITHDRAW = 50;
-const MAX_WITHDRAW = 5000;
-
-// --- 2. የቴሌብር SMS መቀበያ (Webhook) ---
+// --- 3. የቴሌብር SMS መቀበያ (Webhook) ---
 app.post('/sms-webhook', async (req, res) => {
     const message = req.body.text || req.body.message || "";
-    console.log("አዲስ ኤስኤምኤስ ደርሷል:", message);
-
     const txIdMatch = message.match(/[A-Z0-9]{10,12}/i); 
     const txId = txIdMatch ? txIdMatch[0].toUpperCase() : null;
     const amountMatch = message.match(/(\d+(?:\.\d+)?)\s?(?:ETB|ብር)/i) || message.match(/ብር\s?(\d+(?:\.\d+)?)/i);
@@ -85,7 +78,6 @@ app.post('/sms-webhook', async (req, res) => {
             await db.ref(`pending_payments/${txId}`).set({
                 amount: amount, sender_phone: playerPhone, status: "received", timestamp: Date.now()
             });
-
             if (playerPhone) {
                 const userSnap = await db.ref('users').orderByChild('phone').equalTo(playerPhone).once('value');
                 if (userSnap.exists()) {
@@ -104,14 +96,14 @@ app.post('/sms-webhook', async (req, res) => {
     res.status(200).send("OK");
 });
 
-// --- 3. የክፍያ ማረጋገጫ Endpoint ---
+// --- 4. የክፍያ ማረጋገጫ Endpoint ---
 app.post('/confirm-payment', async (req, res) => {
     const { phone, txId } = req.body;
     try {
         const used = await db.ref(`used_transactions/${txId}`).get();
         if (used.exists()) return res.status(400).json({ msg: "ይህ ቁጥር አስቀድሞ ጥቅም ላይ ውሏል!" });
         const pending = await db.ref(`pending_payments/${txId}`).get();
-        if (!pending.exists()) return res.status(404).json({ msg: "የቴሌብር መልእክቱ ገና አልደረሰም፤ እባክዎ ጥቂት ሰከንድ ይጠብቁ።" });
+        if (!pending.exists()) return res.status(404).json({ msg: "የቴሌብር መልእክቱ ገና አልደረሰም" });
 
         const actualAmount = pending.val().amount;
         const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
@@ -124,63 +116,24 @@ app.post('/confirm-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ msg: "Server Error" }); }
 });
 
-// --- 4. የዊዝድሮው ጥያቄ ማስተናገጃ ---
-app.post('/request-withdraw', async (req, res) => {
-    const { userId, amount, phone } = req.body;
-    const withdrawAmt = parseFloat(amount);
-    try {
-        const userSnap = await db.ref(`users/${userId}`).get();
-        if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋቹ አልተገኘም!" });
-        const currentBal = userSnap.val().bal || 0;
-        if (withdrawAmt > currentBal || withdrawAmt < MIN_WITHDRAW || withdrawAmt > MAX_WITHDRAW) {
-            return res.status(400).json({ msg: "የተሳሳተ መጠን ወይም በቂ ባላንስ የለም" });
-        }
-        const reqId = Date.now();
-        await db.ref(`requests/${reqId}`).set({
-            uid: userId, name: userSnap.val().first_name, type: 'WIT', amt: withdrawAmt, info: phone, status: 'Pending'
-        });
-        res.status(200).json({ msg: "የማውጫ ጥያቄዎ ተልኳል" });
-    } catch (e) { res.status(500).send("Server Error"); }
-});
-
-// --- 5. የጨዋታው ሎጂክ (2-Second Auto Reset ተጨምሯል) ---
-let drawingInterval = null; 
-let timerInterval = null;
-let resetTimeout = null;
-
-//db.ref('online_players').on('value', (snapshot) => {
-   // const playerCount = snapshot.numChildren();
-   // if (playerCount === 0) {
-        //if (resetTimeout) clearTimeout(resetTimeout);
-       // resetTimeout = setTimeout(async () => {
-         //   const gameSnap = await db.ref('game').get();
-            //const gameData = gameSnap.val();
-          //  if (gameData && gameData.status !== 'idle') {
-          //      await db.ref('reserved_boards').remove();
-               // await db.ref('game').update({
-                    //drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
-               // });
-               // console.log("Game reset within 2 seconds due to inactivity.");
-          //  }
-        //}, 2000); // <-- 2 ሰከንድ ሪሴት
-   // } else {
-        //if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
-    }
-});
-
+// --- 5. የጨዋታው ዋና ሎጂክ ---
 db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
+
     if(game.winner && !game.isResetting) {
         await db.ref('game/isResetting').set(true);
         if (drawingInterval) { clearInterval(drawingInterval); drawingInterval = null; }
+        
         const winnerId = game.winner.id;
         const betPrice = game.currentBetPrice || 0;
         const boardsSnap = await db.ref('reserved_boards').get();
         const playersCount = boardsSnap.numChildren();
         const totalPool = playersCount * betPrice;
+
         await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.8));
         await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.2));
+
         setTimeout(() => {
             db.ref('reserved_boards').remove();
             db.ref('game').set({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0 });
@@ -188,6 +141,9 @@ db.ref('game').on('value', async (snap) => {
     }
     if(game.status === 'waiting' && !game.isTimerRunning) runTimer();
 });
+
+let drawingInterval = null; 
+let timerInterval = null;
 
 function runTimer() {
     if (timerInterval) clearInterval(timerInterval);
