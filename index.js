@@ -148,23 +148,23 @@ let drawingInterval = null;
 let timerInterval = null;
 let resetTimeout = null;
 
-db.ref('online_players').on('value', (snapshot) => {
-    const playerCount = snapshot.numChildren();
-    if (playerCount === 0) {
-        if (resetTimeout) clearTimeout(resetTimeout);
-        resetTimeout = setTimeout(async () => {
-            const gameSnap = await db.ref('game').get();
-            const gameData = gameSnap.val();
-            if (gameData && gameData.status !== 'idle') {
-                await db.ref('reserved_boards').remove();
-                await db.ref('game').update({
-                    drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
-                });
-                console.log("Game reset within 2 seconds due to inactivity.");
-            }
-        }, 2000); // <-- 2 ሰከንድ ሪሴት
-    } else {
-        if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
+//db.ref('online_players').on('value', (snapshot) => {
+   // const playerCount = snapshot.numChildren();
+   // if (playerCount === 0) {
+        //if (resetTimeout) clearTimeout(resetTimeout);
+       // resetTimeout = setTimeout(async () => {
+         //   const gameSnap = await db.ref('game').get();
+            //const gameData = gameSnap.val();
+          //  if (gameData && gameData.status !== 'idle') {
+          //      await db.ref('reserved_boards').remove();
+               // await db.ref('game').update({
+                    //drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
+               // });
+               // console.log("Game reset within 2 seconds due to inactivity.");
+          //  }
+        //}, 2000); // <-- 2 ሰከንድ ሪሴት
+   // } else {
+        //if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
     }
 });
 
