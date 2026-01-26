@@ -22,6 +22,46 @@ if (!admin.apps.length) {
 
 const db = admin.database();
 const ADMIN_ID = "8431270634";
+// ከ ADMIN_ID በታች ባለው ክፍት ቦታ ላይ ይሄን ጨምር
+
+let resetTimeout = null;
+
+db.ref('online_players').on('value', (snapshot) => {
+    const playerCount = snapshot.numChildren();
+    
+    // ተጫዋች ከሌለ (0 ከሆነ) ሪሴት ይጀምራል
+    if (playerCount === 0) {
+        if (!resetTimeout) {
+            resetTimeout = setTimeout(async () => {
+                const gameSnap = await db.ref('game').get();
+                const gameData = gameSnap.val();
+                
+                // ጌሙ ገና ካላለቀ ሪሴት ያደርገዋል
+                if (gameData && gameData.status !== 'idle') {
+                    await db.ref('reserved_boards').remove();
+                    await db.ref('game').update({
+                        drawn: [],
+                        status: 'idle',
+                        winner: null,
+                        isResetting: false,
+                        timer: -1,
+                        currentBetPrice: 0,
+                        isTimerRunning: false
+                    });
+                    console.log("ጌሙ በ2 ሰከንድ ውስጥ ሪሴት ሆኗል");
+                }
+                resetTimeout = null;
+            }, 2000); // 2 ሰከንድ
+        }
+    } else {
+        // ተጫዋች ከመጣ ሪሴቱን ያቆመዋል
+        if (resetTimeout) {
+            clearTimeout(resetTimeout);
+            resetTimeout = null;
+        }
+    }
+});
+
 
 // የገደብ መጠኖች
 const MIN_DEPOSIT = 10;
