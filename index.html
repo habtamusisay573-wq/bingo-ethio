@@ -570,10 +570,14 @@ setInterval(() => {
         }
     }
 
-    // በየ 2 ሰከንድ የሚሰራው AUTO-RESET ኮድ
-    
-
     // በየ 2 ሰከንድ የሚሰራው ዋናው ተቆጣጣሪ (Monitor)
+setInterval(() => {
+    db.ref('game').once('value', (snap) => {
+        const g = snap.val();
+        if(!g) return;
+
+        // 1. ጨዋታው ከተቋረጠ ወይም ሪሴት ከተደረገ (Force Reset for all)
+        // በየ 2 ሰከንድ የሚሰራው ዋናው ተቆጣጣሪ (Monitor)
 setInterval(() => {
     db.ref('game').once('value', (snap) => {
         const g = snap.val();
@@ -624,7 +628,9 @@ function resetGame() {
     showP('home-page');
 }
 
+// ዳኛው በእጁ ማጥፋት ሲፈልግ የሚጠራው
 
-</script>
+
+</scrip>
 </body>
 </html>
