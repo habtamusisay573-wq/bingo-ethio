@@ -521,20 +521,48 @@
     });
 
     // 2. ለዳኛው ብቻ፡ አሸናፊ ካለ ከ 3 ሰከንድ በኋላ ሪሴት ያደርጋል
-    if(user.id == ADMIN_ID) {
-        db.ref('game').once('value', snap => {
-            const g = snap.val();
-            // አሸናፊ ካለ እና ሁኔታው ገና idle ካልሆነ
-            if (g && g.winner && g.status !== 'idle') {
+        
+    // --- የተስተካከለ Auto Reset ኮድ ---
+setInterval(() => {
+    // 1. ለተጫዋቾች በሙሉ (ጨዋታው ከተቋረጠ እንዲመለሱ)
+    db.ref('game/status').once('value', (snap) => {
+        const currentStatus = snap.val();
+        if (currentStatus === 'idle' && hasBoard === true) {
+            hasBoard = false;
+            myBoardID = null;
+            markedCells = [12];
+            showP('home-page');
+            const grid = document.getElementById('bingo-grid');
+            if(grid) grid.innerHTML = "";
+            console.log("Auto-Fix: ሰርቨሩ ሪሴት ስለሆነ ተመልሰሃል።");
+        }
+    });
+
+    // 2. ለዳኛው (አሸናፊ ሲኖር በ3 ሰከንድ ሪሴት እንዲያደርግ)
+    // እዚህ ጋር ADMIN_ID ያንተ መሆኑን እርግጠኛ ሁን
+    if (String(user.id) === String(ADMIN_ID)) {
+        db.ref('game').once('value', (snap) => {
+            const gameData = snap.val();
+            // አሸናፊ ካለ እና ሁኔታው ገና idle ካልሆነ በ 3 ሰከንድ ሪሴት ያደርጋል
+            if (gameData && gameData.winner && gameData.status !== 'idle') {
+                console.log("አሸናፊ ተገኝቷል፤ በ3 ሰከንድ ሪሴት ይሆናል...");
                 setTimeout(() => {
-                    // ጨዋታውን በራስ-ሰር ሪሴት ያደርጋል
-                    resetGame(); 
-                    console.log("በ3 ሰከንድ ውስጥ Auto Reset ተደርጓል");
-                }, 3000); // 3000 ሚሊሰከንድ = 3 ሰከንድ
+                    // ዳታቤዙን በቀጥታ እዚሁ እናጽዳው (resetGame ባይኖር እንኳ እንዲሰራ)
+                    db.ref('game').update({
+                        drawn: [],
+                        timer: -1,
+                        winner: null,
+                        status: 'idle',
+                        currentBetPrice: 0
+                    });
+                    db.ref('reserved_boards').remove();
+                    resetPlayerLocal();
+                    showP('home-page');
+                }, 3000); // 3 ሰከንድ
             }
         });
     }
-}, 2000); // በየ 2 ሰከንዱ ሰርቨሩን ቼክ ያደርጋል
+}, 2000); // በየ 2 ሰከንዱ ቼክ ያደርጋል
 
 </script>
 </body>
