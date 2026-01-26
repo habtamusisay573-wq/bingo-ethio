@@ -40,17 +40,17 @@ setInterval(() => {
   http.get(url, (res) => {}).on('error', (e) => {});
 }, 3000);
 
-// --- 4. Online Players Tracking (ተጫዋች ሲገባ ይህ ይጠራል) ---
+// --- 4. Online Players Tracking (Presence) ---
 app.post('/user-online', async (req, res) => {
     const { userId, userName } = req.body;
     if (!userId) return res.sendStatus(400);
     const userRef = db.ref(`online_players/${userId}`);
     await userRef.set({ name: userName, status: "online", lastSeen: Date.now() });
-    userRef.onDisconnect().remove(); // ተጫዋቹ ሲወጣ በራሱ እንዲጠፋ
+    userRef.onDisconnect().remove(); 
     res.status(200).send("Online");
 });
 
-// --- 5. ፈጣን ሪሴት ሎጂክ (በ 2 ሰከንድ) ---
+// --- 5. ፈጣን ሪሴት (በ 2 ሰከንድ) ---
 db.ref('online_players').on('value', (snapshot) => {
     const playerCount = snapshot.numChildren();
     if (playerCount === 0) {
@@ -64,10 +64,9 @@ db.ref('online_players').on('value', (snapshot) => {
                     await db.ref('game').update({
                         drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
                     });
-                    console.log("Auto-reset: 2 seconds reached.");
                 }
                 resetTimeout = null;
-            }, 2000); // ወደ 2 ሰከንድ ዝቅ ብሏል
+            }, 2000); 
         }
     } else {
         if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
@@ -97,15 +96,18 @@ app.post('/buy-board', async (req, res) => {
     } catch (e) { res.status(500).json({ msg: e.message }); }
 });
 
-// --- 7. ቢንጎ ሲባል ወዲያው እንዲቆም (Claim Bingo) ---
+// --- 7. ቢንጎ ሲባል ወዲያው እንዲቆም (Instant Bingo Claim) ---
 app.post('/claim-bingo', async (req, res) => {
     const { userId, userName, betAmount } = req.body;
     try {
+        // 1. ወዲያውኑ ቁጥር መጥራቱን ያቆማል (Instant Stop)
+        if (drawingInterval) { 
+            clearInterval(drawingInterval); 
+            drawingInterval = null; 
+        }
+
         const gameSnap = await db.ref('game').get();
         if (gameSnap.val().winner) return res.status(400).json({ msg: "አሸናፊ ተገኝቷል" });
-
-        // ቁጥር መጥራቱን ወዲያውኑ ያቆማል
-        if (drawingInterval) { clearInterval(drawingInterval); drawingInterval = null; }
 
         await db.ref('game/winner').set({ id: userId, name: userName, bet: betAmount });
         res.status(200).json({ msg: "Bingo Confirmed!" });
@@ -163,7 +165,7 @@ app.post('/request-withdraw', async (req, res) => {
     } catch (e) { res.status(500).send("Error"); }
 });
 
-// --- 11. የጨዋታ አሰራር (Winner & 2s Reset) ---
+// --- 11. አሸናፊ ክፍያ እና የ 2 ሰከንድ ሪሴት ---
 db.ref('game').on('value', async (snap) => {
     const game = snap.val();
     if(!game) return;
@@ -182,7 +184,7 @@ db.ref('game').on('value', async (snap) => {
         setTimeout(async () => {
             await db.ref('reserved_boards').remove();
             await db.ref('game').set({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0 });
-        }, 2000); 
+        }, 2000); // 2 ሰከንድ
     }
     if(game.status === 'waiting' && !game.isTimerRunning) runTimer();
 });
@@ -208,6 +210,7 @@ function startDrawingNumbers(existingDrawn) {
     if (drawingInterval) clearInterval(drawingInterval);
     drawingInterval = setInterval(async () => {
         const g = (await db.ref('game').get()).val();
+        // አሸናፊ ካለ ቁጥር መጥራት ወዲያውኑ ይቋረጣል
         if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
             clearInterval(drawingInterval);
             drawingInterval = null;
