@@ -65,6 +65,7 @@
         
         .pay-info-card { background: rgba(250, 204, 21, 0.1); border: 2px dashed #facc15; padding: 15px; border-radius: 15px; margin-bottom: 15px; text-align: center; }
         .limit-hint { color: #ef4444; font-size: 0.8rem; margin-bottom: 8px; font-weight: bold; }
+        .user-card { background: rgba(255,255,255,0.08); padding: 12px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #3b82f6; }
     </style>
 </head>
 <body>
@@ -97,7 +98,10 @@
     <div id="timer-display" style="display:none;">ጨዋታ ለመጀመር: <span id="timer-sec" style="font-size: 1.4rem;">30</span> ሰከንድ</div>
 
     <div id="home-page" class="page active">
-        <button id="adm-gate" class="btn btn-red" style="display:none; margin-bottom: 20px;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
+        <div id="adm-gate-container" style="display:none;">
+            <button class="btn btn-red" style="margin-bottom: 10px;" onclick="showP('admin-page')">⚙️ ዳኛ Dashboard</button>
+            <button class="btn" style="background:#4f46e5; color:white; margin-bottom: 20px;" onclick="showP('users-list-page')">👥 የተመዘገቡ ተጫዋቾች</button>
+        </div>
         <div id="player-zone">
             <div class="hint-text">💡 ፍንጭ፡ ለመጫወት የሚፈልጉትን የብር መጠን ይምረጡ!</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px;">
@@ -112,6 +116,12 @@
             </div>
             <button class="btn" style="background:#64748b; color:white;" onclick="showP('history-page')">📜 የታሪክ ማህደር</button>
         </div>
+    </div>
+
+    <div id="users-list-page" class="page">
+        <h3 style="text-align: center;">የተመዘገቡ ተጫዋቾች</h3>
+        <div id="all-users-list" style="max-height: 500px; overflow-y:auto;"></div>
+        <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="deposit-page" class="page">
@@ -161,21 +171,19 @@
     </div>
 
     <div id="history-page" class="page">
-        <h3 style="text-align: center; color: #facc15;">የሂሳብ እንቅስቃሴ ታሪክ</h3>
+        <h3 style="text-align: center; color: #facc15;">የሂሳብ ታሪክ (Approved Only)</h3>
         <div id="hist-list" style="max-height: 400px; overflow-y: auto; padding:10px;"></div>
         <button class="btn" onclick="safeBack()">ተመለስ</button>
     </div>
 
     <div id="admin-page" class="page">
         <h2 id="adm-commission" style="color:#facc15; text-align:center;">0.00 ETB</h2>
-        
         <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:15px; margin-bottom:20px;">
             <h4 style="margin:0 0 10px 0; color:#facc15;">የክፍያ መቀበያ አድራሻ ይቀይሩ</h4>
             <input type="text" id="set-admin-phone" placeholder="የቴሌብር ስልክ ቁጥር">
             <input type="text" id="set-admin-name" placeholder="የባለቤቱ ስም">
             <button class="btn btn-green" style="padding:10px;" onclick="updatePaymentSettings()">ለውጦችን አዝምን (Update)</button>
         </div>
-
         <hr>
         <div id="admin-req-list"></div>
         <button class="btn btn-red" onclick="confirmReset()">RESET GAME</button>
@@ -184,18 +192,18 @@
 </div>
 
 <script>
-    const ADMIN_ID = 8431270634; 
-    const SERVER_URL = "https://bingo-ethio.onrender.com"; // ያንተ ሰርቨር URL
+    const ADMIN_ID = 8431270634;
+    const SERVER_URL = "https://bingo-ethio.onrender.com";
     const fb = firebase.initializeApp({ databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" });
     const db = fb.database();
-    const tg = window.Telegram.WebApp; 
+    const tg = window.Telegram.WebApp;
     tg.ready(); tg.expand();
 
     const user = tg.initDataUnsafe.user || { id: "GUEST_" + Date.now(), first_name: "Player" };
     document.getElementById('u-name').innerText = user.first_name;
     
     if(user.id == ADMIN_ID) {
-        document.getElementById('adm-gate').style.display = 'block';
+        document.getElementById('adm-gate-container').style.display = 'block';
         document.getElementById('player-zone').style.display = 'none';
     }
 
@@ -233,7 +241,7 @@
     function checkUserRegistration() {
         if(user.id == ADMIN_ID) { showMain(); return; }
         db.ref('users/' + user.id + '/phone').once('value', s => {
-            if (s.exists()) { showMain(); } 
+            if (s.exists()) { showMain(); }
             else { 
                 document.getElementById('reg-overlay').style.display = 'flex';
                 document.getElementById('splash').style.display = 'none';
@@ -254,15 +262,47 @@
     function showMain() {
         document.getElementById('main-ui').style.display = 'block';
         document.getElementById('splash').style.display = 'none';
+        if(user.id == ADMIN_ID) { loadAllUsers(); }
+        loadHistory();
     }
 
-    window.addEventListener('load', () => { 
+    function loadAllUsers() {
+        db.ref('users').on('value', s => {
+            const list = document.getElementById('all-users-list'); list.innerHTML = "";
+            const users = s.val();
+            for(let id in users) {
+                const u = users[id];
+                const div = document.createElement('div');
+                div.className = "user-card";
+                div.innerHTML = `<span><b>${u.first_name}</b><br>${u.phone}</span> <b>${(u.bal || 0).toFixed(2)} ETB</b>`;
+                list.appendChild(div);
+            }
+        });
+    }
+
+    function loadHistory() {
+        db.ref('history/' + user.id).on('value', s => {
+            const list = document.getElementById('hist-list'); list.innerHTML = "";
+            const data = s.val();
+            if(!data) return list.innerHTML = "<p style='text-align:center; opacity:0.5;'>ምንም ታሪክ የለም</p>";
+            Object.values(data).reverse().forEach(h => {
+                if(h.status === 'Approved') {
+                    let div = document.createElement('div');
+                    div.className = "req-card";
+                    div.innerHTML = `<b>${h.type}:</b> ${h.amt} ETB <br> <small>${h.status} | ${h.date}</small>`;
+                    list.appendChild(div);
+                }
+            });
+        });
+    }
+
+    window.addEventListener('load', () => {
         setTimeout(() => {
             checkUserRegistration();
             if(document.getElementById('splash').style.display !== 'none') {
                 showMain();
             }
-        }, 2000); 
+        }, 2000);
     });
 
     setInterval(() => {
@@ -285,21 +325,8 @@
     }, 2000);
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
-        myBal = s.val() || 0; 
+        myBal = s.val() || 0;
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
-    });
-
-    db.ref('history/' + user.id).limitToLast(10).on('value', s => {
-        const list = document.getElementById('hist-list'); list.innerHTML = "";
-        const data = s.val();
-        if(data){
-            Object.values(data).reverse().forEach(h => {
-                let div = document.createElement('div');
-                div.className = "req-card";
-                div.innerHTML = `<b>${h.type}:</b> ${h.amt} ETB <br> <small>${h.status} | ${h.date}</small>`;
-                list.appendChild(div);
-            });
-        }
     });
 
     if(user.id == ADMIN_ID){
@@ -322,7 +349,7 @@
 
     db.ref('game/timer').on('value', s => {
         const val = s.val();
-        const hintEl = document.getElementById('live-hint'); 
+        const hintEl = document.getElementById('live-hint');
         if (val !== null && val > 0) {
             hintEl.innerHTML = `<span style="color: #ef4444; font-size: 2.5rem; font-weight: 900;">⏳ ${val}</span>`;
         } else if (val === 0) {
@@ -375,11 +402,11 @@
     });
 
     function checkBet(amt) { 
-        if(myBal < amt) return alert("በቂ ባላንስ የለም!"); 
+        if(myBal < amt) return alert("በቂ ባላንስ የለም!");
         db.ref('game/drawn').once('value', s => { 
-            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል!"); 
-            currentBet = amt; 
-            showP('reserve-page'); 
+            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል!");
+            currentBet = amt;
+            showP('reserve-page');
         }); 
     }
 
@@ -389,7 +416,7 @@
             const taken = s.val() || {};
             let totalCollected = 0;
             for(let i=1; i<=200; i++) {
-                let b = document.createElement('div'); 
+                let b = document.createElement('div');
                 let boardData = taken[i];
                 let isTaken = boardData && boardData.userId !== user.id;
                 let isMine = boardData && boardData.userId === user.id;
@@ -403,17 +430,14 @@
         });
     }
 
-    // --- ተስተካክሏል፡ ለደህንነት በሰርቨር በኩል እንዲገዛ ተደርጓል ---
     async function buyBoard(id) {
         if(myBal < currentBet) return alert("በቂ ባላንስ የለም!");
-        
         try {
             const res = await fetch(`${SERVER_URL}/buy-board`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: user.id, boardId: id, betAmount: currentBet })
             });
-            
             if(res.ok) {
                 myBoardID = id;
                 hasBoard = true;
@@ -423,9 +447,7 @@
                 const errData = await res.json();
                 alert(errData.msg || "ካርቴላውን ለመያዝ አልተቻለም!");
             }
-        } catch (e) {
-            alert("የሰርቨር ግንኙነት ተቋርጧል!");
-        }
+        } catch (e) { alert("የሰርቨር ግንኙነት ተቋርጧል!"); }
     }
 
     function startBingo() {
@@ -434,7 +456,7 @@
         myBoard = []; const grid = document.getElementById('bingo-grid'); grid.innerHTML = "";
         for(let i=0; i<25; i++) {
             let val = (i === 12) ? "FREE" : nums.pop(); myBoard.push(val);
-            let c = document.createElement('div'); c.className = 'cell col-'+(i%5)+(val==="FREE"?" marked":""); 
+            let c = document.createElement('div'); c.className = 'cell col-'+(i%5)+(val==="FREE"?" marked":"");
             c.id = 'c-'+i; c.innerText = val;
             c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); } } };
             grid.appendChild(c);
@@ -460,33 +482,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone: registeredPhone, txId: info })
                 });
-                if (response.ok) { 
-                    alert("✅ ክፍያዎ ተረጋግጧል! ባላንስዎን ቼክ ያድርጉ።"); 
-                    showP('home-page'); 
-                    return; 
-                } else {
-                    const d = await response.json();
-                    alert(d.msg || "ክፍያውን ማረጋገጥ አልተቻለም");
-                }
-            } catch (err) {
-                alert("የሰርቨር ግንኙነት ችግር!");
-            }
-        } else if (type === 'WIT') {
-            // ብር ማውጫ በሰርቨር በኩል
-            try {
-                const res = await fetch(`${SERVER_URL}/request-withdraw`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: user.id, amount: amt, phone: info })
-                });
-                if(res.ok) {
-                    alert("✅ የማውጫ ጥያቄዎ ተልኳል!");
-                    showP('home-page');
-                    return;
-                }
-            } catch (e) {}
-        }
-        
+                if (response.ok) { alert("✅ ክፍያዎ ተረጋግጧል! ባላንስዎን ቼክ ያድርጉ።"); showP('home-page'); return; }
+            } catch (err) { alert("የሰርቨር ግንኙነት ችግር!"); }
+        } 
         saveFallback(reqId, type, amt, info);
         alert("ጥያቄው ተልኳል፤ ዳኛው እስኪያረጋግጥ ይጠብቁ።");
     }
@@ -500,7 +498,7 @@
     function approveReq(id) {
         db.ref('requests/' + id).once('value', s => {
             const r = s.val(); if(!r) return;
-            if(r.type === 'DEP') { db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt); } 
+            if(r.type === 'DEP') { db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt); }
             else if(r.type === 'WIT') { db.ref('users/' + r.uid + '/bal').transaction(c => (c >= r.amt ? c - r.amt : c)); }
             db.ref('history/' + r.uid + '/' + id + '/status').set('Approved');
             db.ref('requests/' + id).remove();
@@ -519,7 +517,6 @@
         showP('home-page');
     }
 
-    // --- ተስተካክሏል፡ ቢንጎ ማለቱ በሰርቨር በኩል እንዲረጋገጥ ተደርጓል ---
     async function checkBingoAndClaim() {
         const lines = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
         if(lines.some(l => l.every(idx => markedCells.includes(idx)))) { 
@@ -533,22 +530,20 @@
                     const d = await res.json();
                     alert(d.msg || "Bingo ማረጋገጥ አልተቻለም!");
                 }
-            } catch (e) {
-                alert("ሰርቨር ግንኙነት ችግር!");
-            }
+            } catch (e) { alert("ሰርቨር ግንኙነት ችግር!"); }
         } else alert("ቢንጎ ገና ነህ!");
     }
 
     function safeBack() {
-        if (hasBoard) { if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) showP('home-page'); } 
+        if (hasBoard) { if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) showP('home-page'); }
         else showP('home-page');
     }
 
     function showP(id) { 
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const el = document.getElementById(id);
-        if(el) el.classList.add('active'); 
-        if(id==='reserve-page') loadBoards(); 
+        if(el) el.classList.add('active');
+        if(id==='reserve-page') loadBoards();
     }
     function confirmReset() { if(confirm("RESET?")) resetGame(); }
 </script>
