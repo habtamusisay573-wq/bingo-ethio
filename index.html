@@ -255,7 +255,16 @@
         document.getElementById('splash').style.display = 'none';
     }
 
-    window.addEventListener('load', () => { setTimeout(checkUserRegistration, 2000); });
+    // ፔጁ እንደተከፈተ ሎጎውን አልፎ በግዴታ እንዲገባ
+    window.addEventListener('load', () => { 
+        setTimeout(() => {
+            checkUserRegistration();
+            // ካልጠፋ በግዴታ እናጥፋው
+            if(document.getElementById('splash').style.display !== 'none') {
+                showMain();
+            }
+        }, 2000); 
+    });
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
@@ -312,14 +321,17 @@
             document.getElementById('win-name').innerText = win.name + " BINGO! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
-            setTimeout(() => { 
-                if(user.id == ADMIN_ID) { resetGame(); } 
-                else {
+            
+            // አውቶማቲክ ሪሴት (ዳኛው ስልክ ላይ 3 ሰከንድ ብቻ)
+            if(user.id == ADMIN_ID) {
+                setTimeout(() => { resetGame(); }, 3000); 
+            } else {
+                setTimeout(() => {
                     document.getElementById('win-overlay').style.display = 'none';
                     resetPlayerLocal();
                     showP('home-page');
-                }
-            }, 5000); 
+                }, 5000);
+            }
         } else { document.getElementById('win-overlay').style.display = 'none'; }
     });
 
@@ -346,6 +358,18 @@
             setTimeout(() => { if(h.innerHTML.includes(lastNum)) h.innerHTML = ""; }, 1800);
         }
     });
+
+    // በየ 2 ሰከንዱ የሚሰራ የForce Reset ተቆጣጣሪ
+    setInterval(() => {
+        db.ref('game/status').once('value', snap => {
+            if(snap.val() === 'idle' && hasBoard === true) {
+                resetPlayerLocal();
+                showP('home-page');
+                const grid = document.getElementById('bingo-grid');
+                if(grid) grid.innerHTML = "";
+            }
+        });
+    }, 2000);
 
     function checkBet(amt) { 
         if(myBal < amt) return alert("በቂ ባላንስ የለም!"); 
@@ -404,7 +428,6 @@
 
     function resetPlayerLocal() { hasBoard = false; myBoardID = null; markedCells = [12]; myBoard = []; }
 
-    // --- አዲሱ የክፍያ ጥያቄ ከገደብ ጋር ---
     async function reqFinance(type) {
         let amtInput = type === 'DEP' ? document.getElementById('dep-amt') : document.getElementById('wit-amt');
         let infoInput = type === 'DEP' ? document.getElementById('dep-trx') : document.getElementById('wit-phone');
@@ -414,50 +437,33 @@
 
         if(!amt || !info) return alert("እባክዎን መረጃውን በትክክል ይሙሉ!");
 
-        // --- ገደቦች (Limits) ---
         const MIN_DEPOSIT = 10;
         const MIN_WITHDRAW = 50;
         const MAX_WITHDRAW = 5000;
 
-        if (type === 'DEP' && amt < MIN_DEPOSIT) {
-            return alert("ስህተት፡ ዝቅተኛው ማስገቢያ " + MIN_DEPOSIT + " ብር ነው።");
-        }
-
+        if (type === 'DEP' && amt < MIN_DEPOSIT) return alert("ስህተት፡ ዝቅተኛው ማስገቢያ " + MIN_DEPOSIT + " ብር ነው።");
         if (type === 'WIT') {
             if (amt < MIN_WITHDRAW) return alert("ስህተት፡ ዝቅተኛው ማውጫ " + MIN_WITHDRAW + " ብር ነው።");
             if (amt > MAX_WITHDRAW) return alert("ስህተት፡ ከፍተኛው ማውጫ " + MAX_WITHDRAW + " ብር ነው።");
-            if (amt > myBal) return alert("ስህተት፡ በቂ ባላንስ የለዎትም! ያለዎት መጠን " + myBal.toFixed(2) + " ብር ነው።");
+            if (amt > myBal) return alert("ስህተት፡ በቂ ባላንስ የለዎትም!");
         }
 
         const reqId = Date.now();
-
         if (type === 'DEP') {
             try {
                 const userSnap = await db.ref('users/' + user.id + '/phone').once('value');
                 const registeredPhone = userSnap.val() || "";
-
                 const response = await fetch('https://bingo-ethio.onrender.com/confirm-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone: registeredPhone, txId: info })
                 });
-
                 const result = await response.json();
-                if (response.ok) {
-                    alert("✅ " + result.msg);
-                    showP('home-page');
-                    return;
-                } else {
-                    alert("⏳ " + result.msg);
-                }
-            } catch (err) {
-                console.error("Fetch Error:", err);
-            }
+                if (response.ok) { alert("✅ " + result.msg); showP('home-page'); return; }
+            } catch (err) { console.error(err); }
         }
-
-        // Fallback to Manual Admin Request
         saveFallback(reqId, type, amt, info);
-        alert(type === 'DEP' ? "የገቢ ጥያቄው ተልኳል፤ ዳኛው ሲያረጋግጥ ይጨመርልዎታል።" : "የማውጫ ጥያቄው ተልኳል፤ ዳኛው እስኪያረጋግጥ ይጠብቁ።");
+        alert("ጥያቄው ተልኳል፤ ዳኛው እስኪያረጋግጥ ይጠብቁ።");
     }
 
     function saveFallback(reqId, type, amt, info) {
@@ -502,7 +508,8 @@
 
     function showP(id) { 
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
-        document.getElementById(id).classList.add('active'); 
+        const el = document.getElementById(id);
+        if(el) el.classList.add('active'); 
         if(id==='reserve-page') loadBoards(); 
     }
     function confirmReset() { if(confirm("RESET?")) resetGame(); }
