@@ -178,12 +178,14 @@
 
     <div id="admin-page" class="page">
         <h2 id="adm-commission" style="color:#facc15; text-align:center;">0.00 ETB</h2>
+        
         <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:15px; margin-bottom:20px;">
             <h4 style="margin:0 0 10px 0; color:#facc15;">የክፍያ መቀበያ አድራሻ ይቀይሩ</h4>
             <input type="text" id="set-admin-phone" placeholder="የቴሌብር ስልክ ቁጥር">
             <input type="text" id="set-admin-name" placeholder="የባለቤቱ ስም">
             <button class="btn btn-green" style="padding:10px;" onclick="updatePaymentSettings()">ለውጦችን አዝምን (Update)</button>
         </div>
+
         <hr>
         <div id="admin-req-list"></div>
         <button class="btn btn-red" onclick="confirmReset()">RESET GAME</button>
@@ -192,11 +194,11 @@
 </div>
 
 <script>
-    const ADMIN_ID = 8431270634;
+    const ADMIN_ID = 8431270634; 
     const SERVER_URL = "https://bingo-ethio.onrender.com";
     const fb = firebase.initializeApp({ databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" });
     const db = fb.database();
-    const tg = window.Telegram.WebApp;
+    const tg = window.Telegram.WebApp; 
     tg.ready(); tg.expand();
 
     const user = tg.initDataUnsafe.user || { id: "GUEST_" + Date.now(), first_name: "Player" };
@@ -241,7 +243,7 @@
     function checkUserRegistration() {
         if(user.id == ADMIN_ID) { showMain(); return; }
         db.ref('users/' + user.id + '/phone').once('value', s => {
-            if (s.exists()) { showMain(); }
+            if (s.exists()) { showMain(); } 
             else { 
                 document.getElementById('reg-overlay').style.display = 'flex';
                 document.getElementById('splash').style.display = 'none';
@@ -266,6 +268,7 @@
         loadHistory();
     }
 
+    // ዳኛው ሁሉንም ተጫዋቾች እንዲያይ
     function loadAllUsers() {
         db.ref('users').on('value', s => {
             const list = document.getElementById('all-users-list'); list.innerHTML = "";
@@ -280,6 +283,7 @@
         });
     }
 
+    // የሂሳብ ታሪክ (የጸደቁትን ብቻ ለማሳየት)
     function loadHistory() {
         db.ref('history/' + user.id).on('value', s => {
             const list = document.getElementById('hist-list'); list.innerHTML = "";
@@ -296,13 +300,13 @@
         });
     }
 
-    window.addEventListener('load', () => {
+    window.addEventListener('load', () => { 
         setTimeout(() => {
             checkUserRegistration();
             if(document.getElementById('splash').style.display !== 'none') {
                 showMain();
             }
-        }, 2000);
+        }, 2000); 
     });
 
     setInterval(() => {
@@ -325,7 +329,7 @@
     }, 2000);
 
     db.ref('users/' + user.id + '/bal').on('value', s => { 
-        myBal = s.val() || 0;
+        myBal = s.val() || 0; 
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
     });
 
@@ -349,7 +353,7 @@
 
     db.ref('game/timer').on('value', s => {
         const val = s.val();
-        const hintEl = document.getElementById('live-hint');
+        const hintEl = document.getElementById('live-hint'); 
         if (val !== null && val > 0) {
             hintEl.innerHTML = `<span style="color: #ef4444; font-size: 2.5rem; font-weight: 900;">⏳ ${val}</span>`;
         } else if (val === 0) {
@@ -402,11 +406,11 @@
     });
 
     function checkBet(amt) { 
-        if(myBal < amt) return alert("በቂ ባላንስ የለም!");
+        if(myBal < amt) return alert("በቂ ባላንስ የለም!"); 
         db.ref('game/drawn').once('value', s => { 
-            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል!");
-            currentBet = amt;
-            showP('reserve-page');
+            if(s.exists() && s.val().length > 0) return alert("ጨዋታ ተጀምሯል!"); 
+            currentBet = amt; 
+            showP('reserve-page'); 
         }); 
     }
 
@@ -416,7 +420,7 @@
             const taken = s.val() || {};
             let totalCollected = 0;
             for(let i=1; i<=200; i++) {
-                let b = document.createElement('div');
+                let b = document.createElement('div'); 
                 let boardData = taken[i];
                 let isTaken = boardData && boardData.userId !== user.id;
                 let isMine = boardData && boardData.userId === user.id;
@@ -456,7 +460,7 @@
         myBoard = []; const grid = document.getElementById('bingo-grid'); grid.innerHTML = "";
         for(let i=0; i<25; i++) {
             let val = (i === 12) ? "FREE" : nums.pop(); myBoard.push(val);
-            let c = document.createElement('div'); c.className = 'cell col-'+(i%5)+(val==="FREE"?" marked":"");
+            let c = document.createElement('div'); c.className = 'cell col-'+(i%5)+(val==="FREE"?" marked":""); 
             c.id = 'c-'+i; c.innerText = val;
             c.onclick = () => { if(drawn.includes(val) || val === "FREE") { if(!markedCells.includes(i)) { c.classList.add('marked'); markedCells.push(i); } } };
             grid.appendChild(c);
@@ -498,7 +502,7 @@
     function approveReq(id) {
         db.ref('requests/' + id).once('value', s => {
             const r = s.val(); if(!r) return;
-            if(r.type === 'DEP') { db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt); }
+            if(r.type === 'DEP') { db.ref('users/' + r.uid + '/bal').transaction(c => (c || 0) + r.amt); } 
             else if(r.type === 'WIT') { db.ref('users/' + r.uid + '/bal').transaction(c => (c >= r.amt ? c - r.amt : c)); }
             db.ref('history/' + r.uid + '/' + id + '/status').set('Approved');
             db.ref('requests/' + id).remove();
@@ -535,15 +539,15 @@
     }
 
     function safeBack() {
-        if (hasBoard) { if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) showP('home-page'); }
+        if (hasBoard) { if (confirm("አሁን ጨዋታ ላይ ነህ! መውጣት ትፈልጋለህ?")) showP('home-page'); } 
         else showP('home-page');
     }
 
     function showP(id) { 
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
         const el = document.getElementById(id);
-        if(el) el.classList.add('active');
-        if(id==='reserve-page') loadBoards();
+        if(el) el.classList.add('active'); 
+        if(id==='reserve-page') loadBoards(); 
     }
     function confirmReset() { if(confirm("RESET?")) resetGame(); }
 </script>
