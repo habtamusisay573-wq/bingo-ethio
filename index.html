@@ -185,9 +185,28 @@
 
 <script>
     const ADMIN_ID = 8431270634; 
-    const fb = firebase.initializeApp({ databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" });
-    const db = fb.database();
-    const tg = window.Telegram.WebApp; 
+    //const fb = firebase.initializeApp({ databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" });
+   // const db = fb.database();
+   // const tg = window.Telegram.WebApp;
+    // Firebase በትክክል መነሳቱን ለማረጋገጥ
+const firebaseConfig = {
+    databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com"
+};
+
+const fb = firebase.initializeApp(firebaseConfig);
+const db = fb.database();
+
+// ሎጎው እንዲጠፋና ጌሙ እንዲከፈት የሚያደርግ (ይሄን የግድ ጨምር)
+db.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+        document.getElementById('splash').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('main-ui').style.display = 'block';
+        }, 500);
+    }
+});
+
     tg.ready(); tg.expand();
 // ተጫዋቹ ሲገባ ኦንላይን መሆኑን ይመዘግባል
 const myOnlineRef = db.ref('online_players/' + user.id);
