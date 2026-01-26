@@ -547,37 +547,58 @@ function checkUserRegistration() {
 }
 
 // 2. ጨዋታው ሲቋረጥ በየ 2 ሰከንዱ Force Reset የሚያደርገው
+
 setInterval(() => {
-    db.ref('game/status').once('value', snap => {
-        if (snap.val() === 'idle' && hasBoard === true) {
+    // db (Firebase) መኖሩን እናረጋግጥ
+    if (typeof db === 'undefined') return;
+
+    db.ref('game').once('value', snap => {
+        const g = snap.val();
+        if (!g) return;
+
+        // ጨዋታው ካለቀ (idle ከሆነ) ተጫዋቹን ወደ ሆም ይመልሳል
+        if (g.status === 'idle' && typeof hasBoard !== 'undefined' && hasBoard === true) {
             hasBoard = false;
             myBoardID = null;
             markedCells = [12];
-            showP('home-page');
+            if (typeof showP === 'function') showP('home-page');
             const grid = document.getElementById('bingo-grid');
-            if(grid) grid.innerHTML = "";
+            if (grid) grid.innerHTML = "";
+        }
+
+        // ለዳኛው አውቶ ሪሴት - እዚህ ጋር 'user' መኖሩን ቀድመን ቼክ እናድርግ
+        if (typeof user !== 'undefined' && user && typeof ADMIN_ID !== 'undefined') {
+            if (String(user.id) === String(ADMIN_ID)) {
+                if (g.winner && g.status !== 'idle') {
+                    setTimeout(() => {
+                        db.ref('game').update({ status: 'idle', winner: null, drawn: [] });
+                        db.ref('reserved_boards').remove();
+                    }, 3000);
+                }
+            }
         }
     });
-
-    // ለአሸናፊ Auto-Reset (ለዳኛው)
-    if (String(user.id) === String(ADMIN_ID)) {
-        db.ref('game').once('value', snap => {
-            const g = snap.val();
-            if (g && g.winner && g.status !== 'idle') {
-                setTimeout(() => {
-                    db.ref('game').update({ status: 'idle', winner: null, drawn: [] });
-                    db.ref('reserved_boards').remove();
-                }, 3000);
-            }
-        });
-    }
 }, 2000);
 
-// --- ዋናው ትዕዛዝ ---
-// ፔጁ እንደተከፈተ ስራ እንዲጀምር ይሄን ጥሪ እናድርግ
-window.onload = () => {
-    checkUserRegistration();
+// --- የጠፋው checkUserRegistration ተግባር እዚህ አለ ---
+function checkUserRegistration() {
+    const savedUser = localStorage.getItem('bingo_user');
+    if (savedUser) {
+        user = JSON.parse(savedUser);
+        if (typeof showP === 'function') showP('home-page');
+    } else {
+        if (typeof showP === 'function') showP('register-page');
+    }
 }
+
+// ፔጁ እንደተከፈተ ስራ እንዲጀምር
+window.onload = () => {
+    // ሎጎው ላይ እንዳይቆም በ 1 ሰከንድ ልዩነት እንዲከፍት እናድርገው
+    setTimeout(() => {
+        checkUserRegistration();
+    }, 1000);
+};
+
 
 </script>
 </body>
