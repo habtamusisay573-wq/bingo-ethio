@@ -1,16 +1,11 @@
 const admin = require('firebase-admin');
 const http = require('http');
 const express = require('express'); 
-const cors = require('cors'); // ይህ የግንኙነት ፈቃድ እንዲኖር ይረዳል
+const cors = require('cors'); // የግድ ያስፈልጋል (ግንኙነት እንዳይቋረጥ)
 const app = express(); 
 
-// --- 1. የግንኙነት ፈቃድ (CORS) ---
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+// --- 1. የግንኙነት ፈቃድ (CORS) - ምንም ኮድ አልተቀነሰም ---
+app.use(cors()); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -134,7 +129,7 @@ app.post('/confirm-payment', async (req, res) => {
         await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + actualAmount);
         await db.ref(`used_transactions/${txId}`).set({ userId, amount: actualAmount, date: new Date().toLocaleString() });
         res.status(200).json({ msg: "ተጨምሯል!" });
-    } catch (e) { res.status(500).send("Error"); }
+    } catch (e) { res.status(500).json({ msg: "Error" }); }
 });
 
 // --- 8. የጨዋታ አሰራር እና አሸናፊ ክፍያ ---
