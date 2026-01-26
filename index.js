@@ -4,11 +4,13 @@ const express = require('express');
 const cors = require('cors'); 
 const app = express(); 
 
+// --- 1. የግንኙነት ፈቃድ (CORS) ---
+// ካርቴላ ስትመርጥ "ተቋርጧል" የሚለውን ስህተት የሚፈታው ይህ ነው
 app.use(cors()); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- 1. የFirebase ቅንብር ---
+// --- 2. የFirebase ቅንብር ---
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -25,22 +27,22 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
+// የገደብ መጠኖች
 const MIN_DEPOSIT = 10;
 const MIN_WITHDRAW = 50;
 const MAX_WITHDRAW = 5000;
 
-// --- 2. ሰርቨሩ እንዳይተኛ በየ 3 ሰከንዱ ራሱን ፒንግ ያደርጋል (Keep-Awake) ---
+// --- 3. ሰርቨሩ እንዳይተኛ በየ 3 ሰከንዱ ራሱን ፒንግ ያደርጋል (Keep-Awake) ---
 setInterval(() => {
-  // Render የራሱን ሰርቨር አድራሻ ራሱ እንዲጠራ
   const url = `http://localhost:${process.env.PORT || 3000}`;
   http.get(url, (res) => {
     // console.log("Wake up ping sent"); 
   }).on('error', (e) => {
-    console.log("Ping error prevented");
+    // console.log("Ping error prevented");
   });
-}, 3000); // በየ 3 ሰከንዱ
+}, 3000); // 3 ሰከንድ
 
-// --- 3. ፈጣን ሪሴት (ተጫዋች ሲጠፋ በ 3 ሰከንድ) ---
+// --- 4. ፈጣን ሪሴት ሎጂክ (ተጫዋች ሲጠፋ በ 3 ሰከንድ) ---
 let resetTimeout = null;
 db.ref('online_players').on('value', (snapshot) => {
     const playerCount = snapshot.numChildren();
@@ -54,6 +56,7 @@ db.ref('online_players').on('value', (snapshot) => {
                     await db.ref('game').update({
                         drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
                     });
+                    console.log("Game reset: 3 seconds reached.");
                 }
                 resetTimeout = null;
             }, 3000); // 3 ሰከንድ
@@ -63,7 +66,30 @@ db.ref('online_players').on('value', (snapshot) => {
     }
 });
 
-// --- 4. የቴሌብር SMS መቀበያ ---
+// --- 5. ካርቴላ መግዣ (Secure Board Buy) ---
+app.post('/buy-board', async (req, res) => {
+    const { userId, boardId, betAmount } = req.body;
+    try {
+        const userRef = db.ref(`users/${userId}`);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋች አልተገኘም" });
+
+        const currentBal = userSnap.val().bal || 0;
+        if (currentBal < betAmount) return res.status(400).json({ msg: "በቂ ባላንስ የለም" });
+
+        await userRef.child('bal').transaction(c => (c || 0) - betAmount);
+        await db.ref(`reserved_boards/${boardId}`).set({ userId, betAmount });
+        
+        const gameRef = db.ref('game');
+        const gSnap = await gameRef.get();
+        if(gSnap.val().status === 'idle') {
+            await gameRef.update({ status: 'waiting', timer: 30, currentBetPrice: betAmount });
+        }
+        res.status(200).json({ msg: "Success" });
+    } catch (e) { res.status(500).json({ msg: e.message }); }
+});
+
+// --- 6. የቴሌብር SMS Webhook ---
 app.post('/sms-webhook', async (req, res) => {
     const message = req.body.text || req.body.message || "";
     const txIdMatch = message.match(/[A-Z0-9]{10,12}/i); 
@@ -75,9 +101,7 @@ app.post('/sms-webhook', async (req, res) => {
 
     if (txId && amount >= MIN_DEPOSIT) {
         try {
-            await db.ref(`pending_payments/${txId}`).set({
-                amount: amount, sender_phone: playerPhone, status: "received", timestamp: Date.now()
-            });
+            await db.ref(`pending_payments/${txId}`).set({ amount, sender_phone: playerPhone, status: "received", timestamp: Date.now() });
             if (playerPhone) {
                 const userSnap = await db.ref('users').orderByChild('phone').equalTo(playerPhone).once('value');
                 if (userSnap.exists()) {
@@ -94,24 +118,24 @@ app.post('/sms-webhook', async (req, res) => {
     res.status(200).send("OK");
 });
 
-// --- 5. ክፍያ ማረጋገጫ ---
+// --- 7. የክፍያ ማረጋገጫ (Deposit) ---
 app.post('/confirm-payment', async (req, res) => {
     const { phone, txId } = req.body;
     try {
         const used = await db.ref(`used_transactions/${txId}`).get();
         if (used.exists()) return res.status(400).json({ msg: "ጥቅም ላይ ውሏል!" });
         const pending = await db.ref(`pending_payments/${txId}`).get();
-        if (!pending.exists()) return res.status(404).json({ msg: "መልእክት አልደረሰም" });
+        if (!pending.exists()) return res.status(404).json({ msg: "መልእክቱ አልደረሰም" });
         const actualAmount = pending.val().amount;
         const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
         const userId = Object.keys(userSnap.val())[0];
         await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + actualAmount);
         await db.ref(`used_transactions/${txId}`).set({ userId, amount: actualAmount, date: new Date().toLocaleString() });
-        res.status(200).json({ msg: "ብር ተጨምሯል!" });
+        res.status(200).json({ msg: "ተጨምሯል!" });
     } catch (e) { res.status(500).json({ msg: "Error" }); }
 });
 
-// --- 6. ዊዝድሮው ጥያቄ ---
+// --- 8. የዊዝድሮው ጥያቄ ---
 app.post('/request-withdraw', async (req, res) => {
     const { userId, amount, phone } = req.body;
     const withdrawAmt = parseFloat(amount);
@@ -128,7 +152,7 @@ app.post('/request-withdraw', async (req, res) => {
     } catch (e) { res.status(500).send("Error"); }
 });
 
-// --- 7. የጨዋታ አሰራር እና አሸናፊ (በ 3 ሰከንድ ሪሴት) ---
+// --- 9. የጨዋታ አሰራር እና አሸናፊ ክፍያ (3 ሰከንድ ሪሴት) ---
 let drawingInterval = null; 
 let timerInterval = null;
 
@@ -148,10 +172,11 @@ db.ref('game').on('value', async (snap) => {
         await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.8));
         await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.2));
         
-        // ጌሙ ሲያልቅ በ 3 ሰከንድ ሪሴት ያደርጋል
+        // ጨዋታው ሲያልቅ በ 3 ሰከንድ ሪሴት ያደርጋል
         setTimeout(async () => {
             await db.ref('reserved_boards').remove();
             await db.ref('game').set({ drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0 });
+            console.log("Game reset after winner: 3 seconds.");
         }, 3000); 
     }
     if(game.status === 'waiting' && !game.isTimerRunning) runTimer();
@@ -191,4 +216,4 @@ function startDrawingNumbers(existingDrawn) {
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server live on ${PORT}`));
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
