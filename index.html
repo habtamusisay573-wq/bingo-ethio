@@ -652,38 +652,6 @@ function checkUserRegistration() {
     }
 }
 
-// 2. ጨዋታው ሲቋረጥ በየ 2 ሰከንዱ Force Reset የሚያደርገው
-setInterval(() => {
-    db.ref('game/status').once('value', snap => {
-        if (snap.val() === 'idle' && hasBoard === true) {
-            hasBoard = false;
-            myBoardID = null;
-            markedCells = [12];
-            showP('home-page');
-            const grid = document.getElementById('bingo-grid');
-            if(grid) grid.innerHTML = "";
-        }
-    });
-
-    // ለአሸናፊ Auto-Reset (ለዳኛው)
-    if (String(user.id) === String(ADMIN_ID)) {
-        db.ref('game').once('value', snap => {
-            const g = snap.val();
-            if (g && g.winner && g.status !== 'idle') {
-                setTimeout(() => {
-                    db.ref('game').update({ status: 'idle', winner: null, drawn: [] });
-                    db.ref('reserved_boards').remove();
-                }, 3000);
-            }
-        });
-    }
-}, 2000);
-
-// ፔጁ እንደተከፈተ ስራ እንዲጀምር ይሄን ጥሪ እናድርግ
-
-    checkUserRegistration();
-};
-
 </scrip>
 </body>
 </html>
