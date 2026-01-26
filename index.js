@@ -1,10 +1,10 @@
 const admin = require('firebase-admin');
 const http = require('http');
 const express = require('express'); 
-const cors = require('cors'); // ለግንኙነቱ ወሳኝ የሆነው ፓኬጅ
+const cors = require('cors'); // አዲስ የተጨመረ
 const app = express(); 
 
-// --- 1. የግንኙነት ፈቃድ (CORS) - አንድም ኮድ አልተቀነሰም ---
+// --- 1. የግንኙነት ፈቃድ (CORS) ---
 app.use(cors()); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -26,7 +26,7 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// --- 3. ደህንነቱ የተጠበቀ የካርቴላ መግዣ (Secure Board Buy) ---
+// --- 3. የካርቴላ መግዣ (Secure Board Buy) ---
 app.post('/buy-board', async (req, res) => {
     const { userId, boardId, betAmount } = req.body;
     try {
@@ -49,13 +49,12 @@ app.post('/buy-board', async (req, res) => {
     } catch (e) { res.status(500).json({ msg: e.message }); }
 });
 
-// --- 4. ደህንነቱ የተጠበቀ የአሸናፊ መመዝገቢያ (Secure Bingo Claim) ---
+// --- 4. የአሸናፊ መመዝገቢያ (Secure Bingo Claim) ---
 app.post('/claim-bingo', async (req, res) => {
     const { userId, userName, betAmount } = req.body;
     try {
         const gameSnap = await db.ref('game').get();
         const game = gameSnap.val();
-        
         if (game.winner) return res.status(400).json({ msg: "አሸናፊ ተገኝቷል" });
         if (game.status !== 'active') return res.status(400).json({ msg: "ጌሙ ገና አልተጀመረም" });
 
