@@ -506,6 +506,36 @@
         if(id==='reserve-page') loadBoards(); 
     }
     function confirmReset() { if(confirm("RESET?")) resetGame(); }
+    setInterval(() => {
+    // 1. ለሁሉም ተጫዋች፡ ጨዋታው ከተቋረጠ ሪሴት ያደርጋል
+    db.ref('game/status').once('value', snap => {
+        const status = snap.val();
+        if (status === 'idle' && hasBoard === true) {
+            hasBoard = false;
+            myBoardID = null;
+            markedCells = [12];
+            showP('home-page');
+            const grid = document.getElementById('bingo-grid');
+            if(grid) grid.innerHTML = "";
+        }
+    });
+
+    // 2. ለዳኛው ብቻ፡ አሸናፊ ካለ ከ 3 ሰከንድ በኋላ ሪሴት ያደርጋል
+    if(user.id == ADMIN_ID) {
+        db.ref('game').once('value', snap => {
+            const g = snap.val();
+            // አሸናፊ ካለ እና ሁኔታው ገና idle ካልሆነ
+            if (g && g.winner && g.status !== 'idle') {
+                setTimeout(() => {
+                    // ጨዋታውን በራስ-ሰር ሪሴት ያደርጋል
+                    resetGame(); 
+                    console.log("በ3 ሰከንድ ውስጥ Auto Reset ተደርጓል");
+                }, 3000); // 3000 ሚሊሰከንድ = 3 ሰከንድ
+            }
+        });
+    }
+}, 2000); // በየ 2 ሰከንዱ ሰርቨሩን ቼክ ያደርጋል
+
 </script>
 </body>
 </html>
