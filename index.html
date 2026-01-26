@@ -538,8 +538,7 @@ setInterval(() => {
         }
     });
 
-    // 2. ለዳኛው (አሸናፊ ሲኖር በ3 ሰከንድ ሪሴት እንዲያደርግ)
-    // እዚህ ጋር ADMIN_ID ያንተ መሆኑን እርግጠኛ ሁን
+    // 2. ለዳኛው (አሸናፊ ሲኖር በ3 ሰከንድ ሪሴት እንዲያደርግ
     if (String(user.id) === String(ADMIN_ID)) {
         db.ref('game').once('value', (snap) => {
             const gameData = snap.val();
