@@ -539,29 +539,69 @@ setInterval(() => {
     });
 
     // 2. ለዳኛው (አሸናፊ ሲኖር በ3 ሰከንድ ሪሴት እንዲያደርግ
-    if (String(user.id) === String(ADMIN_ID)) {
+    
+     // በየ 2 ሰከንዱ ቼክ ያደርጋል
+    // --- ይሄን ብቻ ተጠቀም (ሁሉንም ስህተት ያርማል) ---
+    function resetGame() { 
+        if(!confirm("እርግጠኛ ነህ ሪሴት ይደረግ?")) return;
+        db.ref('game').set({ 
+            drawn: [], 
+            timer: -1, 
+            winner: null, 
+            status: 'idle', 
+            currentBetPrice: 0 
+        });
+        db.ref('reserved_boards').remove(); 
+        resetPlayerLocal();
+        showP('home-page');
+    }
+
+    function showP(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        const target = document.getElementById(id);
+        if(target) target.classList.add('active');
+    }
+
+    function safeBack() {
+        if(hasBoard) {
+            if(confirm("ጨዋታው ላይ ነህ፤ መውጣት ትፈልጋለህ?")) showP('home-page');
+        } else {
+            showP('home-page');
+        }
+    }
+
+    // በየ 2 ሰከንድ የሚሰራው AUTO-RESET ኮድ
+    setInterval(() => {
         db.ref('game').once('value', (snap) => {
-            const gameData = snap.val();
-            // አሸናፊ ካለ እና ሁኔታው ገና idle ካልሆነ በ 3 ሰከንድ ሪሴት ያደርጋል
-            if (gameData && gameData.winner && gameData.status !== 'idle') {
-                console.log("አሸናፊ ተገኝቷል፤ በ3 ሰከንድ ሪሴት ይሆናል...");
-                setTimeout(() => {
-                    // ዳታቤዙን በቀጥታ እዚሁ እናጽዳው (resetGame ባይኖር እንኳ እንዲሰራ)
-                    db.ref('game').update({
-                        drawn: [],
-                        timer: -1,
-                        winner: null,
-                        status: 'idle',
-                        currentBetPrice: 0
-                    });
-                    db.ref('reserved_boards').remove();
-                    resetPlayerLocal();
-                    showP('home-page');
-                }, 3000); // 3 ሰከንድ
+            const g = snap.val();
+            if(!g) return;
+
+            // 1. ለሁሉም ተጫዋች፡ ጨዋታው ከተቋረጠ (idle ከሆነ) ሪሴት ያደርጋል
+            if (g.status === 'idle' && hasBoard === true) {
+                hasBoard = false;
+                myBoardID = null;
+                markedCells = [12];
+                showP('home-page');
+                const grid = document.getElementById('bingo-grid');
+                if(grid) grid.innerHTML = "";
+            }
+
+            // 2. ለዳኛው ብቻ፡ አሸናፊ ካለ በ 3 ሰከንድ ሪሴት ያደርጋል
+            if (String(user.id) === String(ADMIN_ID)) {
+                if (g.winner && g.status !== 'idle') {
+                    setTimeout(() => {
+                        resetGame(); 
+                    }, 3000); // 3 ሰከንድ
+                }
             }
         });
-    }
-}, 2000); // በየ 2 ሰከንዱ ቼክ ያደርጋል
+    }, 2000);
+
+    // ገጹ ሲከፈት ተጫዋቹን ለማለፍ (ይሄ ከሌለ Splash ላይ ይቆማል)
+    checkUserRegistration();
+</script>
+</body>
+</html>
 
 </script>
 </body>
