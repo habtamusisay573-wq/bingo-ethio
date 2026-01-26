@@ -1,10 +1,10 @@
 const admin = require('firebase-admin');
 const http = require('http');
 const express = require('express'); 
-const cors = require('cors'); // የግድ ያስፈልጋል (ግንኙነት እንዳይቋረጥ)
+const cors = require('cors'); // ለግንኙነቱ ወሳኝ የሆነው ፓኬጅ
 const app = express(); 
 
-// --- 1. የግንኙነት ፈቃድ (CORS) - ምንም ኮድ አልተቀነሰም ---
+// --- 1. የግንኙነት ፈቃድ (CORS) - አንድም ኮድ አልተቀነሰም ---
 app.use(cors()); 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -45,7 +45,6 @@ app.post('/buy-board', async (req, res) => {
         if(gSnap.val().status === 'idle') {
             await gameRef.update({ status: 'waiting', timer: 30, currentBetPrice: betAmount });
         }
-
         res.status(200).json({ msg: "Success" });
     } catch (e) { res.status(500).json({ msg: e.message }); }
 });
