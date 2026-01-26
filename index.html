@@ -627,9 +627,62 @@ function resetGame() {
     resetPlayerLocal();
     showP('home-page');
 }
+// 1. የተጠቃሚውን ምዝገባ ቼክ የሚያደርግና ሎጎውን የሚያጠፋው ፋንክሽን
+function checkUserRegistration() {
+    console.log("Checking user registration...");
+    
+    // ተጠቃሚው ቀድሞ ካለ (Local Storage)
+    const savedUser = localStorage.getItem('bingo_user');
+    
+    if (savedUser) {
+        user = JSON.parse(savedUser);
+        // ዳታቤዝ ላይ መኖሩን ቼክ እናደርጋለን
+        db.ref('users/' + user.id).once('value', snap => {
+            if (snap.exists()) {
+                // ተመዝግቧል -> ወደ ሆም ፔጅ
+                showP('home-page');
+            } else {
+                // ዳታቤዝ ላይ ከሌለ -> ወደ ምዝገባ ገጽ
+                showP('register-page');
+            }
+        });
+    } else {
+        // አዲስ ተጫዋች ከሆነ -> ወደ ምዝገባ ገጽ
+        showP('register-page');
+    }
+}
 
-// ዳኛው በእጁ ማጥፋት ሲፈልግ የሚጠራው
+// 2. ጨዋታው ሲቋረጥ በየ 2 ሰከንዱ Force Reset የሚያደርገው
+setInterval(() => {
+    db.ref('game/status').once('value', snap => {
+        if (snap.val() === 'idle' && hasBoard === true) {
+            hasBoard = false;
+            myBoardID = null;
+            markedCells = [12];
+            showP('home-page');
+            const grid = document.getElementById('bingo-grid');
+            if(grid) grid.innerHTML = "";
+        }
+    });
 
+    // ለአሸናፊ Auto-Reset (ለዳኛው)
+    if (String(user.id) === String(ADMIN_ID)) {
+        db.ref('game').once('value', snap => {
+            const g = snap.val();
+            if (g && g.winner && g.status !== 'idle') {
+                setTimeout(() => {
+                    db.ref('game').update({ status: 'idle', winner: null, drawn: [] });
+                    db.ref('reserved_boards').remove();
+                }, 3000);
+            }
+        });
+    }
+}, 2000);
+
+// ፔጁ እንደተከፈተ ስራ እንዲጀምር ይሄን ጥሪ እናድርግ
+
+    checkUserRegistration();
+};
 
 </scrip>
 </body>
