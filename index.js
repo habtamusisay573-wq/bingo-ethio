@@ -1,16 +1,23 @@
 const admin = require('firebase-admin');
 const http = require('http');
 const express = require('express'); 
+const cors = require('cors'); // ይህ የግንኙነት ፈቃድ እንዲኖር ይረዳል
 const app = express(); 
+
+// --- 1. የግንኙነት ፈቃድ (CORS) ---
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- 1. የFirebase ቅንብር ---
+// --- 2. የFirebase ቅንብር ---
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
-  // በ Render ላይ \n በትክክል እንዲነበብ የተደረገ ማስተካከያ
   privateKey: process.env.PRIVATE_KEY ? process.env.PRIVATE_KEY.replace(/\\n/g, '\n') : "",
 };
 
@@ -24,22 +31,20 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// --- አዲስ፡ ደህንነቱ የተጠበቀ የካርቴላ መግዣ (Secure Board Buy) ---
+// --- 3. ደህንነቱ የተጠበቀ የካርቴላ መግዣ (Secure Board Buy) ---
 app.post('/buy-board', async (req, res) => {
     const { userId, boardId, betAmount } = req.body;
     try {
         const userRef = db.ref(`users/${userId}`);
         const userSnap = await userRef.get();
-        if (!userSnap.exists()) return res.status(404).send("ተጫዋች አልተገኘም");
+        if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋች አልተገኘም" });
 
         const currentBal = userSnap.val().bal || 0;
-        if (currentBal < betAmount) return res.status(400).send("በቂ ባላንስ የለም");
+        if (currentBal < betAmount) return res.status(400).json({ msg: "በቂ ባላንስ የለም" });
 
-        // ብር መቀነስ እና ካርቴላ መያዝ በአንድ ጊዜ (Atomic Transaction)
         await userRef.child('bal').transaction(c => (c || 0) - betAmount);
         await db.ref(`reserved_boards/${boardId}`).set({ userId, betAmount });
         
-        // ጌሙ ገና ካልጀመረ ወደ መጠባበቂያ መቀየር
         const gameRef = db.ref('game');
         const gSnap = await gameRef.get();
         if(gSnap.val().status === 'idle') {
@@ -47,26 +52,25 @@ app.post('/buy-board', async (req, res) => {
         }
 
         res.status(200).json({ msg: "Success" });
-    } catch (e) { res.status(500).send(e.message); }
+    } catch (e) { res.status(500).json({ msg: e.message }); }
 });
 
-// --- አዲስ፡ ደህንነቱ የተጠበቀ የአሸናፊ መመዝገቢያ (Secure Bingo Claim) ---
+// --- 4. ደህንነቱ የተጠበቀ የአሸናፊ መመዝገቢያ (Secure Bingo Claim) ---
 app.post('/claim-bingo', async (req, res) => {
     const { userId, userName, betAmount } = req.body;
     try {
         const gameSnap = await db.ref('game').get();
         const game = gameSnap.val();
         
-        if (game.winner) return res.status(400).send("አሸናፊ ተገኝቷል");
-        if (game.status !== 'active') return res.status(400).send("ጌሙ ገና አልተጀመረም");
+        if (game.winner) return res.status(400).json({ msg: "አሸናፊ ተገኝቷል" });
+        if (game.status !== 'active') return res.status(400).json({ msg: "ጌሙ ገና አልተጀመረም" });
 
-        // አሸናፊውን መመዝገብ
         await db.ref('game/winner').set({ id: userId, name: userName, bet: betAmount });
         res.status(200).json({ msg: "Bingo Confirmed!" });
-    } catch (e) { res.status(500).send(e.message); }
+    } catch (e) { res.status(500).json({ msg: e.message }); }
 });
 
-// --- 2. የጨዋታው ራስ-ሰር ሪሴት ሎጂክ ---
+// --- 5. የጨዋታው ራስ-ሰር ሪሴት ሎጂክ ---
 let resetTimeout = null;
 db.ref('online_players').on('value', (snapshot) => {
     const playerCount = snapshot.numChildren();
@@ -87,11 +91,7 @@ db.ref('online_players').on('value', (snapshot) => {
     } else { if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; } }
 });
 
-// --- 3. የቴሌብር SMS Webhook ---
-const MIN_DEPOSIT = 10;
-const MIN_WITHDRAW = 50;
-const MAX_WITHDRAW = 5000;
-
+// --- 6. የቴሌብር SMS Webhook ---
 app.post('/sms-webhook', async (req, res) => {
     const message = req.body.text || req.body.message || "";
     const txIdMatch = message.match(/[A-Z0-9]{10,12}/i);
@@ -101,7 +101,7 @@ app.post('/sms-webhook', async (req, res) => {
     const playerPhoneMatch = message.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
     let playerPhone = playerPhoneMatch ? '0' + playerPhoneMatch[1] : null;
 
-    if (txId && amount >= MIN_DEPOSIT) {
+    if (txId && amount >= 10) {
         try {
             await db.ref(`pending_payments/${txId}`).set({ amount, sender_phone: playerPhone, status: "received", timestamp: Date.now() });
             if (playerPhone) {
@@ -120,7 +120,7 @@ app.post('/sms-webhook', async (req, res) => {
     res.status(200).send("OK");
 });
 
-// --- 4. የክፍያ ማረጋገጫ (Deposit) ---
+// --- 7. የክፍያ ማረጋገጫ (Deposit) ---
 app.post('/confirm-payment', async (req, res) => {
     const { phone, txId } = req.body;
     try {
@@ -137,7 +137,7 @@ app.post('/confirm-payment', async (req, res) => {
     } catch (e) { res.status(500).send("Error"); }
 });
 
-// --- 5. የጨዋታ አሰራር እና አሸናፊ ክፍያ ---
+// --- 8. የጨዋታ አሰራር እና አሸናፊ ክፍያ ---
 let drawingInterval = null;
 let timerInterval = null;
 
@@ -152,7 +152,6 @@ db.ref('game').on('value', async (snap) => {
         const boardsSnap = await db.ref('reserved_boards').get();
         const playersCount = boardsSnap.numChildren();
         const totalPool = playersCount * betPrice;
-        // 80% ለአሸናፊው፣ 20% ለአድሚኑ
         await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.8));
         await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + (totalPool * 0.2));
         setTimeout(() => {
