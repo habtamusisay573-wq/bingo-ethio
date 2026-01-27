@@ -1,12 +1,13 @@
 const admin = require('firebase-admin');
 const http = require('http');
 const express = require('express'); 
+const https = require('https'); 
 const app = express(); 
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- 1. የFirebase ቅንብር (ቅድሚያ መሆን ያለበት) ---
+// --- 1. የFirebase ቅንብር (አንተ በላክኸው መሰረት) ---
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -28,22 +29,29 @@ const MIN_DEPOSIT = 10;
 const MIN_WITHDRAW = 50;
 const MAX_WITHDRAW = 5000;
 
-// --- 2. የቴሌብር SMS መቀበያ (Webhook) ---
+// --- 2. ሰርቨሩ እንዳይተኛ (Self-Ping) ---
+setInterval(() => {
+    const url = `https://${process.env.RENDER_EXTERNAL_HOSTNAME}.onrender.com`;
+    https.get(url, (res) => {
+        console.log("ሰርቨሩ እንዳይተኛ ተቀስቅሷል ✅ Status:", res.statusCode);
+    }).on('error', (e) => {
+        console.error("Ping Error:", e.message);
+    });
+}, 5 * 60 * 1000); // በየ 5 ደቂቃው
+
+// --- 3. የቴሌብር SMS መቀበያ Webhook (አንድም ሳይቀንስ) ---
 app.post('/sms-webhook', async (req, res) => {
     const message = req.body.text || req.body.message || "";
     const sender = req.body.from || "";
 
     console.log("አዲስ ኤስኤምኤስ ደርሷል:", message);
 
-    // Transaction ID መፈለጊያ (10-12 ፊደልና ቁጥር)
     const txIdMatch = message.match(/[A-Z0-9]{10,12}/i); 
     const txId = txIdMatch ? txIdMatch[0].toUpperCase() : null;
 
-    // የብር መጠን መፈለጊያ (ETB ወይም ብር የሚለውን ጨምሮ)
     const amountMatch = message.match(/(\d+(?:\.\d+)?)\s?(?:ETB|ብር)/i) || message.match(/ብር\s?(\d+(?:\.\d+)?)/i);
     const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
 
-    // የላኪው ስልክ መፈለጊያ (09/07 ወይም +251)
     const playerPhoneMatch = message.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
     let playerPhone = null;
     if (playerPhoneMatch) {
@@ -52,7 +60,6 @@ app.post('/sms-webhook', async (req, res) => {
 
     if (txId && amount >= MIN_DEPOSIT) {
         try {
-            // የደረሰውን ግብይት በPending መመዝገብ
             await db.ref(`pending_payments/${txId}`).set({
                 amount: amount,
                 sender_phone: playerPhone,
@@ -67,9 +74,7 @@ app.post('/sms-webhook', async (req, res) => {
                     const txCheck = await db.ref(`used_transactions/${txId}`).once('value');
                     
                     if (!txCheck.exists()) {
-                        // የባላንስ ትራንዛክሽን
                         await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + amount);
-                        // ግብይቱን ጥቅም ላይ ውሏል ብሎ መመዝገብ
                         await db.ref(`used_transactions/${txId}`).set({ 
                             userId, amount, date: new Date().toLocaleString() 
                         });
@@ -79,12 +84,12 @@ app.post('/sms-webhook', async (req, res) => {
             }
         } catch (e) { console.error("Webhook Error:", e); }
     } else if (amount > 0 && amount < MIN_DEPOSIT) {
-        console.log(`ክፍያ ውድቅ ሆኗል፡ ${amount} ብር ከትንሹ ገደብ (${MIN_DEPOSIT}) በታች ነው።`);
+        console.log(`ክፍያ ውድቅ ሆኗል፡ ${amount} ብር ከትንሹ ገደብ በታች ነው።`);
     }
     res.status(200).send("OK");
 });
 
-// --- 3. የክፍያ ማረጋገጫ (Confirm Payment Endpoint) ---
+// --- 4. የክፍያ ማረጋገጫ Endpoint ---
 app.post('/confirm-payment', async (req, res) => {
     const { phone, txId } = req.body;
     try {
@@ -108,11 +113,10 @@ app.post('/confirm-payment', async (req, res) => {
     } catch (e) { res.status(500).json({ msg: "Server Error" }); }
 });
 
-// --- 4. የዊዝድሮው ጥያቄ ማስተናገጃ ---
+// --- 5. የዊዝድሮው ጥያቄ ማስተናገጃ ---
 app.post('/request-withdraw', async (req, res) => {
     const { userId, amount, phone } = req.body;
     const withdrawAmt = parseFloat(amount);
-
     try {
         const userSnap = await db.ref(`users/${userId}`).get();
         if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋቹ አልተገኘም!" });
@@ -135,52 +139,29 @@ app.post('/request-withdraw', async (req, res) => {
     } catch (e) { res.status(500).send("Server Error"); }
 });
 
-// --- 5. የጨዋታው ሎጂክ (Game Logic) ---
+// --- 6. የጨዋታው ሎጂክ (Game Logic) ---
 let drawingInterval = null; 
 let timerInterval = null;
 let resetTimeout = null;
 
-// ሰርቨሩ ሲነሳ ጨዋታ ካለ መቀጠል
 async function checkServerRecovery() {
     const gameSnap = await db.ref('game').get();
     const gameData = gameSnap.val();
     if(gameData && gameData.status === 'active' && !gameData.winner) {
         startDrawingNumbers(gameData.drawn || []);
+    } else if (gameData && gameData.status === 'waiting') {
+        runTimer(gameData.timer || 30);
     }
 }
 checkServerRecovery();
 
-// ተጫዋች በማይኖርበት ጊዜ ጌሙን ሪሴት ማድረግ
-db.ref('online_players').on('value', (snapshot) => {
-    const playerCount = snapshot.numChildren();
-    if (playerCount === 0) {
-        if (resetTimeout) clearTimeout(resetTimeout);
-        resetTimeout = setTimeout(async () => {
-            const gameSnap = await db.ref('game').get();
-            const gameData = gameSnap.val();
-            if (gameData && gameData.status !== 'idle') {
-                await db.ref('reserved_boards').remove();
-                await db.ref('game').update({
-                    drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0, isTimerRunning: false
-                });
-                console.log("Game reset due to inactivity.");
-            }
-        }, 3000); 
-    } else {
-        if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
-    }
-});
+// 🟢 አሸናፊ ሲኖር በ 3 ሰከንድ ሪሴት
+db.ref('game/winner').on('value', async (snap) => {
+    const win = snap.val();
+    if(win && !win.processed) {
+        if (drawingInterval) clearInterval(drawingInterval);
 
-db.ref('game').on('value', async (snap) => {
-    const game = snap.val();
-    if(!game) return;
-
-    if(game.winner && !game.isResetting) {
-        await db.ref('game/isResetting').set(true);
-        if (drawingInterval) { clearInterval(drawingInterval); drawingInterval = null; }
-
-        const winnerId = game.winner.id;
-        const betPrice = game.currentBetPrice || 0;
+        const betPrice = (await db.ref('game/currentBetPrice').get()).val() || 0;
         const boardsSnap = await db.ref('reserved_boards').get();
         const playersCount = boardsSnap.numChildren();
         
@@ -189,61 +170,77 @@ db.ref('game').on('value', async (snap) => {
         const adminPay = totalPool * 0.2;
 
         try {
-            await db.ref(`users/${winnerId}/bal`).transaction(curr => (curr || 0) + winnerPay);
-            await db.ref(`history/${winnerId}`).push({
-                type: "የቢንጎ ድል 🏆", amt: winnerPay, info: "80% የአሸናፊ ድርሻ", date: new Date().toLocaleString()
-            });
-            await db.ref(`users/${ADMIN_ID}/bal`).transaction(curr => (curr || 0) + adminPay);
-        } catch (e) { console.error("Payment Error:", e); }
+            await db.ref(`users/${win.id}/bal`).transaction(c => (c || 0) + winnerPay);
+            await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + adminPay);
+            await db.ref('game/winner/processed').set(true);
+            console.log(`ክፍያ ተፈጽሟል፡ Winner: ${winnerPay}, Admin: ${adminPay}`);
+        } catch (e) { console.error("Payout Error:", e); }
 
-        setTimeout(() => {
-            db.ref('reserved_boards').remove();
-            db.ref('game').set({
-                drawn: [], status: 'idle', winner: null, isResetting: false, timer: -1, currentBetPrice: 0
-            });
-        }, 5000);
-    }
-
-    if(game.status === 'waiting' && !game.isTimerRunning) {
-        runTimer();
+        setTimeout(() => { resetFullGame("Winner Found"); }, 3000);
     }
 });
 
-function runTimer() {
+// 🟡 ሰው ከሌለ በ 3 ሰከንድ ሪሴት
+db.ref('online_players').on('value', (snapshot) => {
+    const playerCount = snapshot.numChildren();
+    if (playerCount === 0) {
+        if (resetTimeout) clearTimeout(resetTimeout);
+        resetTimeout = setTimeout(async () => {
+            const countCheck = (await db.ref('online_players').get()).numChildren();
+            if (countCheck === 0) resetFullGame("No Players");
+        }, 3000); 
+    } else {
+        if (resetTimeout) { clearTimeout(resetTimeout); resetTimeout = null; }
+    }
+});
+
+async function resetFullGame(reason) {
+    console.log(`ሪሴት ተደርጓል፡ ${reason}`);
+    if (drawingInterval) clearInterval(drawingInterval);
     if (timerInterval) clearInterval(timerInterval);
-    db.ref('game').update({ isTimerRunning: true });
-    let sec = 30;
-    timerInterval = setInterval(() => {
+    await db.ref('reserved_boards').remove();
+    await db.ref('game').set({
+        drawn: [], status: 'idle', winner: null, timer: -1, currentBetPrice: 0, isTimerRunning: false, isResetting: false
+    });
+}
+
+db.ref('game/status').on('value', snap => {
+    if(snap.val() === 'waiting' && !timerInterval) {
+        runTimer(30);
+    }
+});
+
+function runTimer(sec) {
+    if (timerInterval) clearInterval(timerInterval);
+    db.ref('game/isTimerRunning').set(true);
+    timerInterval = setInterval(async () => {
         sec--;
-        db.ref('game/timer').set(sec);
+        await db.ref('game/timer').set(sec);
         if(sec <= 0) {
             clearInterval(timerInterval);
             timerInterval = null;
-            db.ref('game').update({ status: 'active', isTimerRunning: false });
+            await db.ref('game').update({ status: 'active', isTimerRunning: false });
             startDrawingNumbers([]);
         }
     }, 1000);
 }
 
-function startDrawingNumbers(existingDrawn) {
-    let drawn = existingDrawn;
+function startDrawingNumbers(existing) {
+    let drawn = existing;
     if (drawingInterval) clearInterval(drawingInterval);
     drawingInterval = setInterval(async () => {
         const g = (await db.ref('game').get()).val();
         if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
             clearInterval(drawingInterval);
-            drawingInterval = null;
             return;
         }
         let n;
         do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
         drawn.push(n);
-        db.ref('game/drawn').set(drawn);
+        await db.ref('game/drawn').set(drawn);
     }, 2000);
 }
 
-// ሰርቨር ማስነሻ
+app.get('/', (req, res) => res.send("Bingo Server is Running... 🟢"));
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Bingo Server is running on port ${PORT}...`);
-});
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
