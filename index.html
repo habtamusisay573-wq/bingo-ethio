@@ -30,6 +30,21 @@
         .active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* ማሻሻያ፡ የጽሁፍ ማስገቢያ ቦክሶች እንዲሰፉ */
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 18px; /* ከፍታው ተጨምሯል */
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 2px solid rgba(250, 204, 21, 0.4);
+            background: rgba(0,0,0,0.5);
+            color: #facc15;
+            font-size: 1.1rem; /* ጽሁፉ በደንብ እንዲታይ */
+            box-sizing: border-box;
+            outline: none;
+        }
+        input:focus { border-color: #facc15; box-shadow: 0 0 12px rgba(250, 204, 21, 0.3); }
+
         /* ወጥ የሆነ የመጫወቻ ሜዳ ዲዛይን */
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 15px auto; max-width: 350px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
         .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 10px; font-size: 1.1rem; border: 2px solid transparent; transition: 0.2s; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
@@ -163,7 +178,7 @@
     <div id="withdraw-page" class="page">
         <h3>ብር ማውጫ</h3>
         <input type="number" id="wit-amt" placeholder="መጠን">
-        <input type="text" id="wit-phone" placeholder="ስልክ">
+        <input type="text" id="wit-phone" placeholder="ስልክ ወይም ባንክ አካውንት">
         <button class="btn btn-red" onclick="reqFinance('WIT')">ጥያቄ ላክ</button>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
@@ -237,18 +252,16 @@
         }
     });
 
-    // አሸናፊውን የሚከታተል ክፍል (እዚህ ጋር የገንዘብ ክፍያ ተጨምሯል)
     db.ref('game/winner').on('value', s => {
         const w = s.val();
         if(w) {
-            // አሸናፊው እኔ ከሆንኩ ብሩን ጨምርልኝ
             if(w.id === user.id) {
                 db.ref('game/jackpot').once('value', jSnap => {
                     const winAmt = jSnap.val() || 0;
                     if(winAmt > 0) {
                         db.ref('users/' + user.id + '/bal').transaction(c => (c || 0) + winAmt);
                         addHistory(user.id, "ቢንጎ አሸናፊ 🏆", winAmt, "PLUS");
-                        db.ref('game/jackpot').set(0); // ጃክፖቱን ዜሮ አድርገው
+                        db.ref('game/jackpot').set(0);
                     }
                 });
             }
@@ -367,7 +380,6 @@
             [0,6,12,18,24],[4,8,12,16,20], [0, 4, 20, 24]
         ];
         if(lines.some(l => l.every(idx => markedCells.includes(idx)))) {
-            // መጀመሪያ ማንም አላሸነፈም መሆኑን አረጋግጥ
             db.ref('game/winner').once('value', s => {
                 if(!s.val()) db.ref('game/winner').set({name: user.first_name, id: user.id});
             });
@@ -391,7 +403,6 @@
             db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
             addHistory(uid, "ብር ገብቷል ✅", amt, "PLUS");
         } else {
-            // ማውጣት አስቀድሞ ስለሚቀነስ እዚህ መደመር አያስፈልግም
             addHistory(uid, "ብር ወጥቷል ✅", amt, "MINUS");
         }
         db.ref('requests/' + key).remove();
@@ -400,7 +411,6 @@
 
     function rejectReq(key, uid, amt, type) {
         if(type === 'WIT') {
-            // ማውጣት ከሆነ ብሩን መልስለት
             db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
             addHistory(uid, "የብር ማውጣት ጥያቄ ውድቅ ተደርጓል (ብር ተመልሷል)", amt, "PLUS");
         } else {
