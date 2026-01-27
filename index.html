@@ -31,7 +31,16 @@
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px auto; max-width: 350px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 15px; }
         .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 10px; font-size: 1.2rem; border: none; transition: 0.2s; box-shadow: 0 4px 0 #cbd5e1; }
         .marked { background: var(--danger) !important; color: white !important; transform: scale(0.92); box-shadow: none !important; }
-        .highlight-cell { transform: scale(1.1); z-index: 5; background: #fefce8 !important; }
+        
+        /* Highlight Effect Style */
+        .highlight-cell { 
+            border: 4px solid #facc15 !important; 
+            transform: scale(1.1); 
+            z-index: 5; 
+            background: #fefce8 !important; 
+            box-shadow: 0 0 15px #facc15;
+            transition: 0.3s;
+        }
 
         .btn { background: var(--gold); border: none; padding: 14px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 0.95rem; text-transform: uppercase; transition: 0.2s; }
         .btn:active { transform: scale(0.98); }
@@ -278,6 +287,19 @@
         const last = drawn[drawn.length - 1];
         document.getElementById('current-ball').innerText = last || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-8).join(" - ");
+        
+        // --- Highlight Logic Start ---
+        if(last && hasBoard) {
+            const idx = myBoard.indexOf(last);
+            if(idx !== -1) {
+                const cell = document.getElementById('c-' + idx);
+                if(cell) {
+                    cell.classList.add('highlight-cell');
+                    setTimeout(() => cell.classList.remove('highlight-cell'), 2000);
+                }
+            }
+        }
+        // --- Highlight Logic End ---
     });
 
     db.ref('game/winner').on('value', s => {
