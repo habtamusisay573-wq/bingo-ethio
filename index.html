@@ -245,10 +245,18 @@
     db.ref('game/winner').on('value', s => {
         const w = s.val();
         if(w) {
-            // Log to winner's history
+            // አሸናፊው ሲለይ ሂሳብ መደመር (አስተካክለነዋል)
             if(w.id === user.id) {
                 db.ref('game/jackpot').once('value', j => {
-                   addHistory(user.id, "BINGO ድል 🏆", j.val() || 0, "PLUS");
+                   const jackpotAmt = j.val() || 0;
+                   if(jackpotAmt > 0) {
+                       // ባላንስ ላይ መደመር
+                       db.ref('users/' + user.id + '/bal').transaction(current => (current || 0) + jackpotAmt);
+                       // ታሪክ ላይ መመዝገብ
+                       addHistory(user.id, "BINGO ድል 🏆", jackpotAmt, "PLUS");
+                       // ጃክፖቱን ወደ 0 መመለስ (አሸናፊው ስለወሰደው)
+                       db.ref('game/jackpot').set(0);
+                   }
                 });
             }
             document.getElementById('win-name').innerText = w.name + " አሸነፈ! 🏆";
@@ -422,10 +430,10 @@
             s.forEach(child => {
                 const r = child.val();
                 list.innerHTML += `
-                    <div class="req-card">
+                    <div class=\"req-card\">
                         <small>${r.type}</small> | <b>${r.name}</b><br>
                         መጠን: ${r.amt} ETB | Info: ${r.info}<br>
-                        <button class="btn btn-green" style="padding:5px; margin-top:5px; font-size:12px;" onclick="approveReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')">APPROVE ✅</button>
+                        <button class=\"btn btn-green\" style=\"padding:5px; margin-top:5px; font-size:12px;\" onclick=\"approveReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')\">APPROVE ✅</button>
                     </div>`;
             });
         });
