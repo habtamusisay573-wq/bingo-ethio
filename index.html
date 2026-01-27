@@ -245,16 +245,12 @@
     db.ref('game/winner').on('value', s => {
         const w = s.val();
         if(w) {
-            // አሸናፊው ሲለይ ሂሳብ መደመር (አስተካክለነዋል)
             if(w.id === user.id) {
                 db.ref('game/jackpot').once('value', j => {
                    const jackpotAmt = j.val() || 0;
                    if(jackpotAmt > 0) {
-                       // ባላንስ ላይ መደመር
                        db.ref('users/' + user.id + '/bal').transaction(current => (current || 0) + jackpotAmt);
-                       // ታሪክ ላይ መመዝገብ
                        addHistory(user.id, "BINGO ድል 🏆", jackpotAmt, "PLUS");
-                       // ጃክፖቱን ወደ 0 መመለስ (አሸናፊው ስለወሰደው)
                        db.ref('game/jackpot').set(0);
                    }
                 });
@@ -286,7 +282,6 @@
         }
     });
 
-    // --- History Helper ---
     function addHistory(uid, type, amt, mode) {
         db.ref('history/' + uid).push({
             type: type,
@@ -297,7 +292,7 @@
     }
 
     function loadHistory() {
-        db.ref('history/' + user.id).limitToLast(20).on('value', s => {
+        db.ref('history/' + user.id).on('value', s => {
             const list = document.getElementById('hist-list');
             list.innerHTML = "";
             let hists = [];
@@ -330,7 +325,7 @@
             
             db.ref('game/status').once('value', gs => {
                 const isGameActive = (gs.val() === 'active');
-                for(let i=1; i<=100; i++){
+                for(let i=1; i<=200; i++){
                     let b = document.createElement('div');
                     let isMine = taken[i] && taken[i].userId === user.id;
                     let isTaken = taken[i] && !isMine;
@@ -430,10 +425,10 @@
             s.forEach(child => {
                 const r = child.val();
                 list.innerHTML += `
-                    <div class=\"req-card\">
+                    <div class="req-card">
                         <small>${r.type}</small> | <b>${r.name}</b><br>
                         መጠን: ${r.amt} ETB | Info: ${r.info}<br>
-                        <button class=\"btn btn-green\" style=\"padding:5px; margin-top:5px; font-size:12px;\" onclick=\"approveReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')\">APPROVE ✅</button>
+                        <button class="btn btn-green" style="padding:5px; margin-top:5px; font-size:12px;" onclick="approveReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')">APPROVE ✅</button>
                     </div>`;
             });
         });
