@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- 1. የFirebase Admin ቅንብር ---
+// --- 1. Firebase Admin ቅንብር ---
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -21,22 +21,19 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
-const ADMIN_ID = "8431270634"; // የአስተዳዳሪ ቴሌግራም ID (20% ድርሻ የሚገባበት)
+const ADMIN_ID = "8431270634"; 
 
-// --- 2. ሰርቨሩ እንዳይዘጋ (Keep-Alive Self-Ping) ---
-// Render በየ 15 ደቂቃው ሰርቨሩን እንዳያተኛው በየ 10 ደቂቃው ራሱን ይጠራል
+// --- 2. ሰርቨሩ እንዳይተኛ (Keep-Alive) ---
 setInterval(() => {
     const host = process.env.RENDER_EXTERNAL_HOSTNAME;
     if (host) {
-        https.get(`https://${host}/health-check`, (res) => {
-            console.log("Keep-alive: ሰርቨሩ ንቁ ነው ✅");
-        }).on('error', (e) => console.log("Ping error skipped to prevent stack overflow."));
+        https.get(`https://${host}/`, (res) => {
+            console.log("Keep-alive: Active ✅");
+        }).on('error', (e) => console.log("Ping error skipped."));
     }
-}, 10 * 60 * 1000); 
+}, 5 * 60 * 1000); 
 
-app.get('/health-check', (req, res) => res.status(200).send("I am alive!"));
-
-// --- 3. የቴሌብር SMS Webhook (ለራስ-ሰር ባላንስ መጨመሪያ) ---
+// --- 3. የቴሌብር SMS Webhook ---
 app.post('/sms-webhook', async (req, res) => {
     const message = req.body.text || req.body.message || "";
     const txIdMatch = message.match(/[A-Z0-9]{10,12}/i); 
@@ -107,15 +104,15 @@ app.post('/request-withdraw', async (req, res) => {
     } catch (e) { res.status(500).send("Error"); }
 });
 
-// --- 6. የጨዋታው ሎጂክ (Game Logic & Timer Fix) ---
+// --- 6. የጨዋታው ሎጂክ (Game Control) ---
 let drawInt = null;
 let timeInt = null;
 
-// አሸናፊ ሲኖር 80/20 ከፍሎ በ 3 ሰከንድ ሪሴት ያደርጋል
+// አሸናፊ ሲኖር 80/20 ክፍያና ሪሴት
 db.ref('game/winner').on('value', async (snap) => {
     const win = snap.val();
     if (win && !win.processed) {
-        clearInterval(drawInt);
+        if (drawInt) clearInterval(drawInt);
         const bet = (await db.ref('game/currentBetPrice').get()).val() || 0;
         const boardsSnap = await db.ref('reserved_boards').get();
         const playersCount = boardsSnap.numChildren();
@@ -143,15 +140,14 @@ function startTimer(sec) {
     db.ref('game/isTimerRunning').set(true);
     timeInt = setInterval(async () => {
         sec--;
-        // 🔥 Stack Error ለመከላከል ዳታቤዝ ላይ በየ 5 ሰከንዱ ብቻ ይጽፋል
-        if (sec % 5 === 0 || sec <= 5) {
-            await db.ref('game/timer').set(sec);
-        }
+        // ለተጫዋቾች እንዲታይ በየሰከንዱ ይጽፋል (Stack እንዳያደርግ በጥንቃቄ)
+        await db.ref('game/timer').set(sec);
+        
         if (sec <= 0) {
             clearInterval(timeInt);
             timeInt = null;
-            await db.ref('game').update({ status: 'active', isTimerRunning: false });
-            startDrawingNumbers();
+            await db.ref('game').update({ status: 'active', isTimerRunning: false, timer: 0 });
+            startDrawingNumbers(); // ታይመሩ ሲያልቅ ቁጥር ማውጣት ይጀምራል
         }
     }, 1000);
 }
@@ -160,20 +156,24 @@ function startDrawingNumbers() {
     let drawn = [];
     if (drawInt) clearInterval(drawInt);
     drawInt = setInterval(async () => {
-        const g = (await db.ref('game').get()).val();
+        const gSnap = await db.ref('game').get();
+        const g = gSnap.val();
         if (!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
-            return clearInterval(drawInt);
+            clearInterval(drawInt);
+            drawInt = null;
+            return;
         }
         let n;
         do { n = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(n));
         drawn.push(n);
         await db.ref('game/drawn').set(drawn);
-    }, 2500); // UI እንዳይጨናነቅ 2.5 ሰከንድ
+    }, 2500); 
 }
 
 async function resetFullGame() {
     if (drawInt) clearInterval(drawInt);
     if (timeInt) clearInterval(timeInt);
+    drawInt = null;
     timeInt = null;
     await db.ref('reserved_boards').remove();
     await db.ref('game').set({
@@ -181,10 +181,10 @@ async function resetFullGame() {
     });
 }
 
-// --- 7. ሰርቨሩን ማስነሻ (Port Binding) ---
+// --- 7. ሰርቨሩን ማስነሻ ---
 app.get('/', (req, res) => res.send("Dagi Bingo Stable Server is Running! 🟢"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`ሰርቨሩ በፖርት ${PORT} ላይ ተነስቷል...`);
+    console.log(`Server started on port ${PORT}`);
 });
