@@ -18,21 +18,46 @@
 
         body { background: var(--dark); background-image: radial-gradient(circle at top right, #1e293b, #0f172a); color: white; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; user-select: none; overflow-x: hidden; }
         
+        /* Splash Screen */
         #splash { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .logo-anim { font-size: 3.5rem; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: zoom 2s infinite; text-shadow: 0 0 15px rgba(250, 204, 21, 0.4); }
         @keyframes zoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 
+        /* Header */
         .header { background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(10px); padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #facc15; position: sticky; top:0; z-index:100; }
         
         .page { display: none; padding: 12px; min-height: 90vh; animation: fadeIn 0.4s ease; }
         .active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* ማሻሻያ፡ የጽሁፍ ማስገቢያ ቦክሶች እንዲሰፉ */
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 18px; /* ከፍታው ተጨምሯል */
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 2px solid rgba(250, 204, 21, 0.4);
+            background: rgba(0,0,0,0.5);
+            color: #facc15;
+            font-size: 1.1rem; /* ጽሁፉ በደንብ እንዲታይ */
+            box-sizing: border-box;
+            outline: none;
+        }
+        input:focus { border-color: #facc15; box-shadow: 0 0 12px rgba(250, 204, 21, 0.3); }
+
+        /* ወጥ የሆነ የመጫወቻ ሜዳ ዲዛይን */
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 15px auto; max-width: 350px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
         .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 10px; font-size: 1.1rem; border: 2px solid transparent; transition: 0.2s; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
         .marked { background: var(--danger) !important; color: white !important; transform: scale(0.92); border: none !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
         
-        .highlight-cell { border: 4px solid #facc15 !important; transform: scale(1.1); z-index: 5; background: #fefce8 !important; box-shadow: 0 0 15px #facc15; transition: 0.3s; }
+        .highlight-cell { 
+            border: 4px solid #facc15 !important; 
+            transform: scale(1.1); 
+            z-index: 5; 
+            background: #fefce8 !important; 
+            box-shadow: 0 0 15px #facc15;
+            transition: 0.3s;
+        }
 
         .btn { background: var(--gold); border: none; padding: 14px; border-radius: 12px; font-weight: 900; color: #422006; cursor: pointer; width: 100%; margin-top: 10px; font-size: 0.95rem; text-transform: uppercase; transition: 0.2s; }
         .btn:active { transform: scale(0.98); }
@@ -56,11 +81,6 @@
         .hist-card { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); }
         .hist-date { font-size: 10px; opacity: 0.6; }
         .hist-amt { font-weight: bold; float: right; }
-        
-        input { 
-            width: 100%; padding: 15px; margin-top: 10px; border-radius: 10px; border: 1px solid #334155; 
-            background: rgba(0,0,0,0.5); color: #facc15; font-weight: bold; box-sizing: border-box; 
-        }
     </style>
 </head>
 <body>
@@ -113,17 +133,17 @@
         <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin-bottom: 15px;">
             <label style="font-size: 12px; color: #facc15;">ብር መቀበያ ስልክ ቁጥር</label>
             <input type="text" id="adm-phone-input" placeholder="ለምሳሌ፡ 0912345678">
-            <button class="btn btn-green" style="margin-top:5px;" onclick="updateAdminSettings()">ስልክ ቁጥር ቀይር</button>
+            <button class="btn btn-green" style="margin-top:0;" onclick="updateAdminSettings()">ስልክ ቁጥር ቀይር</button>
             
             <label style="font-size: 12px; color: #facc15; margin-top: 10px; display: block;">ለተጫዋቾች መልእክት አስተላልፍ</label>
             <input type="text" id="adm-msg-input" placeholder="መልእክት እዚህ ይጻፉ...">
-            <button class="btn" style="margin-top:5px;" onclick="broadcastMsg()">መልእክት ላክ</button>
+            <button class="btn" style="margin-top:0;" onclick="broadcastMsg()">መልእክት ላክ</button>
         </div>
 
         <h4 style="border-bottom: 1px solid #facc15;">የተጫዋቾች ሁኔታ (Live)</h4>
         <div id="admin-user-monitor" style="max-height: 150px; overflow-y: auto; margin-bottom: 15px;"></div>
 
-        <h4 style="border-bottom: 1px solid #facc15;">የገንዘብ ጥያቄዎች (Requests)</h4>
+        <h4 style="border-bottom: 1px solid #facc15;">የብር ጥያቄዎች (Approval)</h4>
         <div id="admin-req-list"></div>
         
         <button class="btn btn-red" onclick="if(confirm('RESET?')) resetGame()">RESET GAME</button>
@@ -157,15 +177,14 @@
 
     <div id="withdraw-page" class="page">
         <h3>ብር ማውጫ</h3>
-        <p style="font-size: 12px; opacity: 0.8;">የሚወጣው ብር ከባላንስዎ ላይ ተቀናሽ ተደርጎ ለአስተዳዳሪው ይላካል።</p>
         <input type="number" id="wit-amt" placeholder="መጠን">
-        <input type="text" id="wit-phone" placeholder="የሚላክበት ስልክ/አካውንት">
+        <input type="text" id="wit-phone" placeholder="ስልክ ወይም ባንክ አካውንት">
         <button class="btn btn-red" onclick="reqFinance('WIT')">ጥያቄ ላክ</button>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="reserve-page" class="page">
-        <h3 style="text-align:center; color:#facc15;">ካርቴላ ይምረጡ (1-200)</h3>
+        <h3 style="text-align:center; color:#facc15;">ካርቴላ ይምረጡ</h3>
         <div id="board-list" class="grid"></div>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
@@ -220,6 +239,7 @@
         const last = drawn[drawn.length - 1];
         document.getElementById('current-ball').innerText = last || "?";
         document.getElementById('ball-history').innerText = drawn.slice(-8).join(" - ");
+        
         if(last && hasBoard) {
             const idx = myBoard.indexOf(last);
             if(idx !== -1) {
@@ -236,8 +256,8 @@
         const w = s.val();
         if(w) {
             if(w.id === user.id) {
-                db.ref('game/jackpot').once('value', j => {
-                    const winAmt = j.val() || 0;
+                db.ref('game/jackpot').once('value', jSnap => {
+                    const winAmt = jSnap.val() || 0;
                     if(winAmt > 0) {
                         db.ref('users/' + user.id + '/bal').transaction(c => (c || 0) + winAmt);
                         addHistory(user.id, "ቢንጎ አሸናፊ 🏆", winAmt, "PLUS");
@@ -258,7 +278,7 @@
     db.ref('settings/admin_phone').on('value', s => {
         const phone = s.val() || "አልተገኘም";
         document.getElementById('display-adm-phone').innerText = "ብር መላኪያ ስልክ፡ " + phone;
-        if(user.id == ADMIN_ID) document.getElementById('adm-phone-input').value = phone;
+        if(user.id == ADMIN_ID) document.getElementById('adm-phone-input').value = s.val() || "";
     });
 
     db.ref('settings/broadcast').on('value', s => {
@@ -305,9 +325,10 @@
             const list = document.getElementById('board-list'); list.innerHTML = "";
             const taken = s.val() || {};
             let total = 0;
+            
             db.ref('game/status').once('value', gs => {
                 const isGameActive = (gs.val() === 'active');
-                for(let i=1; i<=200; i++){
+                for(let i=1; i<=100; i++){
                     let b = document.createElement('div');
                     let isMine = taken[i] && taken[i].userId === user.id;
                     let isTaken = taken[i] && !isMine;
@@ -353,9 +374,16 @@
     }
 
     function checkBingoAndClaim() {
-        const lines = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20],[0,4,20,24]];
-        if(lines.some(l => l.every(idx => markedCells.includes(idx)))) db.ref('game/winner').set({name: user.first_name, id: user.id});
-        else alert("ቢንጎ ገና ነህ!");
+        const lines = [
+            [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
+            [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],
+            [0,6,12,18,24],[4,8,12,16,20], [0, 4, 20, 24]
+        ];
+        if(lines.some(l => l.every(idx => markedCells.includes(idx)))) {
+            db.ref('game/winner').once('value', s => {
+                if(!s.val()) db.ref('game/winner').set({name: user.first_name, id: user.id});
+            });
+        } else alert("ቢንጎ ገና ነህ!");
     }
 
     function updateAdminSettings() {
@@ -370,24 +398,23 @@
         alert("ተልኳል!");
     }
 
-    // --- WITHDRAW LOGIC (APPROVAL/REJECT) ---
     function approveReq(key, uid, amt, type) {
         if(type === 'DEP') {
             db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
             addHistory(uid, "ብር ገብቷል ✅", amt, "PLUS");
         } else {
-            // Withdraw ቀድሞ ስለተቀነሰ እዚህ መደመር አያስፈልግም፤ ማጽደቅ ብቻ
-            addHistory(uid, "ብር ማውጣት ጸድቋል ✅", amt, "MINUS");
+            addHistory(uid, "ብር ወጥቷል ✅", amt, "MINUS");
         }
         db.ref('requests/' + key).remove();
-        alert("ተፈጽሟል!");
+        alert("ጸድቋል!");
     }
 
     function rejectReq(key, uid, amt, type) {
         if(type === 'WIT') {
-            // ማውጣት ውድቅ ከተደረገ ብሩን ለተጫዋቹ መልስ (Refund)
             db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
-            addHistory(uid, "ብር ማውጣት ውድቅ ሆኗል (ተመላሽ)", amt, "PLUS");
+            addHistory(uid, "የብር ማውጣት ጥያቄ ውድቅ ተደርጓል (ብር ተመልሷል)", amt, "PLUS");
+        } else {
+            addHistory(uid, "የብር ማስገቢያ ጥያቄ ውድቅ ተደርጓል", amt, "NONE");
         }
         db.ref('requests/' + key).remove();
         alert("ውድቅ ተደርጓል!");
@@ -410,32 +437,23 @@
                     <div class="req-card">
                         <small>${r.type}</small> | <b>${r.name}</b><br>
                         ${r.amt} ETB | Info: ${r.info}<br>
-                        <button class="btn btn-green" style="width:48%; padding:5px; font-size:11px;" onclick="approveReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')">APPROVE ✅</button>
-                        <button class="btn btn-red" style="width:48%; padding:5px; font-size:11px;" onclick="rejectReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')">REJECT ❌</button>
+                        <button class="btn btn-green" style="width:48%; padding:5px;" onclick="approveReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')">✅ አጽድቅ</button>
+                        <button class="btn btn-red" style="width:48%; padding:5px;" onclick="rejectReq('${child.key}', '${r.uid}', ${r.amt}, '${r.type}')">❌ ሰርዝ</button>
                     </div>`;
             });
         });
     }
 
     function reqFinance(type) {
-        let amtInput = document.getElementById(type==='DEP'?'dep-amt':'wit-amt');
-        let infoInput = document.getElementById(type==='DEP'?'dep-trx':'wit-phone');
-        let amt = parseFloat(amtInput.value);
-        let info = infoInput.value;
-
-        if(!amt || amt <= 0 || !info) return alert("ትክክለኛ መረጃ ይሙሉ!");
-
+        let amt = parseFloat(document.getElementById(type==='DEP'?'dep-amt':'wit-amt').value);
+        let info = document.getElementById(type==='DEP'?'dep-trx':'wit-phone').value;
+        if(!amt || !info) return alert("መረጃ ሙላ!");
         if(type==='WIT') {
             if(myBal < amt) return alert("በቂ ባላንስ የለም!");
-            // ማውጣት ሲጠየቅ ወዲያውኑ ከባላንስ ይቀንሳል
             db.ref('users/' + user.id + '/bal').transaction(c => (c || 0) - amt);
-            addHistory(user.id, "ብር ማውጣት ጥያቄ (በሂደት ላይ)", amt, "MINUS");
         }
-        
         db.ref('requests/'+Date.now()).set({ uid: user.id, name: user.first_name, type: type, amt: amt, info: info });
-        alert("ጥያቄው ተልኳል! አስተዳዳሪው እስኪያጸድቅ ይጠብቁ።");
-        amtInput.value = ""; infoInput.value = "";
-        showP('home-page');
+        alert("ጥያቄ ተልኳል!"); showP('home-page');
     }
 
     function showP(id) { 
