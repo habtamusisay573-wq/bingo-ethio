@@ -61,7 +61,7 @@ const Game = {
             
             drawn.push(num);
             await db.ref('game/drawn').set(drawn);
-        }, 2000); // 3 ሰከንድ ለመረጋጋት
+        }, 1000); // 3 ሰከንድ ለመረጋጋት
     },
 
     // ሁሉንም ማቆሚያ
