@@ -18,19 +18,22 @@
 
         body { background: var(--dark); background-image: radial-gradient(circle at top right, #1e293b, #0f172a); color: white; font-family: 'Poppins', sans-serif; margin: 0; padding: 0; user-select: none; overflow-x: hidden; }
         
+        /* Splash Screen */
         #splash { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .logo-anim { font-size: 3.5rem; font-weight: 900; background: var(--gold); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: zoom 2s infinite; text-shadow: 0 0 15px rgba(250, 204, 21, 0.4); }
         @keyframes zoom { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 
+        /* Header */
         .header { background: rgba(30, 41, 59, 0.9); backdrop-filter: blur(10px); padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #facc15; position: sticky; top:0; z-index:100; }
         
         .page { display: none; padding: 12px; min-height: 90vh; animation: fadeIn 0.4s ease; }
         .active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px auto; max-width: 350px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 15px; }
-        .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 10px; font-size: 1.2rem; border: none; transition: 0.2s; box-shadow: 0 4px 0 #cbd5e1; }
-        .marked { background: var(--danger) !important; color: white !important; transform: scale(0.92); box-shadow: none !important; }
+        /* ወጥ የሆነ የመጫወቻ ሜዳ ዲዛይን */
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 15px auto; max-width: 350px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .cell { aspect-ratio: 1; background: #fff; color: #1e293b; display: flex; align-items: center; justify-content: center; font-weight: 900; border-radius: 10px; font-size: 1.1rem; border: 2px solid transparent; transition: 0.2s; box-shadow: 0 4px 0 rgba(0,0,0,0.1); }
+        .marked { background: var(--danger) !important; color: white !important; transform: scale(0.92); border: none !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
         
         /* Highlight Effect Style */
         .highlight-cell { 
@@ -47,15 +50,13 @@
         .btn-red { background: var(--danger); color: white; }
         .btn-green { background: var(--success); color: white; }
         
-        input { width: 100%; padding: 15px; margin-bottom: 10px; border-radius: 10px; border: none; font-family: 'Poppins'; box-sizing: border-box; }
-
         #current-ball { width: 85px; height: 85px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.8rem; font-weight: 900; border: 4px solid #fff; box-shadow: 0 0 20px rgba(250,204,21,0.4); }
         .live-indicator { background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; margin-bottom: 10px; font-size: 13px; text-align: center; border: 1px solid rgba(250, 204, 21, 0.2); }
         .prize-box { background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 5px 10px; margin-top: 5px; }
 
         #board-list { grid-template-columns: repeat(4, 1fr); height: 50vh; overflow-y: auto; padding: 10px; }
         .board-item { background: #facc15 !important; height: 50px; font-size: 1.1rem; }
-        .board-taken { opacity: 0.3; pointer-events: none; }
+        .board-taken { opacity: 0.3; pointer-events: none; filter: grayscale(1); }
 
         .user-card { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
@@ -165,11 +166,13 @@
     </div>
 
     <div id="reserve-page" class="page">
+        <h3 style="text-align:center; color:#facc15;">ካርቴላ ይምረጡ</h3>
         <div id="board-list" class="grid"></div>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
 
     <div id="history-page" class="page">
+        <h3 style="text-align:center;">የታሪክ ማህደር</h3>
         <div id="hist-list"></div>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
     </div>
@@ -180,6 +183,7 @@
 </div>
 
 <script>
+    // --- Configuration ---
     const ADMIN_ID = 8431270634; 
     const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
     const fb = firebase.initializeApp(firebaseConfig);
@@ -192,6 +196,60 @@
     if(user.id == ADMIN_ID) document.getElementById('adm-gate').style.display = 'block';
 
     let myBal = 0, drawn = [], markedCells = [12], currentBet = 0, myBoard = [], hasBoard = false;
+
+    // 1. Online Users Live Count
+    const onlineRef = db.ref('online_players/' + user.id);
+    onlineRef.set(true); onlineRef.onDisconnect().remove();
+    db.ref('online_players').on('value', s => {
+        document.getElementById('player-count').innerText = s.numChildren();
+    });
+
+    // 2. Data Listeners
+    db.ref('users/' + user.id + '/bal').on('value', s => { 
+        myBal = s.val() || 0; 
+        document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
+    });
+
+    db.ref('game/timer').on('value', s => {
+        const t = s.val();
+        const hint = document.getElementById('live-hint');
+        if(t > 0) hint.innerHTML = `<span style="color:#ef4444;">⏳ ${t}</span>`;
+        else if(t === 0) { hint.innerHTML = "🚀 ተጀመረ!"; if(hasBoard) showP('game-page'); }
+        else hint.innerHTML = "";
+    });
+
+    db.ref('game/drawn').on('value', s => {
+        drawn = s.val() || [];
+        document.getElementById('balls-out-count').innerText = drawn.length;
+        const last = drawn[drawn.length - 1];
+        document.getElementById('current-ball').innerText = last || "?";
+        document.getElementById('ball-history').innerText = drawn.slice(-8).join(" - ");
+        
+        // --- Highlight Logic ---
+        if(last && hasBoard) {
+            const idx = myBoard.indexOf(last);
+            if(idx !== -1) {
+                const cell = document.getElementById('c-'+idx);
+                if(cell) {
+                    cell.classList.add('highlight-cell');
+                    setTimeout(() => cell.classList.remove('highlight-cell'), 2000); 
+                }
+            }
+        }
+    });
+
+    db.ref('game/winner').on('value', s => {
+        const w = s.val();
+        if(w) {
+            document.getElementById('win-name').innerText = w.name + " አሸነፈ! 🏆";
+            document.getElementById('win-overlay').style.display = 'flex';
+            confetti();
+            setTimeout(() => { 
+                document.getElementById('win-overlay').style.display = 'none';
+                hasBoard = false; showP('home-page');
+            }, 5000);
+        }
+    });
 
     // --- Admin Settings Listeners ---
     db.ref('settings/admin_phone').on('value', s => {
@@ -211,6 +269,94 @@
         }
     });
 
+    // --- Functions ---
+    function checkBet(amt) {
+        if(myBal < amt) return alert("በቂ ባላንስ የለም!");
+        currentBet = amt;
+        showP('reserve-page');
+    }
+
+    function loadBoards() {
+        db.ref('reserved_boards').on('value', s => {
+            const list = document.getElementById('board-list'); list.innerHTML = "";
+            const taken = s.val() || {};
+            let total = 0;
+            
+            // Check Game Status for locking
+            db.ref('game/status').once('value', gs => {
+                const isGameActive = (gs.val() === 'active');
+                
+                for(let i=1; i<=100; i++){
+                    let b = document.createElement('div');
+                    let isMine = taken[i] && taken[i].userId === user.id;
+                    let isTaken = taken[i] && !isMine;
+                    if(taken[i]) total += taken[i].betAmount;
+                    
+                    // Logic to visually lock board if game is active or taken
+                    let isDisabled = isTaken || (isGameActive && !isMine);
+                    
+                    b.className = "cell board-item " + (isDisabled ? "board-taken" : "") + (isMine ? "highlight-cell" : "");
+                    b.innerText = i;
+                    b.onclick = () => { 
+                        if(!isDisabled) buyBoard(i); 
+                        else if(isGameActive) alert("ጨዋታው ተጀምሯል! መግባት አይቻልም።");
+                    };
+                    list.appendChild(b);
+                }
+                document.getElementById('jackpot-display').innerText = (total * 0.8).toFixed(2) + " ETB";
+            });
+        });
+    }
+
+    function buyBoard(id) {
+        // Late Entry Lock: Check if game is active
+        db.ref('game/status').once('value', sn => {
+            if(sn.val() === 'active') {
+                return alert("ጨዋታው ተጀምሯል! መግባት አይቻልም።");
+            }
+            
+            // Double check if board is free
+            db.ref('reserved_boards/' + id).once('value', boardSnap => {
+                if(boardSnap.exists()) return alert("ይህ ካርቴላ ተይዟል!");
+
+                // Buy Logic
+                db.ref('users/'+user.id+'/bal').transaction(c => c - currentBet);
+                db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
+                
+                if(sn.val() !== 'active') {
+                    db.ref('game').update({status:'waiting', timer:30}); 
+                }
+                hasBoard = true; startBingo(); showP('game-page');
+            });
+        });
+    }
+
+    function startBingo() {
+        markedCells = [12]; let nums = [];
+        while(nums.length < 24){ let r = Math.floor(Math.random()*75)+1; if(!nums.includes(r)) nums.push(r); }
+        myBoard = []; const grid = document.getElementById('bingo-grid'); grid.innerHTML = "";
+        for(let i=0; i<25; i++){
+            let v = (i===12) ? "FREE" : nums.pop(); myBoard.push(v);
+            let c = document.createElement('div'); c.className = 'cell '+(v==="FREE"?"marked":"");
+            c.id = 'c-'+i; c.innerText = v;
+            c.onclick = () => { if(drawn.includes(v) || v==="FREE") { c.classList.add('marked'); if(!markedCells.includes(i)) markedCells.push(i); } };
+            grid.appendChild(c);
+        }
+    }
+
+    function checkBingoAndClaim() {
+        // Updated with Four Corners: [0, 4, 20, 24]
+        const lines = [
+            [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24], // Rows
+            [0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24], // Cols
+            [0,6,12,18,24],[4,8,12,16,20], // Diagonals
+            [0, 4, 20, 24] // Four Corners Rule
+        ];
+        
+        if(lines.some(l => l.every(idx => markedCells.includes(idx)))) db.ref('game/winner').set({name: user.first_name, id: user.id});
+        else alert("ቢንጎ ገና ነህ!");
+    }
+
     function updateAdminSettings() {
         const phone = document.getElementById('adm-phone-input').value;
         db.ref('settings').update({ admin_phone: phone });
@@ -223,15 +369,17 @@
         alert("መልእክት ተላልፏል!");
     }
 
-    // --- User Presence & Monitoring ---
-    db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
-    const onlineRef = db.ref('online_players/' + user.id);
-    onlineRef.set(true); onlineRef.onDisconnect().remove();
+    function approveReq(key, uid, amt, type) {
+        if(type === 'DEP') {
+            db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
+        } else {
+            db.ref('users/' + uid + '/bal').transaction(c => (c || 0) - amt);
+        }
+        db.ref('requests/' + key).remove();
+        alert("ተረጋግጧል!");
+    }
 
-    db.ref('online_players').on('value', s => {
-        document.getElementById('player-count').innerText = s.numChildren();
-    });
-
+    // Admin Monitor and Request Listeners
     if(user.id == ADMIN_ID) {
         db.ref('users').on('value', s => {
             const monitor = document.getElementById('admin-user-monitor');
@@ -258,107 +406,6 @@
         });
     }
 
-    function approveReq(key, uid, amt, type) {
-        if(type === 'DEP') {
-            db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
-        } else {
-            db.ref('users/' + uid + '/bal').transaction(c => (c || 0) - amt);
-        }
-        db.ref('requests/' + key).remove();
-        alert("ተረጋግጧል!");
-    }
-
-    db.ref('users/' + user.id + '/bal').on('value', s => { 
-        myBal = s.val() || 0; 
-        document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
-    });
-
-    db.ref('game/timer').on('value', s => {
-        const t = s.val();
-        const hint = document.getElementById('live-hint');
-        if(t > 0) hint.innerHTML = `<span style="color:#ef4444;">⏳ ${t}</span>`;
-        else if(t === 0) { hint.innerHTML = "🚀 ተጀመረ!"; if(hasBoard) showP('game-page'); }
-        else hint.innerHTML = "";
-    });
-
-    db.ref('game/drawn').on('value', s => {
-        drawn = s.val() || [];
-        document.getElementById('balls-out-count').innerText = drawn.length;
-        const last = drawn[drawn.length - 1];
-        document.getElementById('current-ball').innerText = last || "?";
-        document.getElementById('ball-history').innerText = drawn.slice(-8).join(" - ");
-        
-        // --- Highlight Logic Start ---
-        if(last && hasBoard) {
-            const idx = myBoard.indexOf(last);
-            if(idx !== -1) {
-                const cell = document.getElementById('c-' + idx);
-                if(cell) {
-                    cell.classList.add('highlight-cell');
-                    setTimeout(() => cell.classList.remove('highlight-cell'), 2000);
-                }
-            }
-        }
-        // --- Highlight Logic End ---
-    });
-
-    db.ref('game/winner').on('value', s => {
-        const w = s.val();
-        if(w) {
-            document.getElementById('win-name').innerText = w.name + " አሸነፈ! 🏆";
-            document.getElementById('win-overlay').style.display = 'flex';
-            confetti();
-            setTimeout(() => { document.getElementById('win-overlay').style.display = 'none'; hasBoard = false; showP('home-page'); }, 5000);
-        }
-    });
-
-    function checkBet(amt) { if(myBal < amt) return alert("በቂ ባላንስ የለም!"); currentBet = amt; showP('reserve-page'); }
-
-    function loadBoards() {
-        db.ref('reserved_boards').on('value', s => {
-            const list = document.getElementById('board-list'); list.innerHTML = "";
-            const taken = s.val() || {};
-            let total = 0;
-            for(let i=1; i<=100; i++){
-                let b = document.createElement('div');
-                let isMine = taken[i] && taken[i].userId === user.id;
-                let isTaken = taken[i] && !isMine;
-                if(taken[i]) total += taken[i].betAmount;
-                b.className = "cell board-item " + (isTaken ? "board-taken" : "") + (isMine ? "highlight-cell" : "");
-                b.innerText = i;
-                b.onclick = () => { if(!isTaken) buyBoard(i); };
-                list.appendChild(b);
-            }
-            document.getElementById('jackpot-display').innerText = (total * 0.8).toFixed(2) + " ETB";
-        });
-    }
-
-    function buyBoard(id) {
-        db.ref('users/'+user.id+'/bal').transaction(c => c - currentBet);
-        db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
-        db.ref('game/status').once('value', sn => { if(sn.val() !== 'active') db.ref('game').update({status:'waiting', timer:30}); });
-        hasBoard = true; startBingo(); showP('game-page');
-    }
-
-    function startBingo() {
-        markedCells = [12]; let nums = [];
-        while(nums.length < 24){ let r = Math.floor(Math.random()*75)+1; if(!nums.includes(r)) nums.push(r); }
-        myBoard = []; const grid = document.getElementById('bingo-grid'); grid.innerHTML = "";
-        for(let i=0; i<25; i++){
-            let v = (i===12) ? "FREE" : nums.pop(); myBoard.push(v);
-            let c = document.createElement('div'); c.className = 'cell '+(v==="FREE"?"marked":"");
-            c.id = 'c-'+i; c.innerText = v;
-            c.onclick = () => { if(drawn.includes(v) || v==="FREE") { c.classList.add('marked'); if(!markedCells.includes(i)) markedCells.push(i); } };
-            grid.appendChild(c);
-        }
-    }
-
-    function checkBingoAndClaim() {
-        const lines = [[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
-        if(lines.some(l => l.every(idx => markedCells.includes(idx)))) db.ref('game/winner').set({name: user.first_name, id: user.id});
-        else alert("ቢንጎ ገና ነህ!");
-    }
-
     function reqFinance(type) {
         let amt = parseFloat(document.getElementById(type==='DEP'?'dep-amt':'wit-amt').value);
         let info = document.getElementById(type==='DEP'?'dep-trx':'wit-phone').value;
@@ -367,8 +414,14 @@
         alert("ተልኳል!"); showP('home-page');
     }
 
-    function showP(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='reserve-page') loadBoards(); }
+    function showP(id) { 
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        if(id==='reserve-page') loadBoards();
+    }
+
     function resetGame() { db.ref('game').set({drawn:[], timer:-1, winner:null, status:'idle'}); db.ref('reserved_boards').remove(); }
+
     setTimeout(() => { document.getElementById('splash').style.display='none'; document.getElementById('main-ui').style.display='block'; }, 2000);
 </script>
 </body>
