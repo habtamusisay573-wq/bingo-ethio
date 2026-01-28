@@ -44,56 +44,88 @@ const Game = {
         }, 1000);
     },
 
-    // ቁጥር ማውጣት ለመጀመር
+    // ቁጥሮችን በየ 4 ሰከንዱ ለማውጣት
     startDrawing: function() {
+        let nums = Array.from({length: 75}, (_, i) => i + 1);
         let drawn = [];
+        
         this.drawer = setInterval(async () => {
-            const snap = await db.ref('game').get();
-            const data = snap.val();
-
-            if (!data || data.winner || data.status !== 'active') return this.stopAll();
-
-            drawn = data.drawn || [];
-            if (drawn.length >= 75) return this.stopAll();
-
-            let num;
-            do { num = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(num));
+            if (nums.length === 0) {
+                this.stopAll();
+                return;
+            }
             
-            drawn.push(num);
+            let randomIndex = Math.floor(Math.random() * nums.length);
+            let number = nums.splice(randomIndex, 1)[0];
+            drawn.push(number);
+            
             await db.ref('game/drawn').set(drawn);
-        }, 2000); // 3 ሰከንድ ለመረጋጋት
+        }, 4000);
     },
 
-    // ሁሉንም ማቆሚያ
+    // ሁሉንም ሂደቶች ለማቆም
     stopAll: function() {
         if (this.timer) clearInterval(this.timer);
         if (this.drawer) clearInterval(this.drawer);
-        this.timer = null;
-        this.drawer = null;
+    },
+
+    // --- አዲስ የተጨመረ፡ በየ 3 ሰከንዱ ጌሙን የሚቆጣጠር AUTO RESET ---
+    checkAutoReset: function() {
+        setInterval(async () => {
+            try {
+                const gameSnap = await db.ref('game').get();
+                const gameData = gameSnap.val() || {};
+                const boardsSnap = await db.ref('reserved_boards').get();
+                const onlineSnap = await db.ref('online_players').get();
+
+                // ጌሙ ተጀምሮ (Waiting ወይም Active) ግን ምንም የተገዛ ካርቴላ ከሌለ
+                if (gameData.status !== 'idle' && !boardsSnap.exists()) {
+                    console.log("Auto-Reset: ተጫዋች የለም፣ ጌሙ እየጸዳ ነው...");
+                    this.forceReset();
+                }
+                // ጌሙ ከተጀመረ በኋላ ሁሉም ተጫዋቾች ከወጡ (Offline ከሆኑ)
+                else if (gameData.status === 'active' && !onlineSnap.exists()) {
+                    console.log("Auto-Reset: ሁሉም ተጫዋቾች ወጥተዋል፣ ጌሙ እየጸዳ ነው...");
+                    this.forceReset();
+                }
+            } catch (err) {
+                console.error("Reset Monitor Error:", err);
+            }
+        }, 3000);
+    },
+
+    // ጌሙን ወደ መጀመሪያው ሁኔታ ለመመለስ
+    forceReset: async function() {
+        this.stopAll();
+        await db.ref('reserved_boards').remove();
+        await db.ref('game').update({
+            drawn: [],
+            status: 'idle',
+            winner: null,
+            timer: -1,
+            jackpot: 0,
+            isTimerRunning: false
+        });
     }
 };
 
-// 3. Firebase Listeners (Real-time Events)
-db.ref('game/status').on('value', snap => {
-    if (snap.val() === 'waiting') Game.startTimer(30);
-});
+// ሲስተሙ ሲነሳ ክትትሉን ይጀምራል
+Game.checkAutoReset();
 
-db.ref('game/winner').on('value', async snap => {
-    const win = snap.val();
-    if (win && !win.processed) {
+// 3. Firebase Listeners (Winner Detection)
+db.ref('game/winner').on('value', async (snap) => {
+    if (snap.val()) {
         Game.stopAll();
-        // 80/20 Payout Logic
-        const bet = (await db.ref('game/currentBetPrice').get()).val() || 0;
-        const boards = (await db.ref('reserved_boards').get()).numChildren();
-        const pool = boards * bet;
-
-        await db.ref(`users/${win.id}/bal`).transaction(c => (c || 0) + (pool * 0.8));
-        await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + (pool * 0.2));
-        await db.ref('game/winner/processed').set(true);
-
+        // አሸናፊ ሲኖር ከ 5 ሰከንድ በኋላ ጌሙን ያጸዳል
         setTimeout(async () => {
             await db.ref('reserved_boards').remove();
-            await db.ref('game').set({ drawn: [], status: 'idle', winner: null, timer: -1 });
+            await db.ref('game').update({
+                drawn: [],
+                status: 'idle',
+                winner: null,
+                timer: -1,
+                jackpot: 0
+            });
         }, 5000);
     }
 });
@@ -124,13 +156,7 @@ app.post('/sms-webhook', async (req, res) => {
 });
 
 // Health Check & Port
-app.get('/', (req, res) => res.send("Dagi Pro-Bingo Engine Online 🟢"));
+app.get('/', (req, res) => res.send('Bingo Server is Live!'));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
-
-// Keep-Alive Ping
-setInterval(() => {
-    const host = process.env.RENDER_EXTERNAL_HOSTNAME;
-    if (host) https.get(`https://${host}/`, () => {});
-}, 10 * 60 * 1000);
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
