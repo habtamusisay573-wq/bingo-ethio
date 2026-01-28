@@ -53,7 +53,7 @@ const Game = {
             do { num = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(num));
             drawn.push(num);
             await db.ref('game/drawn').set(drawn);
-        }, 3000); // ፍጥነቱ ለተጫዋቾች እንዲመች
+        }, 2000); // ፍጥነቱ ለተጫዋቾች እንዲመች
     },
 
     stopAll: function() {
