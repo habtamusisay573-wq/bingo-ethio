@@ -27,7 +27,6 @@ const Game = {
     timer: null,
     drawer: null,
     
-    // ታይመሩን ለማስጀመር
     startTimer: function(seconds) {
         this.stopAll();
         db.ref('game/isTimerRunning').set(true);
@@ -44,7 +43,6 @@ const Game = {
         }, 1000);
     },
 
-    // ቁጥር ማውጣት ለመጀመር
     startDrawing: function() {
         let drawn = [];
         this.drawer = setInterval(async () => {
@@ -61,10 +59,9 @@ const Game = {
             
             drawn.push(num);
             await db.ref('game/drawn').set(drawn);
-        }, 2000); // 2 ሰከንድ ፍጥነት
+        }, 2000);
     },
 
-    // ሁሉንም ማቆሚያ
     stopAll: function() {
         if (this.timer) clearInterval(this.timer);
         if (this.drawer) clearInterval(this.drawer);
@@ -72,7 +69,6 @@ const Game = {
         this.drawer = null;
     },
 
-    // *** አዲስ የተጨመረ፡ የ 3 ሰከንድ AUTO-RESET (Watchdog) ***
     checkAutoReset: function() {
         setInterval(async () => {
             try {
@@ -81,23 +77,14 @@ const Game = {
                 const playersSnap = await db.ref('online_players').get();
                 const boardsSnap = await db.ref('reserved_boards').get();
 
-                // 1. ጨዋታው Active ሆኖ ተጫዋች ከሌለ (Disconnect) -> Reset
                 if (gameData.status === 'active' && !playersSnap.exists()) {
-                    console.log("No players found. Auto-Resetting...");
                     this.forceReset();
                 }
-                // 2. ታይመሩ አልቆ (Waiting ended) ማንም ካርቴላ ካልገዛ -> Reset
                 else if (gameData.status === 'waiting' && gameData.timer <= 0 && !boardsSnap.exists()) {
-                    console.log("No bets placed. Auto-Resetting...");
                     this.forceReset();
-                }
-                // 3. ጨዋታው Active ሆኖ ቆሞ ከቀረ (Stuck State check)
-                else if (gameData.status === 'active' && !gameData.isTimerRunning && (!gameData.drawn || gameData.drawn.length === 0)) {
-                     // Draw ሳይጀምር active ከሆነ ያጸዳዋል (Safety Check)
-                     // this.forceReset(); // (Optional: ካስፈለገ ኮሜንቱን አንሳ)
                 }
             } catch (e) { console.error("Auto-Reset Check Error:", e); }
-        }, 3000); // በየ 3 ሰከንዱ ይፈትሻል
+        }, 3000);
     },
 
     forceReset: async function() {
@@ -110,46 +97,53 @@ const Game = {
     }
 };
 
-// Auto-Reset አገልግሎትን አስጀምር
 Game.checkAutoReset();
 
-// 3. Firebase Listeners (Real-time Events)
 db.ref('game/status').on('value', snap => {
     if (snap.val() === 'waiting') Game.startTimer(30);
 });
 
+// --- አስተማማኝ የአሸናፊ ክፍያ ስሌት ---
 db.ref('game/winner').on('value', async snap => {
     const win = snap.val();
     if (win && !win.processed) {
         Game.stopAll();
         
-        // 80/20 Payout Logic (As provided in your code)
-        const bet = (await db.ref('game/currentBetPrice').get()).val() || 0;
-        const boards = (await db.ref('reserved_boards').get()).numChildren();
-        const pool = boards * bet;
+        // አዲስ የሂሳብ አሰራር፡ እያንዳንዱን ካርቴላ ዋጋ አንድ በአንድ መደምር
+        const boardsSnap = await db.ref('reserved_boards').get();
+        let totalPool = 0;
+        
+        boardsSnap.forEach(child => {
+            const boardData = child.val();
+            // በደፈናው ሳይሆን ተጫዋቹ የከፈለውን ትክክለኛ መጠን ይደምራል
+            totalPool += (boardData.betAmount || 0); 
+        });
 
-        if (pool > 0) {
-            // ክፍያ መፈጸም
-            await db.ref(`users/${win.id}/bal`).transaction(c => (c || 0) + (pool * 0.8));
-            await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + (pool * 0.2));
+        if (totalPool > 0) {
+            const winnerPrize = totalPool * 0.8;
+            const adminComm = totalPool * 0.2;
 
-            // *** አዲስ የተጨመረ፡ HISTORY LOGGING ***
+            // 1. ለአሸናፊው መክፈል (ከስጦታ ብር ጋር እንዳይቀላቀል ወደ bal ይገባል)
+            await db.ref(`users/${win.id}/bal`).transaction(c => (c || 0) + winnerPrize);
+            
+            // 2. ለአስተዳዳሪው 20% ኮሚሽን
+            await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + adminComm);
+
+            // 3. ታሪክ መመዝገብ
             await db.ref(`history/${win.id}`).push({
                 type: "ቢንጎ አሸናፊ 🏆",
-                amt: pool * 0.8,
+                amt: winnerPrize,
                 mode: "PLUS",
-                date: new Date().toLocaleString('am-ET')
+                date: new Date().toLocaleString('am-ET'),
+                ts: Date.now()
             });
         }
 
         await db.ref('game/winner/processed').set(true);
-
-        // Reset Game after 5 seconds
         setTimeout(() => Game.forceReset(), 5000);
     }
 });
 
-// 4. API Endpoints (Webhook & Others)
 app.post('/sms-webhook', async (req, res) => {
     const { text, message } = req.body;
     const msg = text || message || "";
@@ -166,18 +160,14 @@ app.post('/sms-webhook', async (req, res) => {
             const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
             if (userSnap.exists()) {
                 const uid = Object.keys(userSnap.val())[0];
-                
-                // ክፍያ መጨመር
                 await db.ref(`users/${uid}/bal`).transaction(c => (c || 0) + amount);
-                
-                // *** አዲስ የተጨመረ፡ DEPOSIT HISTORY ***
                 await db.ref(`history/${uid}`).push({
                     type: "በቴሌብር ገቢ ተደርጓል ✅",
                     amt: amount,
                     mode: "PLUS",
-                    date: new Date().toLocaleString('am-ET')
+                    date: new Date().toLocaleString('am-ET'),
+                    ts: Date.now()
                 });
-
                 await db.ref(`used_transactions/${txId}`).set({ uid, amount, date: new Date().toISOString() });
             }
         } catch (e) { console.error("Webhook Error"); }
@@ -185,13 +175,11 @@ app.post('/sms-webhook', async (req, res) => {
     res.sendStatus(200);
 });
 
-// Health Check & Port
 app.get('/', (req, res) => res.send("Dagi Pro-Bingo Engine Online 🟢"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 
-// Keep-Alive Ping
 setInterval(() => {
     const host = process.env.RENDER_EXTERNAL_HOSTNAME;
     if (host) https.get(`https://${host}/`, () => console.log("Ping sent"));
