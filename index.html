@@ -242,7 +242,6 @@
     db.ref('game/winner').on('value', s => {
         const w = s.val();
         if(w) {
-            // አሸናፊው እኔ ከሆንኩ ለኔ ብቻ አሳይ
             document.getElementById('win-name').innerText = w.name + " አሸነፈ! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
@@ -271,10 +270,28 @@
         else bar.style.display = 'none';
     });
 
-    // --- FULL HISTORY LOGIC ---
+    // --- HISTORY SYSTEM WITH 72H AUTO-CLEANUP ---
     function addHistory(uid, type, amt, mode) {
+        const timestamp = Date.now();
         db.ref('history/' + uid).push({
-            type: type, amt: amt, mode: mode, date: new Date().toLocaleString('am-ET')
+            type: type, 
+            amt: amt, 
+            mode: mode, 
+            date: new Date().toLocaleString('am-ET'),
+            ts: timestamp
+        });
+        cleanOldHistory(uid); // አዲስ በተጨመረ ቁጥር አሮጌውን ይፈትሻል
+    }
+
+    function cleanOldHistory(uid) {
+        // 72 ሰዓት = 72 * 60 * 60 * 1000 = 259,200,000 ሚሊ ሰከንድ
+        const cutoff = Date.now() - 259200000;
+        const histRef = db.ref('history/' + uid);
+        
+        histRef.orderByChild('ts').endAt(cutoff).once('value', (snapshot) => {
+            snapshot.forEach((child) => {
+                child.ref.remove(); // ከ 72 ሰዓት በላይ የቆየውን ያጠፋል
+            });
         });
     }
 
@@ -337,16 +354,14 @@
             db.ref('reserved_boards/' + id).once('value', boardSnap => {
                 if(boardSnap.exists()) return alert("ተይዟል!");
                 
-                // TRANSACTION: Negative Balance እንዳይመጣ ይከላከላል
                 db.ref('users/'+user.id+'/bal').transaction(current => {
                     if (current >= currentBet) {
                         return current - currentBet;
                     } else {
-                        return undefined; // Abort transaction
+                        return undefined;
                     }
                 }, (error, committed) => {
                     if (committed) {
-                        // ብር ከተቆረጠ በኋላ ብቻ ነው ካርቴላው የሚሰጠው
                         db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
                         addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
                         if(sn.val() !== 'active') { db.ref('game').update({status:'waiting', timer:30}); }
@@ -451,10 +466,9 @@
         if(!amt || !info) return alert("መረጃ ሙላ!");
         
         if(type==='WIT') {
-            if (amt < 100) return alert("ዝቅተኛው ማውጫ 100 ብር ነው!"); // ገደብ 1
-            if(myBal < amt) return alert("በቂ ባላንስ የለም!"); // ገደብ 2
+            if (amt < 100) return alert("ዝቅተኛው ማውጫ 100 ብር ነው!");
+            if(myBal < amt) return alert("በቂ ባላንስ የለም!");
             
-            // Transaction for withdrawal
             db.ref('users/' + user.id + '/bal').transaction(c => {
                 if (c >= amt) return c - amt;
                 return undefined;
