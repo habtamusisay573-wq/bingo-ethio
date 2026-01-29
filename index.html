@@ -239,15 +239,30 @@
         }
     });
 
+    // አሸናፊ ሲኖር ሂሳብ እንዲደመር እና ታሪክ እንዲመዘገብ የተደረገ ማሻሻያ
     db.ref('game/winner').on('value', s => {
         const w = s.val();
         if(w) {
             document.getElementById('win-name').innerText = w.name + " አሸነፈ! 🏆";
             document.getElementById('win-overlay').style.display = 'flex';
             confetti();
+
+            // አሸናፊው እኔ ከሆንኩ ሂሳብ ደምር
+            if (w.id === user.id) {
+                db.ref('game/jackpot').once('value', jp => {
+                    const winAmt = jp.val() || 0;
+                    if (winAmt > 0) {
+                        db.ref('users/' + user.id + '/bal').transaction(c => (c || 0) + winAmt);
+                        addHistory(user.id, "ቢንጎ አሸንፈዋል (Jackpot) 🏆", winAmt, "PLUS");
+                    }
+                });
+            }
+
             setTimeout(() => { 
                 document.getElementById('win-overlay').style.display = 'none';
                 hasBoard = false; showP('home-page');
+                // አድሚን ከሆነ ጨዋታውን ሪሴት ያደርጋል
+                if(user.id == ADMIN_ID) resetGame();
             }, 5000);
         }
     });
@@ -280,17 +295,15 @@
             date: new Date().toLocaleString('am-ET'),
             ts: timestamp
         });
-        cleanOldHistory(uid); // አዲስ በተጨመረ ቁጥር አሮጌውን ይፈትሻል
+        cleanOldHistory(uid); 
     }
 
     function cleanOldHistory(uid) {
-        // 72 ሰዓት = 72 * 60 * 60 * 1000 = 259,200,000 ሚሊ ሰከንድ
         const cutoff = Date.now() - 259200000;
         const histRef = db.ref('history/' + uid);
-        
         histRef.orderByChild('ts').endAt(cutoff).once('value', (snapshot) => {
             snapshot.forEach((child) => {
-                child.ref.remove(); // ከ 72 ሰዓት በላይ የቆየውን ያጠፋል
+                child.ref.remove(); 
             });
         });
     }
@@ -302,11 +315,16 @@
             let hists = [];
             s.forEach(c => { hists.unshift(c.val()); });
             hists.forEach(h => {
+                let color = "#facc15";
+                let sign = "";
+                if(h.mode === 'PLUS') { color = "#22c55e"; sign = "+"; }
+                else if(h.mode === 'MINUS') { color = "#ef4444"; sign = "-"; }
+
                 list.innerHTML += `
                     <div class="hist-card">
                         <span class="hist-date">${h.date}</span>
-                        <span class="hist-amt" style="color:${h.mode==='PLUS'?'#22c55e':'#ef4444'}">
-                            ${h.mode==='PLUS'?'+':'-'}${h.amt} ETB
+                        <span class="hist-amt" style="color:${color}">
+                            ${sign}${h.amt.toFixed(2)} ETB
                         </span><br>
                         <small>${h.type}</small>
                     </div>`;
@@ -347,7 +365,6 @@
         });
     }
 
-    // --- SECURE BETTING TRANSACTION ---
     function buyBoard(id) {
         db.ref('game/status').once('value', sn => {
             if(sn.val() === 'active') return alert("ጨዋታው ተጀምሯል!");
@@ -364,7 +381,9 @@
                     if (committed) {
                         db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
                         addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
-                        if(sn.val() !== 'active') { db.ref('game').update({status:'waiting', timer:30}); }
+                        if(sn.val() !== 'active' && sn.val() !== 'waiting') { 
+                            db.ref('game').update({status:'waiting', timer:30}); 
+                        }
                         hasBoard = true; startBingo(); showP('game-page');
                     } else {
                         alert("በቂ ባላንስ የለም!");
@@ -426,9 +445,9 @@
     function rejectReq(key, uid, amt, type) {
         if(type === 'WIT') {
             db.ref('users/' + uid + '/bal').transaction(c => (c || 0) + amt);
-            addHistory(uid, "የብር ማውጣት ጥያቄ ውድቅ ተደርጓል (ብር ተመልሷል)", amt, "PLUS");
+            addHistory(uid, "ብር ማውጣት ውድቅ ሆኗል (ተመልሷል)", amt, "PLUS");
         } else {
-            addHistory(uid, "የብር ማስገቢያ ጥያቄ ውድቅ ተደርጓል", amt, "NONE");
+            addHistory(uid, "ብር ማስገቢያ ውድቅ ሆኗል", amt, "NONE");
         }
         db.ref('requests/' + key).remove();
         alert("ውድቅ ተደርጓል!");
@@ -458,7 +477,6 @@
         });
     }
 
-    // --- WITHDRAW LIMIT 100 ETB ---
     function reqFinance(type) {
         let amt = parseFloat(document.getElementById(type==='DEP'?'dep-amt':'wit-amt').value);
         let info = document.getElementById(type==='DEP'?'dep-trx':'wit-phone').value;
@@ -475,6 +493,7 @@
             }, (err, committed) => {
                 if(committed) {
                     db.ref('requests/'+Date.now()).set({ uid: user.id, name: user.first_name, type: type, amt: amt, info: info });
+                    addHistory(user.id, "ብር ለማውጣት ጥያቄ ቀርቧል", amt, "NONE");
                     alert("ጥያቄ ተልኳል!"); showP('home-page');
                 } else {
                     alert("ባላንስ የለም!");
@@ -482,6 +501,7 @@
             });
         } else {
             db.ref('requests/'+Date.now()).set({ uid: user.id, name: user.first_name, type: type, amt: amt, info: info });
+            addHistory(user.id, "ብር ለማስገባት ጥያቄ ቀርቧል", amt, "NONE");
             alert("ጥያቄ ተልኳል!"); showP('home-page');
         }
     }
@@ -493,7 +513,10 @@
         if(id==='history-page') loadHistory();
     }
 
-    function resetGame() { db.ref('game').set({drawn:[], timer:-1, winner:null, status:'idle', jackpot:0}); db.ref('reserved_boards').remove(); }
+    function resetGame() { 
+        db.ref('game').set({drawn:[], timer:-1, winner:null, status:'idle', jackpot:0}); 
+        db.ref('reserved_boards').remove(); 
+    }
 
     setTimeout(() => { 
         document.getElementById('splash').style.display='none'; 
