@@ -1,11 +1,11 @@
 const admin = require('firebase-admin');
-const express = require('express');
-const https = require('https');
-const app = express();
+const express = require('express'); 
+const app = express(); 
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// 1. Firebase Config
+// --- 1. የFirebase ቅንብር ---
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -22,233 +22,154 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
-// 2. ጌም ኢንጂን (The Logic Controller)
-const Game = {
-    timer: null,
-    drawer: null,
-    
-    // ታይመሩን ለማስጀመር
-    startTimer: function(seconds) {
-        this.stopAll();
-        db.ref('game/isTimerRunning').set(true);
-        
-        this.timer = setInterval(async () => {
-            seconds--;
-            await db.ref('game/timer').set(seconds);
-            
-            if (seconds <= 0) {
-                this.stopAll();
-                await db.ref('game').update({ status: 'active', isTimerRunning: false, timer: 0 });
-                this.startDrawing();
-            }
-        }, 1000);
-    },
+// የገደብ መጠኖች
+const MIN_DEPOSIT = 10;
+const MIN_WITHDRAW = 50;
+const MAX_WITHDRAW = 5000;
 
-    // ቁጥር ማውጣት ለመጀመር
-    startDrawing: function() {
-        let drawn = [];
-        this.drawer = setInterval(async () => {
-            const snap = await db.ref('game').get();
-            const data = snap.val();
-
-            if (!data || data.winner || data.status !== 'active') return this.stopAll();
-
-            drawn = data.drawn || [];
-            if (drawn.length >= 75) return this.stopAll();
-
-            let num;
-            do { num = Math.floor(Math.random() * 75) + 1; } while (drawn.includes(num));
-            
-            drawn.push(num);
-            await db.ref('game/drawn').set(drawn);
-        }, 2000); // 2 ሰከንድ ፍጥነት
-    },
-
-    // ሁሉንም ማቆሚያ
-    stopAll: function() {
-        if (this.timer) clearInterval(this.timer);
-        if (this.drawer) clearInterval(this.drawer);
-        this.timer = null;
-        this.drawer = null;
-    },
-
-    // *** አዲስ የተጨመረ፡ የ 3 ሰከንድ AUTO-RESET (Watchdog) ***
-    checkAutoReset: function() {
-        setInterval(async () => {
-            try {
-                const gameSnap = await db.ref('game').get();
-                const gameData = gameSnap.val() || {};
-                const playersSnap = await db.ref('online_players').get();
-                const boardsSnap = await db.ref('reserved_boards').get();
-
-                // 1. ጨዋታው Active ሆኖ ተጫዋች ከሌለ (Disconnect) -> Reset
-                if (gameData.status === 'active' && !playersSnap.exists()) {
-                    console.log("No players found. Auto-Resetting...");
-                    this.forceReset();
-                }
-                // 2. ታይመሩ አልቆ (Waiting ended) ማንም ካርቴላ ካልገዛ -> Reset
-                else if (gameData.status === 'waiting' && gameData.timer <= 0 && !boardsSnap.exists()) {
-                    console.log("No bets placed. Auto-Resetting...");
-                    this.forceReset();
-                }
-                // 3. ጨዋታው Active ሆኖ ቆሞ ከቀረ (Stuck State check)
-                else if (gameData.status === 'active' && !gameData.isTimerRunning && (!gameData.drawn || gameData.drawn.length === 0)) {
-                     // Draw ሳይጀምር active ከሆነ ያጸዳዋል (Safety Check)
-                     // this.forceReset(); // (Optional: ካስፈለገ ኮሜንቱን አንሳ)
-                }
-            } catch (e) { console.error("Auto-Reset Check Error:", e); }
-        }, 3000); // በየ 3 ሰከንዱ ይፈትሻል
-    },
-
-    forceReset: async function() {
-        this.stopAll();
-        await db.ref('reserved_boards').remove();
-        await db.ref('game').update({
-            drawn: [], status: 'idle', winner: null, timer: -1, jackpot: 0, isTimerRunning: false
-        });
-        console.log("System Cleaned via Force Reset 🧹");
-    }
-};
-
-// Auto-Reset አገልግሎትን አስጀምር
-Game.checkAutoReset();
-
-// 3. Firebase Listeners (Real-time Events)
-db.ref('game/status').on('value', snap => {
-    if (snap.val() === 'waiting') Game.startTimer(30);
-});
-
-db.ref('game/winner').on('value', async snap => {
-    const win = snap.val();
-    if (win && !win.processed) {
-        Game.stopAll();
-        
-        // --- ጃክፖት ስሌት ማስተካከያ (Fix) ---
-        // ቀደም ሲል በአንድ የቤቲንግ ዋጋ ብቻ ያሰላ የነበረውን ስህተት በማረም፣ 
-        // እያንዳንዱ ካርቴላ የተገዛበትን ትክክለኛ ዋጋ ደምሮ ያሰላል
-        const boardsSnap = await db.ref('reserved_boards').get();
-        let pool = 0;
-        
-        if (boardsSnap.exists()) {
-            boardsSnap.forEach(child => {
-                pool += (child.val().betAmount || 0); // እያንዳንዱን ዋጋ መደመር
-            });
-        }
-
-        if (pool > 0) {
-            const winnerPrize = pool * 0.8;
-            const adminShare = pool * 0.2;
-
-            // ክፍያ መፈጸም
-            await db.ref(`users/${win.id}/bal`).transaction(c => (c || 0) + winnerPrize);
-            await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + adminShare);
-
-            // *** አዲስ የተጨመረ፡ HISTORY LOGGING ***
-            await db.ref(`history/${win.id}`).push({
-                type: "ቢንጎ አሸናፊ 🏆",
-                amt: winnerPrize,
-                mode: "PLUS",
-                date: new Date().toLocaleString('am-ET')
-            });
-        }
-
-        await db.ref('game/winner/processed').set(true);
-
-        // Reset Game after 5 seconds
-        setTimeout(() => Game.forceReset(), 5000);
-    }
-});
-
-// 4. API Endpoints (Webhook & Others)
+// --- 2. የቴሌብር SMS መቀበያ (Webhook) ---
 app.post('/sms-webhook', async (req, res) => {
-    const { text, message } = req.body;
-    const msg = text || message || "";
-    const txMatch = msg.match(/[A-Z0-9]{10,12}/i);
-    const amtMatch = msg.match(/(\d+(?:\.\d+)?)\s?(?:ETB|ብር)/i);
-    const phMatch = msg.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
+    const message = req.body.text || req.body.message || "";
+    const sender = req.body.from || "";
 
-    if (txMatch && amtMatch && phMatch) {
-        const txId = txMatch[0].toUpperCase();
-        const amount = parseFloat(amtMatch[1]);
-        const phone = '0' + phMatch[1];
+    console.log("አዲስ ኤስኤምኤስ ደርሷል:", message);
 
+    const txIdMatch = message.match(/[A-Z0-9]{10,12}/i); 
+    const txId = txIdMatch ? txIdMatch[0].toUpperCase() : null;
+
+    const amountMatch = message.match(/(\d+(?:\.\d+)?)\s?(?:ETB|ብር)/i) || message.match(/ብር\s?(\d+(?:\.\d+)?)/i);
+    const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
+
+    const playerPhoneMatch = message.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
+    let playerPhone = null;
+    if (playerPhoneMatch) { playerPhone = '0' + playerPhoneMatch[1]; }
+
+    if (txId && amount >= MIN_DEPOSIT) {
         try {
-            const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
-            if (userSnap.exists()) {
-                const uid = Object.keys(userSnap.val())[0];
-                
-                // ክፍያ መጨመር
-                await db.ref(`users/${uid}/bal`).transaction(c => (c || 0) + amount);
-                
-                // *** አዲስ የተጨመረ፡ DEPOSIT HISTORY ***
-                await db.ref(`history/${uid}`).push({
-                    type: "በቴሌብር ገቢ ተደርጓል ✅",
-                    amt: amount,
-                    mode: "PLUS",
-                    date: new Date().toLocaleString('am-ET')
-                });
+            await db.ref(`pending_payments/${txId}`).set({
+                amount: amount,
+                sender_phone: playerPhone,
+                status: "received",
+                timestamp: Date.now()
+            });
 
-                await db.ref(`used_transactions/${txId}`).set({ uid, amount, date: new Date().toISOString() });
+            if (playerPhone) {
+                const userSnap = await db.ref('users').orderByChild('phone').equalTo(playerPhone).once('value');
+                if (userSnap.exists()) {
+                    const userId = Object.keys(userSnap.val())[0];
+                    const txCheck = await db.ref(`used_transactions/${txId}`).once('value');
+                    if (!txCheck.exists()) {
+                        await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + amount);
+                        await db.ref(`used_transactions/${txId}`).set({ 
+                            userId, amount, date: new Date().toLocaleString() 
+                        });
+                        console.log(`በተሳካ ሁኔታ ${amount} ብር ለ ${playerPhone} ተጨምሯል`);
+                    }
+                }
             }
-        } catch (e) { console.error("Webhook Error"); }
+        } catch (e) { console.error("Webhook Error:", e); }
     }
-    res.sendStatus(200);
+    res.status(200).send("OK");
 });
-// ከ sms-webhook በታች እና ከ app.get('/') በላይ ባለው ቦታ ይሄን አስገባ፡
 
-// 🎁 1. ለሁሉም አዲስ ተጫዋቾች አንዴ ብቻ የሚሰጥ Claim System
-app.post('/claim-welcome-gift', async (req, res) => {
-    const { userId } = req.body;
-    const GIFT_AMOUNT = 10; // የሚሰጠው የብር መጠን
-
+// --- 3. የክፍያ ማረጋገጫ (Confirm Payment) ---
+app.post('/confirm-payment', async (req, res) => {
+    const { phone, txId } = req.body;
     try {
-        const usedCheck = await db.ref(`claimed_gifts/${userId}`).once('value');
-        if (usedCheck.exists()) {
-            return res.status(400).json({ msg: "ይህንን ስጦታ አስቀድመው ወስደዋል! 🚫" });
+        const used = await db.ref(`used_transactions/${txId}`).get();
+        if (used.exists()) return res.status(400).json({ msg: "ይህ ቁጥር አስቀድሞ ጥቅም ላይ ውሏል!" });
+
+        const pending = await db.ref(`pending_payments/${txId}`).get();
+        if (!pending.exists()) return res.status(404).json({ msg: "የቴሌብር መልእክቱ ገና አልደረሰም፤ እባክዎ ጥቂት ሰከንድ ይጠብቁ።" });
+
+        const actualAmount = pending.val().amount;
+        const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
+        if (!userSnap.exists()) return res.status(404).json({ msg: "ተጫዋቹ አልተገኘም!" });
+
+        const userId = Object.keys(userSnap.val())[0];
+        await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + actualAmount);
+        await db.ref(`used_transactions/${txId}`).set({ userId, amount: actualAmount, date: new Date().toLocaleString() });
+
+        res.status(200).json({ msg: `በተሳካ ሁኔታ ${actualAmount} ብር ተጨምሯል!` });
+    } catch (e) { res.status(500).json({ msg: "Server Error" }); }
+});
+
+// --- 4. የዊዝድሮው ጥያቄ ---
+app.post('/request-withdraw', async (req, res) => {
+    const { userId, amount, phone } = req.body;
+    const withdrawAmt = parseFloat(amount);
+    try {
+        const userSnap = await db.ref(`users/${userId}`).get();
+        const currentBal = userSnap.val().bal || 0;
+        if (withdrawAmt > currentBal || withdrawAmt < MIN_WITHDRAW) return res.status(400).json({ msg: "ስህተት፡ መጠኑን ወይም ባላንስዎን ያረጋግጡ" });
+
+        const reqId = Date.now();
+        await db.ref(`requests/${reqId}`).set({
+            uid: userId, name: userSnap.val().first_name, type: 'WIT', amt: withdrawAmt, info: phone, status: 'Pending'
+        });
+        res.status(200).json({ msg: "የማውጫ ጥያቄ ተልኳል" });
+    } catch (e) { res.status(500).send("Server Error"); }
+});
+
+// --- 5. የጃክፖት ስሌት (Real-time) ---
+db.ref('reserved_boards').on('value', async (snapshot) => {
+    const boards = snapshot.val();
+    if (!boards) { await db.ref('game/jackpot').set(0); return; }
+    let totalPool = 0;
+    Object.values(boards).forEach(board => {
+        totalPool += (parseFloat(board.bet || board.betAmount) || 0);
+    });
+    await db.ref('game/jackpot').set(totalPool * 0.8);
+});
+
+// --- 6. የጨዋታው ሎጂክ (Winner & Reset) ---
+let drawingInterval = null; 
+let timerInterval = null;
+
+db.ref('game/winner').on('value', async (snap) => {
+    const winner = snap.val();
+    if (winner && !winner.processed) {
+        if (drawingInterval) { clearInterval(drawingInterval); drawingInterval = null; }
+        try {
+            const jackpotSnap = await db.ref('game/jackpot').get();
+            const winnerPay = jackpotSnap.val() || 0;
+            const adminPay = winnerPay > 0 ? (winnerPay / 0.8) * 0.2 : 0;
+
+            if (winnerPay > 0) {
+                await db.ref(`users/${winner.id}/bal`).transaction(c => (c || 0) + winnerPay);
+                await db.ref(`users/${ADMIN_ID}/bal`).transaction(c => (c || 0) + adminPay);
+                await db.ref(`history/${winner.id}`).push({
+                    type: "የቢንጎ ድል 🏆", amt: winnerPay, date: new Date().toLocaleString()
+                });
+            }
+            await db.ref('game/winner/processed').set(true);
+        } catch (e) { console.error("Payment Error:", e); }
+        setTimeout(() => resetFullGame("Win Reset"), 3000); 
+    }
+});
+
+async function resetFullGame(reason) {
+    await db.ref('reserved_boards').remove();
+    await db.ref('game').update({
+        drawn: [], status: 'idle', winner: null, timer: -1, currentBetPrice: 0, isTimerRunning: false, jackpot: 0
+    });
+}
+
+function startDrawingNumbers(existingDrawn) {
+    let drawn = existingDrawn;
+    if (drawingInterval) clearInterval(drawingInterval);
+    drawingInterval = setInterval(async () => {
+        const g = (await db.ref('game').get()).val();
+        if(!g || g.winner || g.status !== 'active' || drawn.length >= 75) {
+            clearInterval(drawingInterval); drawingInterval = null; return;
         }
+        let n;
+        do { n = Math.floor(Math.random() * 75) + 1; } while(drawn.includes(n));
+        drawn.push(n);
+        await db.ref('game/drawn').set(drawn);
+    }, 2000);
+}
 
-        await db.ref(`users/${userId}/bal`).transaction(c => (c || 0) + GIFT_AMOUNT);
-        await db.ref(`claimed_gifts/${userId}`).set({ date: new Date().toISOString() });
-        
-        await db.ref(`history/${userId}`).push({
-            type: "የእንኳን ደህና መጡ ስጦታ 🎁",
-            amt: GIFT_AMOUNT,
-            mode: "PLUS",
-            date: new Date().toLocaleString('am-ET')
-        });
-
-        res.status(200).json({ msg: `እንኳን ደስ አለዎት! ${GIFT_AMOUNT} ብር ተጨምሯል። ✅` });
-    } catch (e) { res.status(500).json({ msg: "ስህተት ተፈጥሯል!" }); }
-});
-
-// 🎁 2. አድሚኑ መርጦ ለፈለገው ሰው የሚሰጥበት (Admin Only)
-app.post('/admin/send-gift', async (req, res) => {
-    const { adminId, targetUserId, amount } = req.body;
-    if (adminId !== ADMIN_ID) return res.status(403).json({ msg: "ስልጣን የለዎትም!" });
-
-    try {
-        await db.ref(`users/${targetUserId}/bal`).transaction(curr => (curr || 0) + parseFloat(amount));
-        await db.ref(`history/${targetUserId}`).push({
-            type: "ልዩ ስጦታ ከአድሚን 🎁",
-            amt: parseFloat(amount),
-            mode: "PLUS",
-            date: new Date().toLocaleString('am-ET')
-        });
-        res.status(200).json({ msg: "ስጦታው ተልኳል! ✅" });
-    } catch (e) { res.status(500).json({ msg: "መላክ አልተቻለም!" }); }
-});
-
-// ይሄ ካለበት ኮድ በላይ ነው የምትለጥፈው፡
-app.get('/', (req, res) => res.send("Dagi Pro-Bingo Engine Online 🟢"));
-
-// Health Check & Port
-app.get('/', (req, res) => res.send("Dagi Pro-Bingo Engine Online 🟢"));
-
+// ሰርቨር ማስነሻ
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
-
-// Keep-Alive Ping
-setInterval(() => {
-    const host = process.env.RENDER_EXTERNAL_HOSTNAME;
-    if (host) https.get(`https://${host}/`, () => console.log("Ping sent"));
-}, 5 * 60 * 1000);
+app.listen(PORT, () => console.log(`Bingo Server Live on ${PORT}`));
