@@ -93,7 +93,7 @@
     </div>
 
     <div id="reg-page" class="page">
-        <h2 style="text-align:center;">እንኳን መጡ!</h2>
+        <h2 style="text-align:center;">እንኳን በደህና መጡ!</h2>
         <p style="text-align:center; opacity:0.8;">ለመቀጠል እባክዎ ስልክ ቁጥሮን ያስገቡ</p>
         <input type="number" id="reg-phone" placeholder="09/07XXXXXXXX">
         <button class="btn btn-green" onclick="registerUser()">ይመዝገቡ</button>
@@ -356,10 +356,7 @@
                     let isMine = taken[i] && taken[i].userId === user.id;
                     let isTaken = taken[i] && !isMine;
                     
-                   // if(taken[i]) {
-                        // 10 ETB bets are treated as 20 ETB for jackpot calculation
-                      //  let calcAmt = taken[i].betAmount === 10 ? 20 : taken[i].betAmount;
-                       // total += calcAmt;
+                    
                     }
 
                     let isDisabled = isTaken || (isGameActive && !isMine);
