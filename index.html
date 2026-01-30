@@ -122,14 +122,6 @@
             <input type="text" id="adm-msg-input" placeholder="መልእክት እዚህ ይጻፉ...">
             <button class="btn" style="margin-top:0;" onclick="broadcastMsg()">መልእክት ላክ</button>
         </div>
-<div class="gift-container" style="background: var(--glass); padding: 15px; border-radius: 15px; margin-top: 20px; border: 1px solid #fbdf93;">
-    <h3 style="color: #fbdf93;">🎁 Gift Box</h3>
-    <input type="text" id="gift_uid" placeholder="የተጫዋች User ID" style="width:90%; padding:10px; margin-bottom:10px; border-radius:8px;">
-    <input type="number" id="gift_val" placeholder="የብር መጠን" style="width:90%; padding:10px; margin-bottom:10px; border-radius:8px;">
-    <button onclick="processGift()" style="width:100%; padding:12px; background:var(--gold); color:black; font-weight:bold; border-radius:10px; border:none;">
-        ብር ላክ
-    </button>
-</div>
 
         <h4 style="border-bottom: 1px solid #facc15;">የተጫዋቾች ሁኔታ (Live)</h4>
         <div id="admin-user-monitor" style="max-height: 150px; overflow-y: auto; margin-bottom: 15px;"></div>
@@ -199,6 +191,19 @@
     const firebaseConfig = { databaseURL: "https://dagi-bingo-default-rtdb.firebaseio.com/" };
     const fb = firebase.initializeApp(firebaseConfig);
     const db = fb.database();
+    // 🔴 LIVE JACKPOT LISTENER (እዚህ አስገባ)
+db.ref('reserved_boards').on('value', snapshot => {
+    let total = 0;
+
+    snapshot.forEach(child => {
+        total += Number(child.val().betAmount || 0);
+    });
+
+    const jackpot = total * 0.8;
+
+    document.getElementById('jackpot-display').innerText =
+        jackpot.toFixed(2) + " ETB";
+});
     const tg = window.Telegram.WebApp; 
     tg.ready(); tg.expand();
 
@@ -330,53 +335,28 @@
     }
 
     function loadBoards() {
-    db.ref('reserved_boards').on('value', s => {
-        const list = document.getElementById('board-list');
-        list.innerHTML = "";
-
-        const taken = s.val() || {};
-        let total = 0;
-
-        db.ref('game/status').once('value', gs => {
-            const isGameActive = (gs.val() === 'active');
-
-            for (let i = 1; i <= 100; i++) {
-                let b = document.createElement('div');
-
-                let isMine = taken[i] && taken[i].userId === user.id;
-                let isTaken = taken[i] && !isMine;
-
-                // ✅ ትክክለኛ የገንዘብ መደመር
-                if (taken[i] && typeof taken[i].betAmount === "number") {
-                    total += taken[i].betAmount;
+        db.ref('reserved_boards').on('value', s => {
+            const list = document.getElementById('board-list'); list.innerHTML = "";
+            const taken = s.val() || {};
+            let total = 0;
+            
+            db.ref('game/status').once('value', gs => {
+                const isGameActive = (gs.val() === 'active');
+                for(let i=1; i<=100; i++){
+                    let b = document.createElement('div');
+                    let isMine = taken[i] && taken[i].userId === user.id;
+                    let isTaken = taken[i] && !isMine;
+                    if(taken[i]) total += taken[i].betAmount;
+                    let isDisabled = isTaken || (isGameActive && !isMine);
+                    b.className = "cell board-item " + (isDisabled ? "board-taken" : "") + (isMine ? "highlight-cell" : "");
+                    b.innerText = i;
+                    b.onclick = () => { if(!isDisabled) buyBoard(i); };
+                    list.appendChild(b);
                 }
-
-                let isDisabled = isTaken || (isGameActive && !isMine);
-
-                b.className =
-                    "cell board-item " +
-                    (isDisabled ? "board-taken" : "") +
-                    (isMine ? " highlight-cell" : "");
-
-                b.innerText = i;
-                b.onclick = () => {
-                    if (!isDisabled) buyBoard(i);
-                };
-
-                list.appendChild(b);
-            }
-
-            // ✅ Jackpot = total × 80%
-            let jackpot = total * 0.8;
-
-            document.getElementById('jackpot-display').innerText =
-                jackpot.toFixed(2) + " ETB";
-
-            // ✅ Sync with backend
-            db.ref('game/jackpot').set(jackpot);
+                
+            });
         });
-    });
-}
+    }
 
     // --- SECURE BETTING TRANSACTION ---
     function buyBoard(id) {
