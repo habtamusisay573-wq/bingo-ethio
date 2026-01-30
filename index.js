@@ -143,9 +143,7 @@ db.ref('game/winner').on('value', async snap => {
   if (boardsSnap.exists()) {
     boardsSnap.forEach(child => {
       const data = child.val();
-      const boards = data.boards || 0;
-      const price = data.price || 0;
-      pool += boards * price;
+      pool += Number(data.betAmount || 0);
     });
   }
 
