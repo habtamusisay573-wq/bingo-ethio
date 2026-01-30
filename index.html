@@ -212,7 +212,6 @@
         document.getElementById('player-count').innerText = s.numChildren();
     });
 
-    // Handle User Data & Phone Registration
     db.ref('users/' + user.id).on('value', s => {
         const udata = s.val();
         if(!udata || !udata.phone) {
@@ -355,10 +354,11 @@
                     let isMine = taken[i] && taken[i].userId === user.id;
                     let isTaken = taken[i] && !isMine;
                     
-                    let calcAmt = taken[i].betAmount;
-                     total += calcAmt;
+                    if(taken[i]) {
+                        // FIX: 10 ETB is now calculated as 10 ETB (Removed 20 ETB logic)
+                        total += taken[i].betAmount;
                     }
-/
+
                     let isDisabled = isTaken || (isGameActive && !isMine);
                     b.className = "cell board-item " + (isDisabled ? "board-taken" : "") + (isMine ? "highlight-cell" : "");
                     b.innerText = i;
@@ -444,7 +444,6 @@
         alert("ተልኳል!");
     }
 
-    // Admin Gift Controls
     function adminGift(uid, amt) {
         db.ref('users/' + uid).transaction(u => {
             if(u) {
@@ -530,7 +529,8 @@
                 if(committed) {
                     db.ref('requests/'+Date.now()).set({ uid: user.id, name: user.first_name, type: type, amt: amt, info: info });
                     alert("ጥያቄ ተልኳል!"); 
-                    amtInput.value = ""; infoInput.value = ""; // Clear
+                    // CLEAR INPUT
+                    amtInput.value = ""; infoInput.value = "";
                     showP('home-page');
                 } else {
                     alert("ባላንስ የለም!");
@@ -539,7 +539,8 @@
         } else {
             db.ref('requests/'+Date.now()).set({ uid: user.id, name: user.first_name, type: type, amt: amt, info: info });
             alert("ጥያቄ ተልኳል!"); 
-            amtInput.value = ""; infoInput.value = ""; // Clear
+            // CLEAR INPUT
+            amtInput.value = ""; infoInput.value = "";
             showP('home-page');
         }
     }
