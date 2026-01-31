@@ -86,7 +86,7 @@ const Game = {
   // AUTO RESET WATCHDOG (5 SECONDS)
   // ===============================
   checkAutoReset() {
-    const GRACE_TIME = 5 * 1000; // ✅ 5 seconds
+    const GRACE_TIME = 5000;
 
     setInterval(async () => {
       try {
@@ -94,37 +94,33 @@ const Game = {
         const playersSnap = await db.ref('online_players').get();
         const boardsSnap = await db.ref('reserved_boards').get();
 
-        // 1️⃣ Waiting state + no boards
-        if (
-          game.status === 'waiting' &&
-          game.timer <= 0 &&
-          !boardsSnap.exists()
-        ) {
-          console.log("No boards → Auto Reset");
+        // 1️⃣ waiting + no boards
+        if (game.status === 'waiting' && game.timer <= 0 && !boardsSnap.exists()) {
+          console.log("♻️ Auto reset (no boards)");
           return this.forceReset();
         }
 
-        // 2️⃣ Game active but ALL players left
+        // 2️⃣ active + all players left
         if (game.status === 'active' && !playersSnap.exists()) {
           const now = Date.now();
 
           if (!game.lastPlayerLeftAt) {
             await db.ref('game/lastPlayerLeftAt').set(now);
-            console.log("All players left → start 5s grace");
+            console.log("⏳ All players left → grace started");
             return;
           }
 
           if (now - game.lastPlayerLeftAt >= GRACE_TIME) {
-            console.log("5s passed → Auto Reset");
-            await this.forceReset();
+            console.log("♻️ Auto reset (no players 5s)");
+            return this.forceReset();
           }
           return;
         }
 
-        // 3️⃣ Players came back → cancel reset
+        // 3️⃣ players came back
         if (playersSnap.exists() && game.lastPlayerLeftAt) {
           await db.ref('game/lastPlayerLeftAt').remove();
-          console.log("Players rejoined → cancel auto reset");
+          console.log("✅ Players rejoined → cancel reset");
         }
 
       } catch (e) {
@@ -136,7 +132,7 @@ const Game = {
   async forceReset() {
     this.stopAll();
     await db.ref('reserved_boards').remove();
-    await db.ref('game').update({
+    await db.ref('game').set({
       drawn: [],
       status: 'idle',
       winner: null,
@@ -145,11 +141,11 @@ const Game = {
       isTimerRunning: false,
       lastPlayerLeftAt: null
     });
-    console.log("Game Reset Done 🧹");
+    console.log("🧹 Game Reset Done");
   }
 };
 
-// Start watchdog
+// start watchdog
 Game.checkAutoReset();
 
 // ===============================
@@ -207,7 +203,57 @@ db.ref('game/winner').on('value', async snap => {
 });
 
 // ===============================
-// 5. HEALTH CHECK + SERVER
+// 5. SMS WEBHOOK (TELEBIRR)
+// ===============================
+app.post('/sms-webhook', async (req, res) => {
+  const msg = req.body.text || req.body.message || "";
+
+  const txMatch = msg.match(/[A-Z0-9]{10,12}/i);
+  const amtMatch = msg.match(/(\d+(?:\.\d+)?)\s?(ETB|ብር)/i);
+  const phMatch = msg.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
+
+  if (!txMatch || !amtMatch || !phMatch) return res.sendStatus(200);
+
+  const txId = txMatch[0].toUpperCase();
+  const amount = parseFloat(amtMatch[1]);
+  const phone = '0' + phMatch[1];
+
+  try {
+    const used = await db.ref(`used_transactions/${txId}`).get();
+    if (used.exists()) return res.sendStatus(200);
+
+    const userSnap = await db.ref('users')
+      .orderByChild('phone')
+      .equalTo(phone)
+      .once('value');
+
+    if (!userSnap.exists()) return res.sendStatus(200);
+
+    const uid = Object.keys(userSnap.val())[0];
+
+    await db.ref(`users/${uid}/bal`).transaction(b => (b || 0) + amount);
+    await db.ref(`used_transactions/${txId}`).set({
+      uid,
+      amount,
+      date: new Date().toISOString()
+    });
+
+    await db.ref(`history/${uid}`).push({
+      type: "Telebirr Deposit ✅",
+      amt: amount,
+      mode: "PLUS",
+      date: new Date().toLocaleString('am-ET')
+    });
+
+  } catch (e) {
+    console.error("Webhook Error:", e);
+  }
+
+  res.sendStatus(200);
+});
+
+// ===============================
+// 6. HEALTH CHECK + SERVER
 // ===============================
 app.get('/', (req, res) =>
   res.send("Dagi Pro Bingo Engine Online 🟢")
