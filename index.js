@@ -120,50 +120,61 @@ db.ref('game/status').on('value', snap => {
   }
 });
 
-// 🏆 WINNER LISTENER (80% / 20% FIXED)
+// 🏆 WINNER LISTENER (FIXED 80/20 SPLIT)
 db.ref('game/winner').on('value', async snap => {
   const win = snap.val();
   if (!win || win.processed) return;
 
   Game.stopAll();
 
-  // 🔢 Calculate pool
+  // 🔢 ጠቅላላ ገቢውን (Pool) በትክክል መደመር
   const boardsSnap = await db.ref('reserved_boards').get();
-  let pool = 0;
+  let totalPool = 0;
 
   if (boardsSnap.exists()) {
     boardsSnap.forEach(child => {
-      pool += Number(child.val().betAmount || 0);
+      totalPool += Number(child.val().betAmount || 0);
     });
   }
 
-  if (pool > 0) {
-    // ✅ REAL SPLIT
-    const winnerPrize = pool * 0.8;
-    const adminShare  = pool * 0.2;
+  if (totalPool > 0) {
+    // ✅ ስሌቱ እዚህ ጋር ነው፡ Math.floor ክፍልፋይ ቁጥሮችን ያስወግዳል
+    const winnerPrize = Math.floor(totalPool * 0.8); // 80%
+    const adminShare = totalPool - winnerPrize;      // ቀሪው 20% (ሙሉውን ለመሙላት)
 
-    // Winner gets 80%
-    await db.ref(`users/${win.id}/bal`)
-      .transaction(b => (b || 0) + winnerPrize);
+    // አሸናፊው 80% ያገኛል
+    await db.ref(`users/${win.id}/bal`).transaction(b => (b || 0) + winnerPrize);
 
-    // Admin gets 20%
-    await db.ref(`users/${ADMIN_ID}/bal`)
-      .transaction(b => (b || 0) + adminShare);
+    // አድሚኑ 20% ያገኛል
+    await db.ref(`users/${ADMIN_ID}/bal`).transaction(b => (b || 0) + adminShare);
 
-    // History
+    const dateStr = new Date().toLocaleString('am-ET');
+
+    // ለአሸናፊው የታሪክ ማስታወሻ
     await db.ref(`history/${win.id}`).push({
       type: "ቢንጎ አሸናፊ 🏆",
       amt: winnerPrize,
       mode: "PLUS",
-      date: new Date().toLocaleString('am-ET')
+      date: dateStr
+    });
+
+    // ለአድሚኑ የታሪክ ማስታወሻ
+    await db.ref(`history/${ADMIN_ID}`).push({
+      type: "የቤት ኮሚሽን (20%)",
+      amt: adminShare,
+      mode: "PLUS",
+      date: dateStr
     });
   }
 
+  // ይህ ጨዋታ ማለቁን ምልክት ያደርጋል
   await db.ref('game/winner/processed').set(true);
+
+  // ከ5 ሰከንድ በኋላ ለቀጣይ ጨዋታ እንዲዘጋጅ ሪሴት ያደርጋል
   setTimeout(() => Game.forceReset(), 5000);
 });
 
-// 4. SMS WEBHOOK
+// 4. SMS WEBHOOK (Telebirr)
 app.post('/sms-webhook', async (req, res) => {
   const { text, message } = req.body;
   const msg = text || message || "";
@@ -182,49 +193,24 @@ app.post('/sms-webhook', async (req, res) => {
     const used = await db.ref(`used_transactions/${txId}`).get();
     if (used.exists()) return res.sendStatus(200);
 
-    const userSnap = await db.ref('users')
-      .orderByChild('phone')
-      .equalTo(phone)
-      .once('value');
-
+    const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
     if (!userSnap.exists()) return res.sendStatus(200);
 
     const uid = Object.keys(userSnap.val())[0];
 
-    await db.ref(`users/${uid}/bal`)
-      .transaction(b => (b || 0) + amount);
+    await db.ref(`users/${uid}/bal`).transaction(b => (b || 0) + amount);
+    await db.ref(`used_transactions/${txId}`).set({ uid, amount, date: new Date().toISOString() });
 
-    await db.ref(`history/${uid}`).push({
-      type: "በቴሌብር ገቢ ✅",
-      amt: amount,
-      mode: "PLUS",
-      date: new Date().toLocaleString('am-ET')
-    });
-
-    await db.ref(`used_transactions/${txId}`).set({
-      uid,
-      amount,
-      date: new Date().toISOString()
-    });
-
-  } catch (e) {
-    console.error("Webhook Error:", e);
-  }
+  } catch (e) { console.error("Webhook Error:", e); }
 
   res.sendStatus(200);
 });
 
-// HEALTH
-app.get('/', (req, res) =>
-  res.send("Dagi Pro Bingo Engine Online 🟢")
-);
+app.get('/', (req, res) => res.send("Dagi Pro Bingo Engine Online 🟢"));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Server running on ${PORT}`)
-);
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 
-// KEEP ALIVE
 setInterval(() => {
   const host = process.env.RENDER_EXTERNAL_HOSTNAME;
   if (host) https.get(`https://${host}/`);
