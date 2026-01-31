@@ -5,7 +5,9 @@ const app = express();
 
 app.use(express.json());
 
-// 1. Firebase Config
+// ===============================
+// 1. FIREBASE CONFIG
+// ===============================
 const serviceAccount = {
   projectId: process.env.PROJECT_ID,
   clientEmail: process.env.CLIENT_EMAIL,
@@ -24,7 +26,9 @@ if (!admin.apps.length) {
 const db = admin.database();
 const ADMIN_ID = "8431270634";
 
+// ===============================
 // 2. GAME ENGINE
+// ===============================
 const Game = {
   timer: null,
   drawer: null,
@@ -78,18 +82,51 @@ const Game = {
     this.drawer = null;
   },
 
+  // ===============================
+  // AUTO RESET WATCHDOG (5 SECONDS)
+  // ===============================
   checkAutoReset() {
+    const GRACE_TIME = 5 * 1000; // ✅ 5 seconds
+
     setInterval(async () => {
       try {
         const game = (await db.ref('game').get()).val() || {};
-        const players = await db.ref('online_players').get();
-        const boards = await db.ref('reserved_boards').get();
+        const playersSnap = await db.ref('online_players').get();
+        const boardsSnap = await db.ref('reserved_boards').get();
 
-        if (game.status === 'active' && !players.exists()) {
-          this.forceReset();
-        } else if (game.status === 'waiting' && game.timer <= 0 && !boards.exists()) {
-          this.forceReset();
+        // 1️⃣ Waiting state + no boards
+        if (
+          game.status === 'waiting' &&
+          game.timer <= 0 &&
+          !boardsSnap.exists()
+        ) {
+          console.log("No boards → Auto Reset");
+          return this.forceReset();
         }
+
+        // 2️⃣ Game active but ALL players left
+        if (game.status === 'active' && !playersSnap.exists()) {
+          const now = Date.now();
+
+          if (!game.lastPlayerLeftAt) {
+            await db.ref('game/lastPlayerLeftAt').set(now);
+            console.log("All players left → start 5s grace");
+            return;
+          }
+
+          if (now - game.lastPlayerLeftAt >= GRACE_TIME) {
+            console.log("5s passed → Auto Reset");
+            await this.forceReset();
+          }
+          return;
+        }
+
+        // 3️⃣ Players came back → cancel reset
+        if (playersSnap.exists() && game.lastPlayerLeftAt) {
+          await db.ref('game/lastPlayerLeftAt').remove();
+          console.log("Players rejoined → cancel auto reset");
+        }
+
       } catch (e) {
         console.error("AutoReset Error:", e);
       }
@@ -105,29 +142,34 @@ const Game = {
       winner: null,
       timer: -1,
       jackpot: 0,
-      isTimerRunning: false
+      isTimerRunning: false,
+      lastPlayerLeftAt: null
     });
     console.log("Game Reset Done 🧹");
   }
 };
 
+// Start watchdog
 Game.checkAutoReset();
 
+// ===============================
 // 3. REALTIME LISTENERS
+// ===============================
 db.ref('game/status').on('value', snap => {
   if (snap.val() === 'waiting') {
     Game.startTimer(30);
   }
 });
 
-// 🏆 WINNER LISTENER (FIXED 80/20 SPLIT)
+// ===============================
+// 4. WINNER LISTENER (80 / 20)
+// ===============================
 db.ref('game/winner').on('value', async snap => {
   const win = snap.val();
   if (!win || win.processed) return;
 
   Game.stopAll();
 
-  // 🔢 ጠቅላላ ገቢውን (Pool) በትክክል መደመር
   const boardsSnap = await db.ref('reserved_boards').get();
   let totalPool = 0;
 
@@ -138,19 +180,13 @@ db.ref('game/winner').on('value', async snap => {
   }
 
   if (totalPool > 0) {
-    // ✅ ስሌቱ እዚህ ጋር ነው፡ Math.floor ክፍልፋይ ቁጥሮችን ያስወግዳል
-    const winnerPrize = Math.floor(totalPool * 0.8); // 80%
-    const adminShare = totalPool - winnerPrize;      // ቀሪው 20% (ሙሉውን ለመሙላት)
-
-    // አሸናፊው 80% ያገኛል
-    await db.ref(`users/${win.id}/bal`).transaction(b => (b || 0) + winnerPrize);
-
-    // አድሚኑ 20% ያገኛል
-    await db.ref(`users/${ADMIN_ID}/bal`).transaction(b => (b || 0) + adminShare);
-
+    const winnerPrize = Math.floor(totalPool * 0.8);
+    const adminShare = totalPool - winnerPrize;
     const dateStr = new Date().toLocaleString('am-ET');
 
-    // ለአሸናፊው የታሪክ ማስታወሻ
+    await db.ref(`users/${win.id}/bal`).transaction(b => (b || 0) + winnerPrize);
+    await db.ref(`users/${ADMIN_ID}/bal`).transaction(b => (b || 0) + adminShare);
+
     await db.ref(`history/${win.id}`).push({
       type: "ቢንጎ አሸናፊ 🏆",
       amt: winnerPrize,
@@ -158,7 +194,6 @@ db.ref('game/winner').on('value', async snap => {
       date: dateStr
     });
 
-    // ለአድሚኑ የታሪክ ማስታወሻ
     await db.ref(`history/${ADMIN_ID}`).push({
       type: "የቤት ኮሚሽን (20%)",
       amt: adminShare,
@@ -167,50 +202,23 @@ db.ref('game/winner').on('value', async snap => {
     });
   }
 
-  // ይህ ጨዋታ ማለቁን ምልክት ያደርጋል
   await db.ref('game/winner/processed').set(true);
-
-  // ከ5 ሰከንድ በኋላ ለቀጣይ ጨዋታ እንዲዘጋጅ ሪሴት ያደርጋል
   setTimeout(() => Game.forceReset(), 5000);
 });
 
-// 4. SMS WEBHOOK (Telebirr)
-app.post('/sms-webhook', async (req, res) => {
-  const { text, message } = req.body;
-  const msg = text || message || "";
-
-  const txMatch = msg.match(/[A-Z0-9]{10,12}/i);
-  const amtMatch = msg.match(/(\d+(?:\.\d+)?)\s?(ETB|ብር)/i);
-  const phMatch = msg.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
-
-  if (!txMatch || !amtMatch || !phMatch) return res.sendStatus(200);
-
-  const txId = txMatch[0].toUpperCase();
-  const amount = parseFloat(amtMatch[1]);
-  const phone = '0' + phMatch[1];
-
-  try {
-    const used = await db.ref(`used_transactions/${txId}`).get();
-    if (used.exists()) return res.sendStatus(200);
-
-    const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
-    if (!userSnap.exists()) return res.sendStatus(200);
-
-    const uid = Object.keys(userSnap.val())[0];
-
-    await db.ref(`users/${uid}/bal`).transaction(b => (b || 0) + amount);
-    await db.ref(`used_transactions/${txId}`).set({ uid, amount, date: new Date().toISOString() });
-
-  } catch (e) { console.error("Webhook Error:", e); }
-
-  res.sendStatus(200);
-});
-
-app.get('/', (req, res) => res.send("Dagi Pro Bingo Engine Online 🟢"));
+// ===============================
+// 5. HEALTH CHECK + SERVER
+// ===============================
+app.get('/', (req, res) =>
+  res.send("Dagi Pro Bingo Engine Online 🟢")
+);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Server running on ${PORT}`)
+);
 
+// KEEP ALIVE
 setInterval(() => {
   const host = process.env.RENDER_EXTERNAL_HOSTNAME;
   if (host) https.get(`https://${host}/`);
