@@ -81,22 +81,13 @@ const Game = {
   checkAutoReset() {
     setInterval(async () => {
       try {
-        const gameSnap = await db.ref('game').get();
-        const game = gameSnap.val() || {};
-        const playersSnap = await db.ref('online_players').get();
-        const boardsSnap = await db.ref('reserved_boards').get();
+        const game = (await db.ref('game').get()).val() || {};
+        const players = await db.ref('online_players').get();
+        const boards = await db.ref('reserved_boards').get();
 
-        if (game.status === 'active' && !playersSnap.exists()) {
-          console.log("No players → Auto Reset");
+        if (game.status === 'active' && !players.exists()) {
           this.forceReset();
-        }
-
-        else if (
-          game.status === 'waiting' &&
-          game.timer <= 0 &&
-          !boardsSnap.exists()
-        ) {
-          console.log("No boards → Auto Reset");
+        } else if (game.status === 'waiting' && game.timer <= 0 && !boards.exists()) {
           this.forceReset();
         }
       } catch (e) {
@@ -120,7 +111,6 @@ const Game = {
   }
 };
 
-// Start watchdog
 Game.checkAutoReset();
 
 // 3. REALTIME LISTENERS
@@ -130,33 +120,37 @@ db.ref('game/status').on('value', snap => {
   }
 });
 
+// 🏆 WINNER LISTENER (80% / 20% FIXED)
 db.ref('game/winner').on('value', async snap => {
   const win = snap.val();
   if (!win || win.processed) return;
 
   Game.stopAll();
 
-  // ✅ FIXED JACKPOT CALCULATION
+  // 🔢 Calculate pool
   const boardsSnap = await db.ref('reserved_boards').get();
   let pool = 0;
 
   if (boardsSnap.exists()) {
     boardsSnap.forEach(child => {
-      const data = child.val();
-      pool += Number(data.betAmount || 0);
+      pool += Number(child.val().betAmount || 0);
     });
   }
 
   if (pool > 0) {
+    // ✅ REAL SPLIT
     const winnerPrize = pool * 0.8;
-    const adminShare = pool * 0.2;
+    const adminShare  = pool * 0.2;
 
+    // Winner gets 80%
     await db.ref(`users/${win.id}/bal`)
       .transaction(b => (b || 0) + winnerPrize);
 
+    // Admin gets 20%
     await db.ref(`users/${ADMIN_ID}/bal`)
       .transaction(b => (b || 0) + adminShare);
 
+    // History
     await db.ref(`history/${win.id}`).push({
       type: "ቢንጎ አሸናፊ 🏆",
       amt: winnerPrize,
@@ -166,7 +160,6 @@ db.ref('game/winner').on('value', async snap => {
   }
 
   await db.ref('game/winner/processed').set(true);
-
   setTimeout(() => Game.forceReset(), 5000);
 });
 
@@ -179,18 +172,15 @@ app.post('/sms-webhook', async (req, res) => {
   const amtMatch = msg.match(/(\d+(?:\.\d+)?)\s?(ETB|ብር)/i);
   const phMatch = msg.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
 
-  if (!txMatch || !amtMatch || !phMatch) {
-    return res.sendStatus(200);
-  }
+  if (!txMatch || !amtMatch || !phMatch) return res.sendStatus(200);
 
   const txId = txMatch[0].toUpperCase();
   const amount = parseFloat(amtMatch[1]);
   const phone = '0' + phMatch[1];
 
   try {
-    // ✅ PREVENT DOUBLE TX
-    const usedSnap = await db.ref(`used_transactions/${txId}`).get();
-    if (usedSnap.exists()) return res.sendStatus(200);
+    const used = await db.ref(`used_transactions/${txId}`).get();
+    if (used.exists()) return res.sendStatus(200);
 
     const userSnap = await db.ref('users')
       .orderByChild('phone')
@@ -224,7 +214,7 @@ app.post('/sms-webhook', async (req, res) => {
   res.sendStatus(200);
 });
 
-// HEALTH CHECK
+// HEALTH
 app.get('/', (req, res) =>
   res.send("Dagi Pro Bingo Engine Online 🟢")
 );
