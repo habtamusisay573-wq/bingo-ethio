@@ -83,50 +83,48 @@ const Game = {
   },
 
   // ===============================
-  // AUTO RESET WATCHDOG (5 SECONDS)
+  // AUTO RESET WATCHDOG (EVERY 5 SECONDS)
   // ===============================
   checkAutoReset() {
-    const GRACE_TIME = 5000;
+    const GRACE_TIME = 5000; // 5 Seconds
 
     setInterval(async () => {
       try {
-        const game = (await db.ref('game').get()).val() || {};
+        const gameSnap = await db.ref('game').get();
+        const game = gameSnap.val() || {};
         const playersSnap = await db.ref('online_players').get();
         const boardsSnap = await db.ref('reserved_boards').get();
 
-        // 1️⃣ waiting + no boards
-        if (game.status === 'waiting' && game.timer <= 0 && !boardsSnap.exists()) {
-          console.log("♻️ Auto reset (no boards)");
-          return this.forceReset();
+        // Condition 1: If game is in waiting/idle but no one is online
+        if (!playersSnap.exists() && game.status !== 'active') {
+           console.log("♻️ Auto reset (No players online)");
+           return this.forceReset();
         }
 
-        // 2️⃣ active + all players left
+        // Condition 2: Active game but all players left for 5 seconds
         if (game.status === 'active' && !playersSnap.exists()) {
           const now = Date.now();
-
           if (!game.lastPlayerLeftAt) {
             await db.ref('game/lastPlayerLeftAt').set(now);
-            console.log("⏳ All players left → grace started");
             return;
           }
-
           if (now - game.lastPlayerLeftAt >= GRACE_TIME) {
-            console.log("♻️ Auto reset (no players 5s)");
+            console.log("♻️ Auto reset (Game abandoned)");
             return this.forceReset();
           }
-          return;
+        } else if (playersSnap.exists() && game.lastPlayerLeftAt) {
+          await db.ref('game/lastPlayerLeftAt').remove();
         }
 
-        // 3️⃣ players came back
-        if (playersSnap.exists() && game.lastPlayerLeftAt) {
-          await db.ref('game/lastPlayerLeftAt').remove();
-          console.log("✅ Players rejoined → cancel reset");
+        // Condition 3: Deadlock - game 'waiting' but timer stuck
+        if (game.status === 'waiting' && game.timer <= -1 && !boardsSnap.exists()) {
+             this.forceReset();
         }
 
       } catch (e) {
         console.error("AutoReset Error:", e);
       }
-    }, 3000);
+    }, 5000); // Check every 5 seconds
   },
 
   async forceReset() {
@@ -141,11 +139,11 @@ const Game = {
       isTimerRunning: false,
       lastPlayerLeftAt: null
     });
-    console.log("🧹 Game Reset Done");
+    console.log("🧹 System Auto-Reset Done");
   }
 };
 
-// start watchdog
+// Start watchdog
 Game.checkAutoReset();
 
 // ===============================
@@ -158,12 +156,13 @@ db.ref('game/status').on('value', snap => {
 });
 
 // ===============================
-// 4. WINNER LISTENER (80 / 20)
+// 4. WINNER PROCESSING (Anti-Race Condition)
 // ===============================
 db.ref('game/winner').on('value', async snap => {
   const win = snap.val();
   if (!win || win.processed) return;
 
+  // Immediately stop drawing to prevent multiple winners
   Game.stopAll();
 
   const boardsSnap = await db.ref('reserved_boards').get();
@@ -180,6 +179,7 @@ db.ref('game/winner').on('value', async snap => {
     const adminShare = totalPool - winnerPrize;
     const dateStr = new Date().toLocaleString('am-ET');
 
+    // Atomic transaction for balance
     await db.ref(`users/${win.id}/bal`).transaction(b => (b || 0) + winnerPrize);
     await db.ref(`users/${ADMIN_ID}/bal`).transaction(b => (b || 0) + adminShare);
 
@@ -198,16 +198,16 @@ db.ref('game/winner').on('value', async snap => {
     });
   }
 
+  // Mark as processed and trigger reset
   await db.ref('game/winner/processed').set(true);
-  setTimeout(() => Game.forceReset(), 5000);
+  setTimeout(() => Game.forceReset(), 7000);
 });
 
 // ===============================
-// 5. SMS WEBHOOK (TELEBIRR)
+// 5. SMS WEBHOOK
 // ===============================
 app.post('/sms-webhook', async (req, res) => {
   const msg = req.body.text || req.body.message || "";
-
   const txMatch = msg.match(/[A-Z0-9]{10,12}/i);
   const amtMatch = msg.match(/(\d+(?:\.\d+)?)\s?(ETB|ብር)/i);
   const phMatch = msg.match(/(?:\+251|0)(9\d{8}|7\d{8})/);
@@ -222,49 +222,21 @@ app.post('/sms-webhook', async (req, res) => {
     const used = await db.ref(`used_transactions/${txId}`).get();
     if (used.exists()) return res.sendStatus(200);
 
-    const userSnap = await db.ref('users')
-      .orderByChild('phone')
-      .equalTo(phone)
-      .once('value');
-
+    const userSnap = await db.ref('users').orderByChild('phone').equalTo(phone).once('value');
     if (!userSnap.exists()) return res.sendStatus(200);
 
     const uid = Object.keys(userSnap.val())[0];
-
     await db.ref(`users/${uid}/bal`).transaction(b => (b || 0) + amount);
-    await db.ref(`used_transactions/${txId}`).set({
-      uid,
-      amount,
-      date: new Date().toISOString()
-    });
-
-    await db.ref(`history/${uid}`).push({
-      type: "Telebirr Deposit ✅",
-      amt: amount,
-      mode: "PLUS",
-      date: new Date().toLocaleString('am-ET')
-    });
-
-  } catch (e) {
-    console.error("Webhook Error:", e);
-  }
-
+    await db.ref(`used_transactions/${txId}`).set({ uid, amount, date: new Date().toISOString() });
+    await db.ref(`history/${uid}`).push({ type: "Telebirr Deposit ✅", amt: amount, mode: "PLUS", date: new Date().toLocaleString('am-ET') });
+  } catch (e) { console.error("Webhook Error:", e); }
   res.sendStatus(200);
 });
 
-// ===============================
-// 6. HEALTH CHECK + SERVER
-// ===============================
-app.get('/', (req, res) =>
-  res.send("Dagi Pro Bingo Engine Online 🟢")
-);
-
+app.get('/', (req, res) => res.send("Dagi Pro Bingo Engine Online 🟢"));
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Server running on ${PORT}`)
-);
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 
-// KEEP ALIVE
 setInterval(() => {
   const host = process.env.RENDER_EXTERNAL_HOSTNAME;
   if (host) https.get(`https://${host}/`);
