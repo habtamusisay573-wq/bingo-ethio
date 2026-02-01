@@ -356,7 +356,7 @@ onlineRef.onDisconnect().remove();
     }
 
     function loadBoards() {
-        db.ref('reserved_boards').on('value', s => {
+        db.ref('reserved_boards').once('value', s => {
             const list = document.getElementById('board-list'); list.innerHTML = "";
             const taken = s.val() || {};
             let total = 0;
@@ -538,7 +538,42 @@ onlineRef.onDisconnect().remove();
         document.getElementById('splash').style.display='none'; 
         document.getElementById('main-ui').style.display='block'; 
         db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
+        giveWelcomeGiftOnce();
     }, 2000);
+    // ===============================
+// 🎁 WELCOME GIFT (20 ETB - ONE TIME)
+// ===============================
+function giveWelcomeGiftOnce() {
+    const userRef = db.ref('users/' + user.id);
+
+    userRef.transaction(u => {
+        if (!u) u = {};
+        if (u.welcomeGiftGiven === true) return; // 🚫 አንዴ ብቻ
+
+        u.bal = (u.bal || 0) + 20;
+        u.welcomeGiftGiven = true;
+        u.createdAt = u.createdAt || Date.now();
+        return u;
+
+    }, (err, committed) => {
+
+        // ✅ እዚህ ብቻ
+        if (committed) {
+
+            if (!sessionStorage.getItem("welcomeAlertShown")) {
+                alert("🎉 እንኳን ደህና መጡ! 20 birr ተሰጥቶዎታል");
+                sessionStorage.setItem("welcomeAlertShown", "1");
+            }
+
+            addHistory(
+                user.id,
+                "🎁 የመጀመሪያ ስጦታ (Welcome Bonus)",
+                20,
+                "PLUS"
+            );
+        }
+    });
+}
 </script>
 </body>
 </html>
