@@ -427,33 +427,57 @@ function renderBoards() {
 
     // --- SECURE BETTING TRANSACTION ---
     function buyBoard(id) {
-        db.ref('game/status').once('value', sn => {
-            if(sn.val() === 'active') return alert("ጨዋታው ተጀምሯል!");
-            db.ref('reserved_boards/' + id).once('value', boardSnap => {
-                if(boardSnap.exists()) return alert("ተይዟል!");
-                
-                db.ref('users/'+user.id+'/bal').transaction(current => {
-                    if (current >= currentBet) {
-                        return current - currentBet;
-                    } else {
-                        return undefined;
-                    }
-                }, (error, committed) => {
-                    if (committed) {
-                        db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
-                        addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
-                        if(sn.val() !== 'active') { db.ref('game').update({status:'waiting', timer:30}); }
-                        localStorage.removeItem('my_board_' + user.id);
-      localStorage.removeItem('marked_cells_' + user.id);
+    db.ref('game/status').once('value', sn => {
+        if (sn.val() === 'active') return alert("ጨዋታው ተጀምሯል!");
 
-                        hasBoard = true; startBingo(); showP('game-page');
-                    } else {
-                        alert("በቂ ባላንስ የለም!");
-                    }
+        db.ref('reserved_boards/' + id).once('value', boardSnap => {
+            if (boardSnap.exists()) return alert("ተይዟል!");
+
+            db.ref('users/' + user.id + '/bal').transaction(current => {
+                if (current >= currentBet) {
+                    return current - currentBet;
+                }
+                return;
+            }, (error, committed) => {
+
+                if (!committed) {
+                    alert("በቂ ባላንስ የለም!");
+                    return;
+                }
+
+                // ✅ 1. board reserve
+                db.ref('reserved_boards/' + id).set({
+                    userId: user.id,
+                    betAmount: currentBet
                 });
+
+                // ✅ 2. activeBoard save (CRITICAL)
+                db.ref('users/' + user.id + '/activeBoard').set(id);
+
+                // ✅ 3. history
+                addHistory(
+                    user.id,
+                    "ካርቴላ " + id + " ተገዝቷል",
+                    currentBet,
+                    "MINUS"
+                );
+
+                // ✅ 4. game start trigger
+                if (sn.val() !== 'active') {
+                    db.ref('game').update({ status: 'waiting', timer: 30 });
+                }
+
+                // ✅ 5. local state
+                localStorage.removeItem('my_board_' + user.id);
+                localStorage.removeItem('marked_cells_' + user.id);
+
+                hasBoard = true;
+                startBingo();
+                showP('game-page');
             });
         });
-    }
+    });
+}
 
   function startBingo() {
     const grid = document.getElementById('bingo-grid');
@@ -614,46 +638,68 @@ function renderBoards() {
         if(id==='history-page') loadHistory();
     }
 
-    function resetGame() { db.ref('game').set({drawn:[], timer:-1, winner:null, status:'idle', jackpot:0}); db.ref('reserved_boards').remove(); }
+        // --- RESET GAME ---
+    function resetGame() { 
+        db.ref('game').set({drawn:[], timer:-1, winner:null, status:'idle', jackpot:0}); 
+        db.ref('reserved_boards').remove(); 
+    }
 
+    // ==========================================
+    // 🔄 RESTORE SYSTEM (አፑ ሲከፈት ቼክ የሚያደርግ)
+    // ==========================================
     setTimeout(() => { 
-        document.getElementById('splash').style.display='none'; 
-        document.getElementById('main-ui').style.display='block'; 
-        db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
-        giveWelcomeGiftOnce();
-    }, 2000);
-    // ===============================
-// 🎁 WELCOME GIFT (20 ETB - ONE TIME)
-// ===============================
-function giveWelcomeGiftOnce() {
-    const userRef = db.ref('users/' + user.id);
+        document.getElementById('splash').style.display = 'none'; 
+        document.getElementById('main-ui').style.display = 'block'; 
+        
+        db.ref('users/' + user.id).update({ 
+            name: user.first_name, 
+            last_seen: Date.now() 
+        });
 
-    userRef.transaction(u => {
-        if (!u) u = {};
-        if (u.welcomeGiftGiven === true) return; // 🚫 አንዴ ብቻ
+        // ✅ ተጫዋቹ ቀድሞ የገዛው ካርቴላ ካለ ዳታቤዝ ውስጥ ፈልግ
+        db.ref('reserved_boards').once('value', snapshot => {
+            const boards = snapshot.val() || {};
+            let foundMyBoardId = null;
 
-        u.bal = (u.bal || 0) + 20;
-        u.welcomeGiftGiven = true;
-        u.createdAt = u.createdAt || Date.now();
-        return u;
-
-    }, (err, committed) => {
-
-        // ✅ እዚህ ብቻ
-        if (committed) {
-
-            if (!sessionStorage.getItem("welcomeAlertShown")) {
-                alert("🎉 እንኳን ደህና መጡ! 20 birr ተሰጥቶዎታል");
-                sessionStorage.setItem("welcomeAlertShown", "1");
+            for (let id in boards) {
+                if (boards[id].userId === user.id) {
+                    foundMyBoardId = id;
+                    break;
+                }
             }
 
-            addHistory(
-                user.id,
-                "🎁 የመጀመሪያ ስጦታ (Welcome Bonus)",
-                20,
-                "PLUS"
-            );
-        }
+            if (foundMyBoardId) {
+                hasBoard = true;   // ሁኔታውን አብራ
+                startBingo();      // ካርቴላውን ሳለው
+                showP('game-page'); // በቀጥታ ወደ ጨዋታው ውሰደው
+            }
+        });
+
+        giveWelcomeGiftOnce();
+    }, 2000); 
+
+    // ==========================================
+    // 🎁 WELCOME GIFT (20 ETB - ONE TIME)
+    // ==========================================
+    function giveWelcomeGiftOnce() {
+        const userRef = db.ref('users/' + user.id);
+        userRef.transaction(u => {
+            if (!u) u = {};
+            if (u.welcomeGiftGiven === true) return; 
+
+            u.bal = (u.bal || 0) + 20;
+            u.welcomeGiftGiven = true;
+            u.createdAt = u.createdAt || Date.now();
+            return u;
+        }, (err, committed) => {
+            if (committed) {
+                if (!sessionStorage.getItem("welcomeAlertShown")) {
+                    alert("🎉 እንኳን ደህና መጡ! 20 birr ተሰጥቶዎታል");
+                    sessionStorage.setItem("welcomeAlertShown", "1");
+                }
+                addHistory(user.id, "🎁 የመጀመሪያ ስጦታ (Welcome Bonus)", 20, "PLUS");
+      
+      }
     });
 }
 </script>
