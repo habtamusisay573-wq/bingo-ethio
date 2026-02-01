@@ -275,17 +275,25 @@ onlineRef.onDisconnect().remove();
     });
 
     db.ref('game/winner').on('value', s => {
-        const w = s.val();
-        if(w) {
-            document.getElementById('win-name').innerText = w.name + " አሸነፈ! 🏆";
-            document.getElementById('win-overlay').style.display = 'flex';
-            confetti();
-            setTimeout(() => { 
-                document.getElementById('win-overlay').style.display = 'none';
-                hasBoard = false; showP('home-page');
-            }, 5000);
-        }
-    });
+    const w = s.val();
+    if(w) {
+        document.getElementById('win-name').innerText = w.name + " አሸነፈ! 🏆";
+        document.getElementById('win-overlay').style.display = 'flex';
+        confetti();
+        
+        hasBoard = false;
+        // ✅ ሁሉንም ዳታ ማጽዳት
+        localStorage.removeItem('my_board_' + user.id); 
+        localStorage.removeItem('marked_cells_' + user.id); 
+        
+        setTimeout(() => { 
+            document.getElementById('win-overlay').style.display = 'none';
+            showP('home-page');
+            document.getElementById('bingo-grid').innerHTML = ""; 
+        }, 5000);
+    }
+});
+
 
     db.ref('settings/admin_phone').on('value', s => {
         adminPhone = s.val() || "09...";
@@ -356,35 +364,64 @@ onlineRef.onDisconnect().remove();
         showP('reserve-page');
     }
 
-    function loadBoards() {
+    let boardsListenerAttached = false;
+let isGameActive = false;
+let currentBoardsData = {}; // ቦርዶቹን ለማስታወስ
 
-    if (boardsLoaded) return;
-    boardsLoaded = true;
+function loadBoards() {
+    if (boardsListenerAttached) return;
+    boardsListenerAttached = true;
 
-    db.ref('reserved_boards').once('value', s => {
-        const list = document.getElementById('board-list');
-        list.innerHTML = "";
-
-        const taken = s.val() || {};
-
-        for (let i = 1; i <= 100; i++) {
-            const btn = document.createElement('button');
-            btn.className = 'btn board-item';
-            btn.innerText = i;
-
-            if (taken[i]) {
-                btn.classList.add('board-taken');
-            } else {
-                btn.onclick = () => buyBoard(i);
-            }
-
-            list.appendChild(btn);
-        }
-
-        setTimeout(() => {
-            boardsLoaded = false;
-        }, 5000);
+    // 1. የጨዋታ ሁኔታን መከታተል
+    db.ref('game/status').on('value', s => {
+        isGameActive = (s.val() === 'active');
+        renderBoards(); // ሁኔታው ሲቀየር UIውን ያድሳል
     });
+
+    // 2. የካርቴላ ሁኔታን መከታተል
+    db.ref('reserved_boards').on('value', snapshot => {
+        currentBoardsData = snapshot.val() || {};
+        renderBoards(); // አዲስ ሰው ሲገዛ UIውን ያድሳል
+    });
+}
+
+// ቦርዶቹን ስክሪን ላይ የሚስል ተግባር
+function renderBoards() {
+    const list = document.getElementById('board-list');
+    if (!list) return;
+
+    list.innerHTML = "";
+    const frag = document.createDocumentFragment();
+
+    for (let i = 1; i <= 100; i++) {
+        const btn = document.createElement('button');
+        const boardData = currentBoardsData[i];
+        const isMine = boardData && boardData.userId === user.id;
+        const isTaken = boardData && !isMine;
+
+        btn.className = 'cell board-item';
+        btn.innerText = i;
+
+        // Visuals
+        if (isTaken || (isGameActive && !isMine)) {
+            btn.classList.add('board-taken');
+        }
+        if (isMine) btn.classList.add('highlight-cell');
+
+        btn.onclick = () => {
+            if (isGameActive && !isMine) {
+                alert("ጨዋታው ተጀምሯል!");
+            } else if (isTaken) {
+                alert("ካርቴላው ተይዟል!");
+            } else if (isMine) {
+                showP('game-page');
+            } else {
+                buyBoard(i);
+            }
+        };
+        frag.appendChild(btn);
+    }
+    list.appendChild(frag);
 }
 
 
@@ -406,6 +443,9 @@ onlineRef.onDisconnect().remove();
                         db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
                         addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
                         if(sn.val() !== 'active') { db.ref('game').update({status:'waiting', timer:30}); }
+                        localStorage.removeItem('my_board_' + user.id);
+      localStorage.removeItem('marked_cells_' + user.id);
+
                         hasBoard = true; startBingo(); showP('game-page');
                     } else {
                         alert("በቂ ባላንስ የለም!");
@@ -415,19 +455,52 @@ onlineRef.onDisconnect().remove();
         });
     }
 
-    function startBingo() {
-        markedCells = [12]; let nums = [];
-        while(nums.length < 24){ let r = Math.floor(Math.random()*75)+1; if(!nums.includes(r)) nums.push(r); }
-        myBoard = []; const grid = document.getElementById('bingo-grid'); grid.innerHTML = "";
-        for(let i=0; i<25; i++){
-            let v = (i===12) ? "FREE" : nums.pop(); myBoard.push(v);
-            let c = document.createElement('div'); c.className = 'cell '+(v==="FREE"?"marked":"");
-            c.id = 'c-'+i; c.innerText = v;
-            c.onclick = () => { if(drawn.includes(v) || v==="FREE") { c.classList.add('marked'); if(!markedCells.includes(i)) markedCells.push(i); } };
-            grid.appendChild(c);
+  function startBingo() {
+    const grid = document.getElementById('bingo-grid');
+    const savedBoard = localStorage.getItem('my_board_' + user.id);
+    const savedMarked = localStorage.getItem('marked_cells_' + user.id); // ✅ ማርክ የተደረጉትን ማምጣት
+    
+    let nums = savedBoard ? JSON.parse(savedBoard) : [];
+    markedCells = savedMarked ? JSON.parse(savedMarked) : [12]; // ✅ ካለ ካለፈው ዙር ይቀጥላል
+
+    if (nums.length === 0) {
+        let pool = [];
+        while(pool.length < 24){ 
+            let r = Math.floor(Math.random()*75)+1; 
+            if(!pool.includes(r)) pool.push(r); 
         }
+        nums = pool;
+        localStorage.setItem('my_board_' + user.id, JSON.stringify(nums));
+        localStorage.setItem('marked_cells_' + user.id, JSON.stringify([12])); // አዲስ ማጽጃ
     }
 
+    myBoard = []; 
+    grid.innerHTML = "";
+    let tempNums = [...nums];
+    
+    for(let i=0; i<25; i++){
+        let v = (i===12) ? "FREE" : tempNums.pop(); 
+        myBoard.push(v);
+        let c = document.createElement('div'); 
+        // ✅ ቀድሞ ማርክ ተደርጎ ከነበረ ቀይ ሆኖ እንዲመጣ
+        c.className = 'cell ' + (markedCells.includes(i) ? "marked" : "");
+        c.id = 'c-'+i; 
+        c.innerText = v;
+        
+        c.onclick = () => { 
+            if(drawn.includes(v) || v==="FREE") { 
+                c.classList.add('marked'); 
+                if(!markedCells.includes(i)) {
+                    markedCells.push(i);
+                    // ✅ በነካ ቁጥር ስልኩ ላይ ያስቀምጠዋል
+                    localStorage.setItem('marked_cells_' + user.id, JSON.stringify(markedCells));
+                }
+            } 
+        };
+        grid.appendChild(c);
+    }
+}
+  
     function checkBingoAndClaim() {
         const lines = [
             [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
