@@ -212,6 +212,7 @@ db.ref('reserved_boards').on('value', snapshot => {
     if(user.id == ADMIN_ID) document.getElementById('adm-gate').style.display = 'block';
 
     let myBal = 0, drawn = [], markedCells = [12], currentBet = 0, myBoard = [], hasBoard = false;
+    let boardsLoaded = false;   // 🛑 board duplicate ለመከላከል
     let adminPhone = "";
 
     const onlineRef = db.ref('online_players/' + user.id);
@@ -356,28 +357,36 @@ onlineRef.onDisconnect().remove();
     }
 
     function loadBoards() {
-        db.ref('reserved_boards').once('value', s => {
-            const list = document.getElementById('board-list'); list.innerHTML = "";
-            const taken = s.val() || {};
-            let total = 0;
-            
-            db.ref('game/status').once('value', gs => {
-                const isGameActive = (gs.val() === 'active');
-                for(let i=1; i<=100; i++){
-                    let b = document.createElement('div');
-                    let isMine = taken[i] && taken[i].userId === user.id;
-                    let isTaken = taken[i] && !isMine;
-                    if(taken[i]) total += taken[i].betAmount;
-                    let isDisabled = isTaken || (isGameActive && !isMine);
-                    b.className = "cell board-item " + (isDisabled ? "board-taken" : "") + (isMine ? "highlight-cell" : "");
-                    b.innerText = i;
-                    b.onclick = () => { if(!isDisabled) buyBoard(i); };
-                    list.appendChild(b);
-                }
-                
-            });
-        });
-    }
+
+    if (boardsLoaded) return;
+    boardsLoaded = true;
+
+    db.ref('reserved_boards').once('value', s => {
+        const list = document.getElementById('board-list');
+        list.innerHTML = "";
+
+        const taken = s.val() || {};
+
+        for (let i = 1; i <= 100; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'btn board-item';
+            btn.innerText = i;
+
+            if (taken[i]) {
+                btn.classList.add('board-taken');
+            } else {
+                btn.onclick = () => buyBoard(i);
+            }
+
+            list.appendChild(btn);
+        }
+
+        setTimeout(() => {
+            boardsLoaded = false;
+        }, 5000);
+    });
+}
+
 
     // --- SECURE BETTING TRANSACTION ---
     function buyBoard(id) {
