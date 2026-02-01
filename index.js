@@ -1,4 +1,6 @@
-// (full server file - use this to replace your current server file)
+// ===============================
+// FULL SERVER FILE (FIXED + COMPLETE)
+// ===============================
 const admin = require('firebase-admin');
 const express = require('express');
 const https = require('https');
@@ -72,8 +74,13 @@ const Game = {
       } while (drawn.includes(num));
 
       drawn.push(num);
-      await db.ref('game/drawn').set(drawn);
-    }, 2000); // draw every 2s (server-side)
+
+      await db.ref('game').update({
+        drawn,
+        lastDrawTime: Date.now() // 🔑 stalled game detection
+      });
+
+    }, 2000);
   },
 
   stopAll() {
@@ -84,7 +91,7 @@ const Game = {
   },
 
   // ===============================
-  // AUTO RESET WATCHDOG (5 SECONDS)
+  // AUTO RESET WATCHDOG (FIXED)
   // ===============================
   checkAutoReset() {
     const GRACE_TIME = 5000;
@@ -93,19 +100,29 @@ const Game = {
       try {
         const gameSnap = await db.ref('game').get();
         const game = gameSnap.val() || {};
-        const playersSnap = await db.ref('online_players').get();
-        const boardsSnap = await db.ref('reserved_boards').get();
 
-        // 1️⃣ waiting + no boards -> immediate reset
-        if (game.status === 'waiting' && (game.timer === undefined || game.timer <= 0) && !boardsSnap.exists()) {
-          console.log("♻️ Auto reset (no boards)");
+        const playersSnap = await db.ref('online_players').get();
+        const players = playersSnap.val() || {};
+        const onlineCount = Object.keys(players).length;
+
+        const boardsSnap = await db.ref('reserved_boards').get();
+        const boards = boardsSnap.val() || {};
+        const boardCount = Object.keys(boards).length;
+
+        const now = Date.now();
+
+        // 1️⃣ waiting + no boards
+        if (
+          game.status === 'waiting' &&
+          game.timer <= 0 &&
+          boardCount === 0
+        ) {
+          console.log("♻️ Auto reset (waiting + no boards)");
           return this.forceReset();
         }
 
-        // 2️⃣ active + all players left -> start grace timer and reset after GRACE_TIME
-        if (game.status === 'active' && !playersSnap.exists()) {
-          const now = Date.now();
-
+        // 2️⃣ active + no online players
+        if (game.status === 'active' && onlineCount === 0) {
           if (!game.lastPlayerLeftAt) {
             await db.ref('game/lastPlayerLeftAt').set(now);
             console.log("⏳ All players left → grace started");
@@ -113,16 +130,26 @@ const Game = {
           }
 
           if (now - game.lastPlayerLeftAt >= GRACE_TIME) {
-            console.log("♻️ Auto reset (no players >= 5s)");
+            console.log("♻️ Auto reset (no players 5s)");
             return this.forceReset();
           }
           return;
         }
 
-        // 3️⃣ players came back -> clear grace timestamp
-        if (playersSnap.exists() && game.lastPlayerLeftAt) {
+        // 3️⃣ players came back
+        if (onlineCount > 0 && game.lastPlayerLeftAt) {
           await db.ref('game/lastPlayerLeftAt').remove();
-          console.log("✅ Players rejoined → cancel reset");
+          console.log("✅ Players back → cancel reset");
+        }
+
+        // 4️⃣ stalled game (drawer stopped)
+        if (
+          game.status === 'active' &&
+          game.lastDrawTime &&
+          now - game.lastDrawTime > 15000
+        ) {
+          console.log("♻️ Auto reset (stalled game)");
+          return this.forceReset();
         }
 
       } catch (e) {
@@ -141,7 +168,8 @@ const Game = {
       timer: -1,
       jackpot: 0,
       isTimerRunning: false,
-      lastPlayerLeftAt: null
+      lastPlayerLeftAt: null,
+      lastDrawTime: null
     });
     console.log("🧹 Game Reset Done");
   }
@@ -160,11 +188,15 @@ db.ref('game/status').on('value', snap => {
 });
 
 // ===============================
-// 4. WINNER LISTENER (80 / 20)
+// 4. WINNER LISTENER (RACE SAFE)
 // ===============================
 db.ref('game/winner').on('value', async snap => {
   const win = snap.val();
   if (!win || win.processed) return;
+
+  const lockRef = db.ref('game/winner_lock');
+  const lock = await lockRef.transaction(v => v || Date.now());
+  if (!lock.committed) return;
 
   Game.stopAll();
 
@@ -172,8 +204,8 @@ db.ref('game/winner').on('value', async snap => {
   let totalPool = 0;
 
   if (boardsSnap.exists()) {
-    boardsSnap.forEach(child => {
-      totalPool += Number(child.val().betAmount || 0);
+    boardsSnap.forEach(c => {
+      totalPool += Number(c.val().betAmount || 0);
     });
   }
 
@@ -205,7 +237,7 @@ db.ref('game/winner').on('value', async snap => {
 });
 
 // ===============================
-// 5. SMS WEBHOOK (TELEBIRR) - unchanged logic
+// 5. SMS WEBHOOK (DUPLICATE SAFE)
 // ===============================
 app.post('/sms-webhook', async (req, res) => {
   const msg = req.body.text || req.body.message || "";
@@ -220,36 +252,31 @@ app.post('/sms-webhook', async (req, res) => {
   const amount = parseFloat(amtMatch[1]);
   const phone = '0' + phMatch[1];
 
-  try {
-    const used = await db.ref(`used_transactions/${txId}`).get();
-    if (used.exists()) return res.sendStatus(200);
+  const usedRef = db.ref(`used_transactions/${txId}`);
+  const used = await usedRef.transaction(v => v || {
+    phone,
+    amount,
+    date: Date.now()
+  });
 
-    const userSnap = await db.ref('users')
-      .orderByChild('phone')
-      .equalTo(phone)
-      .once('value');
+  if (!used.committed) return res.sendStatus(200);
 
-    if (!userSnap.exists()) return res.sendStatus(200);
+  const userSnap = await db.ref('users')
+    .orderByChild('phone')
+    .equalTo(phone)
+    .once('value');
 
-    const uid = Object.keys(userSnap.val())[0];
+  if (!userSnap.exists()) return res.sendStatus(200);
 
-    await db.ref(`users/${uid}/bal`).transaction(b => (b || 0) + amount);
-    await db.ref(`used_transactions/${txId}`).set({
-      uid,
-      amount,
-      date: new Date().toISOString()
-    });
+  const uid = Object.keys(userSnap.val())[0];
 
-    await db.ref(`history/${uid}`).push({
-      type: "Telebirr Deposit ✅",
-      amt: amount,
-      mode: "PLUS",
-      date: new Date().toLocaleString('am-ET')
-    });
-
-  } catch (e) {
-    console.error("Webhook Error:", e);
-  }
+  await db.ref(`users/${uid}/bal`).transaction(b => (b || 0) + amount);
+  await db.ref(`history/${uid}`).push({
+    type: "Telebirr Deposit ✅",
+    amt: amount,
+    mode: "PLUS",
+    date: new Date().toLocaleString('am-ET')
+  });
 
   res.sendStatus(200);
 });
