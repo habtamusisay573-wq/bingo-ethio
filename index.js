@@ -1,4 +1,3 @@
-
 // ===============================
 // FULL SERVER FILE (FIXED + COMPLETE)
 // ===============================
@@ -36,17 +35,10 @@ const ADMIN_ID = "8431270634";
 const Game = {
   timer: null,
   drawer: null,
+
   startTimer(seconds) {
     this.stopAll();
-    
-    // 🔑 አዲስ የጨዋታ መለያ ቁጥር (ID) ማመንጨት
-    const activeGameId = Date.now().toString(); 
-
-    db.ref('game').update({
-      isTimerRunning: true,
-      activeGameId: activeGameId, // ለተጫዋቾች Restore ማድረጊያ ይጠቅማል
-      status: 'waiting'
-    });
+    db.ref('game/isTimerRunning').set(true);
 
     this.timer = setInterval(async () => {
       seconds--;
@@ -63,8 +55,6 @@ const Game = {
       }
     }, 1000);
   },
-
-  
 
   startDrawing() {
     this.drawer = setInterval(async () => {
