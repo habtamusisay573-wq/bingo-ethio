@@ -1,3 +1,4 @@
+
 // ===============================
 // FULL SERVER FILE (FIXED + COMPLETE)
 // ===============================
@@ -35,10 +36,17 @@ const ADMIN_ID = "8431270634";
 const Game = {
   timer: null,
   drawer: null,
-
   startTimer(seconds) {
     this.stopAll();
-    db.ref('game/isTimerRunning').set(true);
+    
+    // 🔑 አዲስ የጨዋታ መለያ ቁጥር (ID) ማመንጨት
+    const activeGameId = Date.now().toString(); 
+
+    db.ref('game').update({
+      isTimerRunning: true,
+      activeGameId: activeGameId, // ለተጫዋቾች Restore ማድረጊያ ይጠቅማል
+      status: 'waiting'
+    });
 
     this.timer = setInterval(async () => {
       seconds--;
@@ -55,6 +63,8 @@ const Game = {
       }
     }, 1000);
   },
+
+  
 
   startDrawing() {
     this.drawer = setInterval(async () => {
@@ -89,6 +99,7 @@ const Game = {
     this.timer = null;
     this.drawer = null;
   },
+
 
   // ===============================
   // AUTO RESET WATCHDOG (FIXED)
@@ -160,6 +171,8 @@ const Game = {
 
   async forceReset() {
     this.stopAll();
+    // 🔓 አሸናፊውን የሚቆልፈውን lock እዚህ ጋር እናጠፋዋለን (ለቀጣይ ዙር)
+    await db.ref('game/winner_lock').remove(); 
     await db.ref('reserved_boards').remove();
     await db.ref('game').set({
       drawn: [],
