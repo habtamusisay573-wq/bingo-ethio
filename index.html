@@ -48,6 +48,9 @@
         .btn-red { background: var(--danger); color: white; }
         .btn-green { background: var(--success); color: white; }
         
+        /* Locked Button Style */
+        .btn-locked { opacity: 0.3; pointer-events: none; background: #334155; color: #94a3b8; box-shadow: none; border: 1px solid #475569; }
+
         #current-ball { width: 85px; height: 85px; background: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #000; font-size: 2.8rem; font-weight: 900; border: 4px solid #fff; box-shadow: 0 0 20px rgba(250,204,21,0.4); }
         .live-indicator { background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; margin-bottom: 10px; font-size: 13px; text-align: center; border: 1px solid rgba(250, 204, 21, 0.2); }
         .prize-box { background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; border-radius: 8px; padding: 5px 10px; margin-top: 5px; }
@@ -95,14 +98,15 @@
     <div id="home-page" class="page active">
         <button id="adm-gate" class="btn btn-red" style="display:none; margin-bottom: 15px;" onclick="showP('admin-page')">⚙️ DASHBOARD</button>
         <div id="player-zone">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn" onclick="checkBet(10)">10 ETB</button>
-                <button class="btn" onclick="checkBet(20)">20 ETB</button>
-                <button class="btn" onclick="checkBet(50)">50 ETB</button>
-                <button class="btn" onclick="checkBet(100)">100 ETB</button>
-                <button class="btn" onclick="checkBet(500)">500 ETB</button>
-                <button class="btn" onclick="checkBet(1000)">1000 ETB</button>
+            <div id="bet-buttons-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn bet-btn" data-amt="10" onclick="checkBet(10)">10 ETB</button>
+                <button class="btn bet-btn" data-amt="20" onclick="checkBet(20)">20 ETB</button>
+                <button class="btn bet-btn" data-amt="50" onclick="checkBet(50)">50 ETB</button>
+                <button class="btn bet-btn" data-amt="100" onclick="checkBet(100)">100 ETB</button>
+                <button class="btn bet-btn" data-amt="500" onclick="checkBet(500)">500 ETB</button>
+                <button class="btn bet-btn" data-amt="1000" onclick="checkBet(1000)">1000 ETB</button>
             </div>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
                 <button class="btn btn-green" onclick="showP('deposit-page')">➕ ብር አስገባ</button>
                 <button class="btn btn-red" onclick="showP('withdraw-page')">➖ ብር አውጣ</button>
@@ -128,6 +132,16 @@
 
         <h4 style="border-bottom: 1px solid #facc15;">የብር ጥያቄዎች (Approval)</h4>
         <div id="admin-req-list"></div>
+
+        <h4 style="border-bottom: 1px solid #facc15; margin-top: 20px;">የክፍል መቆጣጠሪያ (Active Room)</h4>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
+            <button class="btn" style="padding: 10px; font-size: 11px;" onclick="setRoom(10)">10 ክፈት</button>
+            <button class="btn" style="padding: 10px; font-size: 11px;" onclick="setRoom(20)">20 ክፈት</button>
+            <button class="btn" style="padding: 10px; font-size: 11px;" onclick="setRoom(50)">50 ክፈት</button>
+            <button class="btn" style="padding: 10px; font-size: 11px;" onclick="setRoom(100)">100 ክፈት</button>
+            <button class="btn" style="padding: 10px; font-size: 11px;" onclick="setRoom(500)">500 ክፈት</button>
+            <button class="btn" style="padding: 10px; font-size: 11px;" onclick="setRoom(1000)">1000 ክፈት</button>
+        </div>
         
         <button class="btn btn-red" onclick="if(confirm('RESET?')) resetGame()">RESET GAME</button>
         <button class="btn" onclick="showP('home-page')">ተመለስ</button>
@@ -201,8 +215,37 @@
 
     let myBal = 0, drawn = [], markedCells = [12], currentBet = 0, myBoard = [], hasBoard = false;
     let adminPhone = "";
+    let activeRoomAmt = 10; // Default
 
-    // 1. LIVE JACKPOT LISTENER (80% Calculation)
+    // --- 1. ROOM MANAGEMENT (Locking Logic) ---
+    function setRoom(amt) {
+        db.ref('settings/active_room').set(amt);
+        alert("አሁን ክፍት የሆነው ክፍል: " + amt + " ብር ነው");
+    }
+
+    db.ref('settings/active_room').on('value', (snap) => {
+        activeRoomAmt = snap.val() || 10;
+        const buttons = document.querySelectorAll('.bet-btn');
+
+        buttons.forEach(btn => {
+            const btnAmt = parseInt(btn.getAttribute('data-amt'));
+            if (btnAmt === activeRoomAmt) {
+                btn.classList.remove('btn-locked');
+                btn.style.opacity = "1";
+                btn.style.pointerEvents = "auto";
+                btn.style.background = "var(--gold)"; 
+                btn.innerHTML = btnAmt + " ETB <br><span style='font-size:10px;'>ክፍት ✅</span>";
+            } else {
+                btn.classList.add('btn-locked');
+                btn.style.opacity = "0.3";
+                btn.style.pointerEvents = "none"; 
+                btn.style.background = "#334155"; 
+                btn.innerHTML = btnAmt + " ETB <br><span style='font-size:10px;'>ቁልፍ 🔒</span>";
+            }
+        });
+    });
+
+    // --- 2. LIVE JACKPOT LISTENER ---
     db.ref('reserved_boards').on('value', snapshot => {
         let total = 0;
         snapshot.forEach(child => { total += Number(child.val().betAmount || 0); });
@@ -210,7 +253,7 @@
         document.getElementById('jackpot-display').innerText = jackpot.toFixed(2) + " ETB";
     });
 
-    // 2. SERVER TIMER LISTENER (ይህ ነው ታይምሩን የሚያሰራው)
+    // --- 3. SERVER TIMER LISTENER ---
     db.ref('game/timer').on('value', s => {
         const t = s.val();
         const hint = document.getElementById('live-hint');
@@ -227,7 +270,7 @@
         }
     });
 
-    // 3. ONLINE STATUS & HEARTBEAT
+    // --- 4. ONLINE STATUS ---
     const onlineRef = db.ref('online_players/' + user.id);
     onlineRef.set(Date.now());
     setInterval(() => onlineRef.set(Date.now()), 5000);
@@ -240,13 +283,13 @@
         document.getElementById('player-count').innerText = count;
     });
 
-    // 4. BALANCE LISTENER
+    // --- 5. BALANCE ---
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
     });
 
-    // 5. DRAWN NUMBERS LISTENER (ከሰርቨሩ የሚመጣ)
+    // --- 6. DRAWN NUMBERS ---
     db.ref('game/drawn').on('value', s => {
         drawn = s.val() || [];
         document.getElementById('balls-out-count').innerText = drawn.length;
@@ -266,7 +309,7 @@
         }
     });
 
-    // 6. WINNER LISTENER (አሸናፊ ሲኖር)
+    // --- 7. WINNER LISTENER ---
     db.ref('game/winner').on('value', s => {
         const w = s.val();
         if (w) {
@@ -281,47 +324,63 @@
         }
     });
 
-    // 7. GAME STATUS (AUTO-RESET)
+    // --- 8. GAME STATUS ---
     db.ref('game/status').on('value', s => {
         const status = s.val();
         if(status === 'idle') {
             hasBoard = false;
-            // ጌሙ ሲያልቅ ወደ ዋናው ገጽ ይመልሳል
             if(document.getElementById('game-page').classList.contains('active')) {
                 showP('home-page');
             }
         }
     });
 
-    // 8. BUY BOARD FUNCTION (ታይምሩን ማስነሻ)
+    // --- 9. BUY BOARD ---
     function buyBoard(id) {
-        db.ref('game/status').once('value', sn => {
-            if(sn.val() === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
+        db.ref('game').once('value', gameSnap => { 
+            const gameData = gameSnap.val() || {};
+            if(gameData.status === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
             
             db.ref('users/'+user.id+'/bal').transaction(current => {
                 if (current >= currentBet) return current - currentBet;
                 return undefined;
             }, (error, committed) => {
                 if (committed) {
+                    // Generate Board
+                    markedCells = [12]; 
+                    let nums = [];
+                    while(nums.length < 24){ 
+                        let r = Math.floor(Math.random()*75)+1; 
+                        if(!nums.includes(r)) nums.push(r); 
+                    }
+                    myBoard = [];
+                    for(let i=0; i<25; i++) { myBoard.push(i === 12 ? "FREE" : nums.pop()); }
+
+                    // Save for restore
+                    const restoreData = {
+                        board: myBoard,
+                        marked: markedCells,
+                        gameId: gameData.activeGameId, 
+                        betAmount: currentBet
+                    };
+                    
+                    db.ref('player_boards/' + user.id).set(restoreData);
                     db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
                     addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
-                    
-                    // 🔴 ወሳኝ፡ ሰርቨሩ ታይምር እንዲጀምር ሁኔታውን መቀየር
-                    if(sn.val() !== 'waiting' && sn.val() !== 'active') {
+
+                    if(gameData.status !== 'waiting' && gameData.status !== 'active') {
                         db.ref('game/status').set('waiting');
                     }
-                    
+
                     hasBoard = true; 
-                    startBingo(); 
+                    renderBingoUI();
                     showP('game-page');
-                } else {
-                    alert("በቂ ባላንስ የለም!");
-                }
+                } else alert("በቂ ባላንስ የለም!");
             });
         });
     }
 
-    // 9. BINGO CHECK (ለሰርቨር ማሳወቅ ብቻ)
+    // --- 10. BINGO CLAIM ---
     function checkBingoAndClaim() {
         const lines = [
             [0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],
@@ -331,7 +390,6 @@
 
         if(lines.some(l => l.every(idx => markedCells.includes(idx)))) {
             db.ref('game/winner').transaction(current => {
-                // ሌላ ሰው ካልቀደመ ብቻ ላክ
                 if (!current) return { name: user.first_name, id: user.id, processed: false };
                 return undefined;
             });
@@ -340,22 +398,7 @@
         }
     }
 
-    // 10. HELPER FUNCTIONS
-    function startBingo() {
-        markedCells = [12]; 
-        let nums = [];
-        while(nums.length < 24){ 
-            let r = Math.floor(Math.random()*75)+1; 
-            if(!nums.includes(r)) nums.push(r); 
-        }
-        myBoard = [];
-        for(let i=0; i<25; i++) {
-            myBoard.push(i === 12 ? "FREE" : nums.pop());
-        }
-        db.ref('player_boards/' + user.id).set({ board: myBoard, marked: markedCells });
-        renderBingoUI();
-    }
-
+    // --- 11. UI & HELPERS ---
     function renderBingoUI() {
         const grid = document.getElementById('bingo-grid');
         grid.innerHTML = "";
@@ -398,6 +441,7 @@
     }
 
     function checkBet(amt) {
+        if(amt !== activeRoomAmt) return alert("ይህ ክፍል ዝግ ነው!");
         if(myBal < amt) return alert("በቂ ባላንስ የለም!");
         currentBet = amt;
         showP('reserve-page');
@@ -410,7 +454,7 @@
         if(id==='history-page') loadHistory();
     }
 
-    // Admin & Utility
+    // --- 12. ADMIN UTILS ---
     db.ref('settings/admin_phone').on('value', s => {
         adminPhone = s.val() || "09...";
         document.getElementById('display-adm-phone').innerText = adminPhone;
@@ -441,14 +485,14 @@
         alert("ተልኳል!");
     }
 
+    // --- 13. FINANCE & HISTORY ---
     function addHistory(uid, type, amt, mode) {
         const timestamp = Date.now();
         db.ref('history/' + uid).push({
             type: type, amt: amt, mode: mode, 
             date: new Date().toLocaleString('am-ET'), ts: timestamp
         });
-        // Auto clean old history
-        const cutoff = Date.now() - 259200000;
+        const cutoff = Date.now() - 259200000; // 3 Days
         db.ref('history/' + uid).orderByChild('ts').endAt(cutoff).once('value', s => {
             s.forEach(c => c.ref.remove());
         });
@@ -531,10 +575,19 @@
     }
 
     function resetGame() { 
-        db.ref('game').set({drawn:[], timer:-1, winner:null, status:'idle', jackpot:0}); 
+        // Generates new game ID
+        db.ref('game').set({
+            drawn:[], 
+            timer:-1, 
+            winner:null, 
+            status:'idle', 
+            jackpot:0, 
+            activeGameId: Date.now() 
+        }); 
         db.ref('reserved_boards').remove(); 
     }
 
+    // --- 14. ADMIN PANEL POPULATION ---
     if(user.id == ADMIN_ID) {
         db.ref('users').on('value', s => {
             const monitor = document.getElementById('admin-user-monitor'); monitor.innerHTML = "";
@@ -558,7 +611,7 @@
         });
     }
 
-    // Initialize
+    // --- 15. INITIALIZATION & RESTORE ---
     setTimeout(() => { 
         document.getElementById('splash').style.display='none'; 
         document.getElementById('main-ui').style.display='block'; 
@@ -567,14 +620,17 @@
         db.ref('player_boards/' + user.id).once('value', snapshot => {
             const saved = snapshot.val();
             if(saved) {
-                db.ref('game/status').once('value', statusSnap => {
-                    if(statusSnap.val() === 'active' || statusSnap.val() === 'waiting') {
+                db.ref('game').once('value', gameSnap => {
+                    const g = gameSnap.val() || {};
+                    // ጨዋታው ካልተጀመረ ወይም እየተካሄደ ከሆነ እና የካርቴላው ID ካልተለወጠ ብቻ ይመልሰው
+                    if((g.status === 'active' || g.status === 'waiting') && saved.gameId === g.activeGameId) {
                         myBoard = saved.board;
                         markedCells = saved.marked || [12];
                         hasBoard = true;
                         renderBingoUI();
                         showP('game-page');
                     } else {
+                        // ጨዋታው አልፎ ከሆነ የቆየውን ዳታ ያጠፋል
                         db.ref('player_boards/' + user.id).remove();
                     }
                 });
