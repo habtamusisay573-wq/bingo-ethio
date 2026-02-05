@@ -255,20 +255,30 @@
 
     // --- 3. SERVER TIMER LISTENER ---
     db.ref('game/timer').on('value', s => {
-        const t = s.val();
-        const hint = document.getElementById('live-hint');
-        if (t > 0) {
-            hint.innerHTML = `<span style="color:#ef4444;">⏳ ${t}</span>`;
-            document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
-        } else if (t === 0) {
-            hint.innerHTML = "🚀 ተጀመረ!";
-            document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል";
-            if(hasBoard) showP('game-page');
-        } else {
-            hint.innerHTML = "";
-            document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
+    const t = s.val();
+    const hint = document.getElementById('live-hint');
+    const waitTimer = document.getElementById('wait-timer'); // በግዢ ገጽ ላይ ያለው ቲመር
+
+    if (t > 0) {
+        if(hint) hint.innerHTML = `<span style="color:#ef4444;">⏳ ${t}</span>`;
+        // ተጫዋቹ ገዝቶ በቆይታ ገጽ ላይ ከሆነ ሰከንዱን እዛው ያሳየዋል
+        if(waitTimer) waitTimer.innerText = t; 
+        
+        document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
+    } else if (t === 0) {
+        if(hint) hint.innerHTML = "🚀 ተጀመረ!";
+        document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል";
+        
+        // ቲመሩ 0 ሲል ካርቴላ የገዛ ሰው ብቻ ወዲያውኑ ወደ ጨዋታው ገጽ ይገባል
+        if(hasBoard) {
+            showP('game-page');
         }
-    });
+    } else {
+        if(hint) hint.innerHTML = "";
+        document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
+    }
+});
+
 
     // --- 4. ONLINE STATUS ---
     const onlineRef = db.ref('online_players/' + user.id);
@@ -386,24 +396,21 @@
 
 
     // --- 9. BUY BOARD ---
-    let isBuying = false; // ብር ደርቦ እንዳይቆርጥ መቆለፊያ
+    let isBuying = false; 
 
 function buyBoard(id) {
-    // 1. ቦርድ አንዴ ብቻ እንዲገዛ፣ ግዢ ላይ ከሆነ ወይም ገዝቶ ከሆነ ወዲያውኑ አቁም
     if (isBuying || (typeof hasBoard !== 'undefined' && hasBoard)) return;
 
-    // 2. ግዢ መጀመሩን መቆለፍ እና አዝራሮችን ለጊዜው መዝጋት (Visual Feedback)
     isBuying = true;
     const boardListUI = document.getElementById('board-list');
     if(boardListUI) {
-        boardListUI.style.pointerEvents = 'none'; // ንክኪ መከልከል
-        boardListUI.style.opacity = '0.5';       // ለተጫዋቹ መቆለፉን ማሳየት
+        boardListUI.style.pointerEvents = 'none';
+        boardListUI.style.opacity = '0.5';
     }
 
     db.ref('game').once('value', gameSnap => { 
         const gameData = gameSnap.val() || {};
         
-        // ጨዋታው ተጀምሮ ከሆነ አዲስ ቦርድ አይፈቅድም
         if(gameData.status === 'active') {
             alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
             resetPurchaseUI();
@@ -415,7 +422,7 @@ function buyBoard(id) {
             return undefined;
         }, (error, committed) => {
             if (committed) {
-                // Generate Board (ምንም አልተቀነሰም - ያንተ ኮድ)
+                // የካርቴላ ቁጥሮች ማመንጨት (ያልተቀነሰ)
                 markedCells = [12]; 
                 let nums = [];
                 while(nums.length < 24){ 
@@ -425,21 +432,19 @@ function buyBoard(id) {
                 myBoard = [];
                 for(let i=0; i<25; i++) { myBoard.push(i === 12 ? "FREE" : nums.pop()); }
 
-                // --- 2. አዲስ ጨዋታ ሲጀመር ID እንዲቀየር ማድረግ (ለ Restore አስፈላጊ ነው) ---
                 let currentGameId = gameData.activeGameId || Date.now();
                 
                 if(gameData.status !== 'waiting' && gameData.status !== 'active') {
-                    currentGameId = Date.now(); // አዲስ የጨዋታ መለያ
+                    currentGameId = Date.now();
                     db.ref('game').update({
                         status: 'waiting',
                         activeGameId: currentGameId,
                         drawn: [],
                         winner: null,
-                        timer: 30 // ለሰርቨሩ 30 ሰከንድ መነሻ
+                        timer: 30 
                     });
                 }
 
-                // --- የመረጃ ማዳን ስራ ---
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
@@ -453,20 +458,27 @@ function buyBoard(id) {
 
                 hasBoard = true; 
                 renderBingoUI();
-                showP('game-page');
-                
-                // ግዢው በተሳካ ሁኔታ ተጠናቋል (አዝራሩ እንደተቆለፈ ይቆያል ወደ ጨዋታ ስለሚሄድ)
-                isBuying = false; 
+                isBuying = false;
+
+                // --- ⏱️ አዲስ ማሻሻያ፡ ቲመሩን በካርቴላ መምረጫው ገጽ ላይ ማሳያ ---
+                if(boardListUI) {
+                    boardListUI.innerHTML = `
+                        <div style="grid-column: span 4; text-align: center; padding: 25px; background: rgba(34, 197, 94, 0.15); border-radius: 15px; border: 2px solid #22c55e; margin: 10px;">
+                            <h3 style="color: #22c55e; margin: 0; font-size: 1.2rem;">ካርቴላ #${id} ተይዟል! ✅</h3>
+                            <p style="margin: 10px 0 5px 0; opacity: 0.8; font-size: 13px;">ጨዋታው ለመጀመር የቀረው ጊዜ፡</p>
+                            <div id="wait-timer" style="font-size: 3.5rem; font-weight: 900; color: #facc15; text-shadow: 0 0 15px rgba(250,204,21,0.4);">--</div>
+                            <div style="margin-top: 10px; font-size: 11px; color: #22c55e; letter-spacing: 1px;">እባክዎ ገጹን አይዝጉ...</div>
+                        </div>`;
+                }
 
             } else {
                 alert("በቂ ባላንስ የለም!");
-                resetPurchaseUI(); // ባላንስ ከሌለ ተመልሶ እንዲመርጥ መክፈት
+                resetPurchaseUI();
             }
         });
     });
 }
 
-// አዝራሮችን መልሶ መክፈቻ ተግባር (ለስህተት ጊዜ)
 function resetPurchaseUI() {
     isBuying = false;
     const boardListUI = document.getElementById('board-list');
