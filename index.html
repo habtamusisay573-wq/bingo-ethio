@@ -360,7 +360,7 @@
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
-                    gameId: gameData.activeGameId || Date.now().toString(), 
+                    gameId: gameData.activeGameId, 
                     betAmount: currentBet
                 };
                 
@@ -368,15 +368,11 @@
                 db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
                 addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
 
-                // --- እዚህ ጋር ነው ማስተካከያው ---
-                // status 'idle' ከሆነ ወይም ገና ከሆነ ወደ 'waiting' በመቀየር ቲመሩን ያስጀምረዋል
-                if (gameData.status === 'idle' || !gameData.status || gameData.status === 'null') {
-                    db.ref('game').update({
-                        status: 'waiting',
-                        timer: 30 // ቲመሩ 30 ብሎ እንዲነሳ ዳታቤዙን ያሳውቀዋል
-                    });
+                // --- ስታተስ ብቻ እንዲቀይር የተደረገበት ቦታ ---
+                if(gameData.status !== 'waiting' && gameData.status !== 'active') {
+                    db.ref('game/status').set('waiting');
                 }
-                // -----------------------------
+                // ------------------------------------------
 
                 hasBoard = true; 
                 renderBingoUI();
