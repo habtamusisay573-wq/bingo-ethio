@@ -161,8 +161,6 @@ const Game = {
 
   async forceReset() {
     this.stopAll();
-    // 🔓 አሸናፊውን የሚቆልፈውን lock እዚህ ጋር እናጠፋዋለን (ለቀጣይ ዙር)
-    await db.ref('game/winner_lock').remove(); 
     await db.ref('reserved_boards').remove();
     await db.ref('game').set({
       drawn: [],
