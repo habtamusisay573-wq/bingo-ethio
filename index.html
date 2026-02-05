@@ -337,11 +337,13 @@
 
     // --- 9. BUY BOARD ---
     function buyBoard(id) {
-    // ቦርድ አንዴ ብቻ እንዲገዛ እና ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ
+    // 1. ቦርድ አንዴ ብቻ እንዲገዛ እና ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ
     if (typeof hasBoard !== 'undefined' && hasBoard) return;
 
     db.ref('game').once('value', gameSnap => { 
         const gameData = gameSnap.val() || {};
+        
+        // ጨዋታው ተጀምሮ ከሆነ አዲስ ቦርድ አይፈቅድም
         if(gameData.status === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
         
         db.ref('users/'+user.id+'/bal').transaction(current => {
@@ -359,22 +361,32 @@
                 myBoard = [];
                 for(let i=0; i<25; i++) { myBoard.push(i === 12 ? "FREE" : nums.pop()); }
 
-                // Save for restore (ምንም አልተቀነሰም)
+                // --- 2. አዲስ ጨዋታ ሲጀመር ID እንዲቀየር ማድረግ (ለ Restore አስፈላጊ ነው) ---
+                let currentGameId = gameData.activeGameId || Date.now();
+                
+                // የመጀመሪያው ተጨዋች ከሆነ ጨዋታውን ያነሳሳዋል (Trigger)
+                if(gameData.status !== 'waiting' && gameData.status !== 'active') {
+                    currentGameId = Date.now(); // አዲስ የጨዋታ መለያ
+                    db.ref('game').update({
+                        status: 'waiting',
+                        activeGameId: currentGameId,
+                        drawn: [],
+                        winner: null,
+                        timer: 30 // ለሰርቨሩ 30 ሰከንድ መነሻ
+                    });
+                }
+
+                // Save for restore (ምንም አልተቀነሰም - በረከቱ ይሄ ነው)
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
-                    gameId: gameData.activeGameId, 
+                    gameId: currentGameId, 
                     betAmount: currentBet
                 };
                 
                 db.ref('player_boards/' + user.id).set(restoreData);
                 db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
                 addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
-
-                // ስታተስ ብቻ በመቀየር ለሰርቨር (index.js) ታይመር እንዲጀምር ያሳውቃል
-                if(gameData.status !== 'waiting' && gameData.status !== 'active') {
-                    db.ref('game/status').set('waiting');
-                }
 
                 hasBoard = true; 
                 renderBingoUI();
