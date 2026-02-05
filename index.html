@@ -386,22 +386,36 @@
 
 
     // --- 9. BUY BOARD ---
-    function buyBoard(id) {
-    // 1. ቦርድ አንዴ ብቻ እንዲገዛ እና ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ
-    if (typeof hasBoard !== 'undefined' && hasBoard) return;
+    let isBuying = false; // ብር ደርቦ እንዳይቆርጥ መቆለፊያ
+
+function buyBoard(id) {
+    // 1. ቦርድ አንዴ ብቻ እንዲገዛ፣ ግዢ ላይ ከሆነ ወይም ገዝቶ ከሆነ ወዲያውኑ አቁም
+    if (isBuying || (typeof hasBoard !== 'undefined' && hasBoard)) return;
+
+    // 2. ግዢ መጀመሩን መቆለፍ እና አዝራሮችን ለጊዜው መዝጋት (Visual Feedback)
+    isBuying = true;
+    const boardListUI = document.getElementById('board-list');
+    if(boardListUI) {
+        boardListUI.style.pointerEvents = 'none'; // ንክኪ መከልከል
+        boardListUI.style.opacity = '0.5';       // ለተጫዋቹ መቆለፉን ማሳየት
+    }
 
     db.ref('game').once('value', gameSnap => { 
         const gameData = gameSnap.val() || {};
         
         // ጨዋታው ተጀምሮ ከሆነ አዲስ ቦርድ አይፈቅድም
-        if(gameData.status === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
+        if(gameData.status === 'active') {
+            alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
+            resetPurchaseUI();
+            return;
+        }
         
         db.ref('users/'+user.id+'/bal').transaction(current => {
             if (current >= currentBet) return current - currentBet;
             return undefined;
         }, (error, committed) => {
             if (committed) {
-                // Generate Board (ምንም አልተቀነሰም)
+                // Generate Board (ምንም አልተቀነሰም - ያንተ ኮድ)
                 markedCells = [12]; 
                 let nums = [];
                 while(nums.length < 24){ 
@@ -414,7 +428,6 @@
                 // --- 2. አዲስ ጨዋታ ሲጀመር ID እንዲቀየር ማድረግ (ለ Restore አስፈላጊ ነው) ---
                 let currentGameId = gameData.activeGameId || Date.now();
                 
-                // የመጀመሪያው ተጨዋች ከሆነ ጨዋታውን ያነሳሳዋል (Trigger)
                 if(gameData.status !== 'waiting' && gameData.status !== 'active') {
                     currentGameId = Date.now(); // አዲስ የጨዋታ መለያ
                     db.ref('game').update({
@@ -426,7 +439,7 @@
                     });
                 }
 
-                // Save for restore (ምንም አልተቀነሰም - በረከቱ ይሄ ነው)
+                // --- የመረጃ ማዳን ስራ ---
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
@@ -441,10 +454,28 @@
                 hasBoard = true; 
                 renderBingoUI();
                 showP('game-page');
-            } else alert("በቂ ባላንስ የለም!");
+                
+                // ግዢው በተሳካ ሁኔታ ተጠናቋል (አዝራሩ እንደተቆለፈ ይቆያል ወደ ጨዋታ ስለሚሄድ)
+                isBuying = false; 
+
+            } else {
+                alert("በቂ ባላንስ የለም!");
+                resetPurchaseUI(); // ባላንስ ከሌለ ተመልሶ እንዲመርጥ መክፈት
+            }
         });
     });
 }
+
+// አዝራሮችን መልሶ መክፈቻ ተግባር (ለስህተት ጊዜ)
+function resetPurchaseUI() {
+    isBuying = false;
+    const boardListUI = document.getElementById('board-list');
+    if(boardListUI) {
+        boardListUI.style.pointerEvents = 'auto';
+        boardListUI.style.opacity = '1';
+    }
+}
+
 
 
     // --- 10. BINGO CLAIM ---
