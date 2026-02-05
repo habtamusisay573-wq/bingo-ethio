@@ -337,6 +337,9 @@
 
     // --- 9. BUY BOARD ---
     function buyBoard(id) {
+    // ቦርድ አንዴ ብቻ እንዲገዛ እና ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ
+    if (typeof hasBoard !== 'undefined' && hasBoard) return;
+
     db.ref('game').once('value', gameSnap => { 
         const gameData = gameSnap.val() || {};
         if(gameData.status === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
@@ -346,7 +349,7 @@
             return undefined;
         }, (error, committed) => {
             if (committed) {
-                // Generate Board
+                // Generate Board (ምንም አልተቀነሰም)
                 markedCells = [12]; 
                 let nums = [];
                 while(nums.length < 24){ 
@@ -356,7 +359,7 @@
                 myBoard = [];
                 for(let i=0; i<25; i++) { myBoard.push(i === 12 ? "FREE" : nums.pop()); }
 
-                // Save for restore
+                // Save for restore (ምንም አልተቀነሰም)
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
@@ -368,11 +371,10 @@
                 db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
                 addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
 
-                // --- ስታተስ ብቻ እንዲቀይር የተደረገበት ቦታ ---
+                // ስታተስ ብቻ በመቀየር ለሰርቨር (index.js) ታይመር እንዲጀምር ያሳውቃል
                 if(gameData.status !== 'waiting' && gameData.status !== 'active') {
                     db.ref('game/status').set('waiting');
                 }
-                // ------------------------------------------
 
                 hasBoard = true; 
                 renderBingoUI();
@@ -381,6 +383,7 @@
         });
     });
 }
+
 
     // --- 10. BINGO CLAIM ---
     function checkBingoAndClaim() {
