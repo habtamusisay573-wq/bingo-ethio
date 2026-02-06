@@ -354,22 +354,35 @@
     });
 
     // --- 9. BUY BOARD ---
-    function buyBoard(id) {
-    // 1. ቦርድ አንዴ ብቻ እንዲገዛ እና ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ
-    if (typeof hasBoard !== 'undefined' && hasBoard) return;
+    let isBuying = false; // ከፈንክሽኑ ውጭ መሆን አለበት
+
+function buyBoard(id) {
+    // 1. ቦርድ አንዴ ብቻ እንዲገዛ እና ግዢ ላይ ከሆነ እንዲቆም
+    if (isBuying || (typeof hasBoard !== 'undefined' && hasBoard)) return;
+
+    // ምልክት ማሳያ (ሸፈን ማድረጊያ)
+    isBuying = true;
+    const boardBtn = event.target; // የተጫነው በተን
+    const originalText = boardBtn.innerText;
+    boardBtn.innerText = "⏳..."; // ምልክት
+    boardBtn.style.opacity = "0.5";
 
     db.ref('game').once('value', gameSnap => { 
         const gameData = gameSnap.val() || {};
         
-        // ጨዋታው ተጀምሮ ከሆነ አዲስ ቦርድ አይፈቅድም
-        if(gameData.status === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
+        if(gameData.status === 'active') {
+            alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
+            isBuying = false;
+            boardBtn.innerText = originalText;
+            boardBtn.style.opacity = "1";
+            return;
+        }
         
         db.ref('users/'+user.id+'/bal').transaction(current => {
             if (current >= currentBet) return current - currentBet;
             return undefined;
         }, (error, committed) => {
             if (committed) {
-                // Generate Board (ምንም አልተቀነሰም)
                 markedCells = [12]; 
                 let nums = [];
                 while(nums.length < 24){ 
@@ -379,22 +392,19 @@
                 myBoard = [];
                 for(let i=0; i<25; i++) { myBoard.push(i === 12 ? "FREE" : nums.pop()); }
 
-                // --- 2. አዲስ ጨዋታ ሲጀመር ID እንዲቀየር ማድረግ (ለ Restore አስፈላጊ ነው) ---
                 let currentGameId = gameData.activeGameId || Date.now();
                 
-                // የመጀመሪያው ተጨዋች ከሆነ ጨዋታውን ያነሳሳዋል (Trigger)
                 if(gameData.status !== 'waiting' && gameData.status !== 'active') {
-                    currentGameId = Date.now(); // አዲስ የጨዋታ መለያ
+                    currentGameId = Date.now();
                     db.ref('game').update({
                         status: 'waiting',
                         activeGameId: currentGameId,
                         drawn: [],
                         winner: null,
-                        timer: 30 // ለሰርቨሩ 30 ሰከንድ መነሻ
+                        timer: 30
                     });
                 }
 
-                // Save for restore (ምንም አልተቀነሰም - በረከቱ ይሄ ነው)
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
@@ -402,17 +412,28 @@
                     betAmount: currentBet
                 };
                 
-                db.ref('player_boards/' + user.id).set(restoreData);
-                db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
-                addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
+                // ሁሉንም ዳታ በአንድ ጊዜ ሴቭ እናድርግ
+                const p1 = db.ref('player_boards/' + user.id).set(restoreData);
+                const p2 = db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
 
-                hasBoard = true; 
-                renderBingoUI();
-                showP('game-page');
-            } else alert("በቂ ባላንስ የለም!");
+                Promise.all([p1, p2]).then(() => {
+                    addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
+                    hasBoard = true; 
+                    isBuying = false; // ግዢው አለቀ
+                    renderBingoUI();
+                    showP('game-page');
+                });
+
+            } else {
+                alert("በቂ ባላንስ የለም!");
+                isBuying = false;
+                boardBtn.innerText = originalText;
+                boardBtn.style.opacity = "1";
+            }
         });
     });
 }
+
 
 
     // --- 10. BINGO CLAIM ---
