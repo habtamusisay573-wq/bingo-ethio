@@ -255,30 +255,20 @@
 
     // --- 3. SERVER TIMER LISTENER ---
     db.ref('game/timer').on('value', s => {
-    const t = s.val();
-    const hint = document.getElementById('live-hint');
-    const waitTimer = document.getElementById('wait-timer'); // በግዢ ገጽ ላይ ያለው ቲመር
-
-    if (t > 0) {
-        if(hint) hint.innerHTML = `<span style="color:#ef4444;">⏳ ${t}</span>`;
-        // ተጫዋቹ ገዝቶ በቆይታ ገጽ ላይ ከሆነ ሰከንዱን እዛው ያሳየዋል
-        if(waitTimer) waitTimer.innerText = t; 
-        
-        document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
-    } else if (t === 0) {
-        if(hint) hint.innerHTML = "🚀 ተጀመረ!";
-        document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል";
-        
-        // ቲመሩ 0 ሲል ካርቴላ የገዛ ሰው ብቻ ወዲያውኑ ወደ ጨዋታው ገጽ ይገባል
-        if(hasBoard) {
-            showP('game-page');
+        const t = s.val();
+        const hint = document.getElementById('live-hint');
+        if (t > 0) {
+            hint.innerHTML = `<span style="color:#ef4444;">⏳ ${t}</span>`;
+            document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
+        } else if (t === 0) {
+            hint.innerHTML = "🚀 ተጀመረ!";
+            document.getElementById('game-status-text').innerText = "ጨዋታው ተጀምሯል";
+            if(hasBoard) showP('game-page');
+        } else {
+            hint.innerHTML = "";
+            document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
         }
-    } else {
-        if(hint) hint.innerHTML = "";
-        document.getElementById('game-status-text').innerText = "መጠባበቂያ...";
-    }
-});
-
+    });
 
     // --- 4. ONLINE STATUS ---
     const onlineRef = db.ref('online_players/' + user.id);
@@ -353,76 +343,33 @@
 
 
     // --- 8. GAME STATUS ---
-    function renderBingoUI() {
-    const grid = document.getElementById('bingo-grid');
-    const bingoBtn = document.getElementById('bingo-btn');
-
-    // 1. ተጫዋቹ ቦርድ ከሌለው (ተመልካች ከሆነ) የሚታይ
-    if (!hasBoard) {
-        grid.innerHTML = `
-            <div style="grid-column: span 5; text-align: center; padding: 40px 10px; background: rgba(0,0,0,0.2); border-radius: 15px; border: 1px dashed rgba(250, 204, 21, 0.4);">
-                <div style="font-size: 2rem; margin-bottom: 10px;">👀</div>
-                <div style="color: #facc15; font-weight: bold; font-size: 1.1rem;">ቀጥታ ስርጭት</div>
-                <p style="font-size: 13px; opacity: 0.8; line-height: 1.5;">
-                    አሁን ጨዋታው ተጀምሯል። <br> 
-                    ይህ ጨዋታ ሲያልቅ ቀጣዩን ካርቴላ መግዛት ይችላሉ።
-                </p>
-                <div style="margin-top: 15px; font-size: 11px; color: #22c55e;">● ጨዋታውን እየተከታተሉ ነው...</div>
-            </div>`;
-        if(bingoBtn) bingoBtn.style.display = 'none'; // የቢንጎ መጫኛውን ደብቅ
-        return;
-    }
-
-    // 2. ተጫዋቹ ቦርድ ካለው (ተጫዋች ከሆነ) የሚታይ
-    if(bingoBtn) bingoBtn.style.display = 'block'; 
-    grid.innerHTML = "";
-    myBoard.forEach((v, i) => {
-        let c = document.createElement('div');
-        c.className = 'cell ' + (markedCells.includes(i) ? "marked" : "");
-        c.id = 'c-' + i;
-        c.innerText = v;
-        c.onclick = () => { 
-            if(drawn.includes(v) || v === "FREE") { 
-                if(!markedCells.includes(i)) {
-                    c.classList.add('marked');
-                    markedCells.push(i);
-                    db.ref('player_boards/' + user.id + '/marked').set(markedCells);
-                }
-            } 
-        };
-        grid.appendChild(c);
+    db.ref('game/status').on('value', s => {
+        const status = s.val();
+        if(status === 'idle') {
+            hasBoard = false;
+            if(document.getElementById('game-page').classList.contains('active')) {
+                showP('home-page');
+            }
+        }
     });
-}
-
 
     // --- 9. BUY BOARD ---
-    let isBuying = false; 
-
-function buyBoard(id) {
-    if (isBuying || (typeof hasBoard !== 'undefined' && hasBoard)) return;
-
-    isBuying = true;
-    const boardListUI = document.getElementById('board-list');
-    if(boardListUI) {
-        boardListUI.style.pointerEvents = 'none';
-        boardListUI.style.opacity = '0.5';
-    }
+    function buyBoard(id) {
+    // 1. ቦርድ አንዴ ብቻ እንዲገዛ እና ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ
+    if (typeof hasBoard !== 'undefined' && hasBoard) return;
 
     db.ref('game').once('value', gameSnap => { 
         const gameData = gameSnap.val() || {};
         
-        if(gameData.status === 'active') {
-            alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
-            resetPurchaseUI();
-            return;
-        }
+        // ጨዋታው ተጀምሮ ከሆነ አዲስ ቦርድ አይፈቅድም
+        if(gameData.status === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
         
         db.ref('users/'+user.id+'/bal').transaction(current => {
             if (current >= currentBet) return current - currentBet;
             return undefined;
         }, (error, committed) => {
             if (committed) {
-                // የካርቴላ ቁጥሮች ማመንጨት (ያልተቀነሰ)
+                // Generate Board (ምንም አልተቀነሰም)
                 markedCells = [12]; 
                 let nums = [];
                 while(nums.length < 24){ 
@@ -432,22 +379,22 @@ function buyBoard(id) {
                 myBoard = [];
                 for(let i=0; i<25; i++) { myBoard.push(i === 12 ? "FREE" : nums.pop()); }
 
-                // --- 🚀 የ Game ID ማስተካከያ (አዲስ ጨዋታ ከሆነ አዲስ ID ለመስጠት) ---
-                let currentGameId = gameData.activeGameId;
+                // --- 2. አዲስ ጨዋታ ሲጀመር ID እንዲቀየር ማድረግ (ለ Restore አስፈላጊ ነው) ---
+                let currentGameId = gameData.activeGameId || Date.now();
                 
+                // የመጀመሪያው ተጨዋች ከሆነ ጨዋታውን ያነሳሳዋል (Trigger)
                 if(gameData.status !== 'waiting' && gameData.status !== 'active') {
-                    currentGameId = Date.now();
+                    currentGameId = Date.now(); // አዲስ የጨዋታ መለያ
                     db.ref('game').update({
                         status: 'waiting',
                         activeGameId: currentGameId,
                         drawn: [],
                         winner: null,
-                        timer: 30 
+                        timer: 30 // ለሰርቨሩ 30 ሰከንድ መነሻ
                     });
-                } else {
-                    currentGameId = gameData.activeGameId || Date.now();
                 }
 
+                // Save for restore (ምንም አልተቀነሰም - በረከቱ ይሄ ነው)
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
@@ -455,54 +402,17 @@ function buyBoard(id) {
                     betAmount: currentBet
                 };
                 
-                // --- 🛡️ የድሮውን መረጃ መጀመሪያ ማጽዳት (Double Game ለመከላከል) ---
-                db.ref('player_boards/' + user.id).remove().then(() => {
-                    db.ref('player_boards/' + user.id).set(restoreData);
-                    db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
-                    addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
+                db.ref('player_boards/' + user.id).set(restoreData);
+                db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
+                addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
 
-                    hasBoard = true; 
-                    renderBingoUI();
-                    isBuying = false;
-
-                    // --- ⏱️ ቲመሩን በካርቴላ መምረጫው ገጽ ላይ ማሳያ ---
-                    if(boardListUI) {
-                        boardListUI.innerHTML = `
-                            <div style="grid-column: span 4; text-align: center; padding: 25px; background: rgba(34, 197, 94, 0.15); border-radius: 15px; border: 2px solid #22c55e; margin: 10px;">
-                                <h3 style="color: #22c55e; margin: 0; font-size: 1.2rem;">ካርቴላ #${id} ተይዟል! ✅</h3>
-                                <p style="margin: 10px 0 5px 0; opacity: 0.8; font-size: 13px;">ጨዋታው ለመጀመር የቀረው ጊዜ፡</p>
-                                <div id="wait-timer" style="font-size: 3.5rem; font-weight: 900; color: #facc15; text-shadow: 0 0 15px rgba(250,204,21,0.4);">--</div>
-                                <div style="margin-top: 10px; font-size: 11px; color: #22c55e; letter-spacing: 1px;">እባክዎ ገጹን አይዝጉ...</div>
-                            </div>`;
-                    }
-                });
-
-            } else {
-                alert("በቂ ባላንስ የለም!");
-                resetPurchaseUI();
-            }
+                hasBoard = true; 
+                renderBingoUI();
+                showP('game-page');
+            } else alert("በቂ ባላንስ የለም!");
         });
     });
 }
-
-function resetPurchaseUI() {
-    isBuying = false;
-    const boardListUI = document.getElementById('board-list');
-    if(boardListUI) {
-        boardListUI.style.pointerEvents = 'auto';
-        boardListUI.style.opacity = '1';
-    }
-}
-
-function resetPurchaseUI() {
-    isBuying = false;
-    const boardListUI = document.getElementById('board-list');
-    if(boardListUI) {
-        boardListUI.style.pointerEvents = 'auto';
-        boardListUI.style.opacity = '1';
-    }
-}
-
 
 
     // --- 10. BINGO CLAIM ---
@@ -534,7 +444,27 @@ function resetPurchaseUI() {
 
 
     // --- 11. UI & HELPERS ---
-    
+    function renderBingoUI() {
+        const grid = document.getElementById('bingo-grid');
+        grid.innerHTML = "";
+        myBoard.forEach((v, i) => {
+            let c = document.createElement('div');
+            c.className = 'cell ' + (markedCells.includes(i) ? "marked" : "");
+            c.id = 'c-' + i;
+            c.innerText = v;
+            c.onclick = () => { 
+                if(drawn.includes(v) || v === "FREE") { 
+                    if(!markedCells.includes(i)) {
+                        c.classList.add('marked');
+                        markedCells.push(i);
+                        db.ref('player_boards/' + user.id + '/marked').set(markedCells);
+                    }
+                } 
+            };
+            grid.appendChild(c);
+        });
+    }
+
     function loadBoards() {
         db.ref('reserved_boards').on('value', s => {
             const list = document.getElementById('board-list');
@@ -727,34 +657,29 @@ function resetPurchaseUI() {
     }
 
     // --- 15. INITIALIZATION & RESTORE ---
-        setTimeout(() => { 
+    setTimeout(() => { 
         document.getElementById('splash').style.display='none'; 
         document.getElementById('main-ui').style.display='block'; 
         
-        // Restore active game ወይም ተመልካች ሆኖ መግባት
+        // Restore active game
         db.ref('player_boards/' + user.id).once('value', snapshot => {
             const saved = snapshot.val();
-            db.ref('game').once('value', gameSnap => {
-                const g = gameSnap.val() || {};
-                
-                // 1. የገዛው ካርቴላ ካለና ጨዋታው ገና ካላለቀ ይመልሰው (Restore)
-                if(saved && (g.status === 'active' || g.status === 'waiting') && saved.gameId === g.activeGameId) {
-                    myBoard = saved.board;
-                    markedCells = saved.marked || [12];
-                    hasBoard = true;
-                    renderBingoUI();
-                    showP('game-page');
-                } 
-                // 2. ካርቴላ ባይኖረውም ጨዋታው ተጀምሮ ከሆነ ተመልካች ሆኖ እንዲገባ (Spectator)
-                else if (g.status === 'active' || g.status === 'waiting') {
-                    hasBoard = false; 
-                    renderBingoUI();
-                    showP('game-page');
-                } else {
-                    // ጨዋታው አልፎ ከሆነ ወይም ዝግጁ ካልሆነ የቆየውን ዳታ ያጠፋል
-                    db.ref('player_boards/' + user.id).remove();
-                }
-            });
+            if(saved) {
+                db.ref('game').once('value', gameSnap => {
+                    const g = gameSnap.val() || {};
+                    // ጨዋታው ካልተጀመረ ወይም እየተካሄደ ከሆነ እና የካርቴላው ID ካልተለወጠ ብቻ ይመልሰው
+                    if((g.status === 'active' || g.status === 'waiting') && saved.gameId === g.activeGameId) {
+                        myBoard = saved.board;
+                        markedCells = saved.marked || [12];
+                        hasBoard = true;
+                        renderBingoUI();
+                        showP('game-page');
+                    } else {
+                        // ጨዋታው አልፎ ከሆነ የቆየውን ዳታ ያጠፋል
+                        db.ref('player_boards/' + user.id).remove();
+                    }
+                });
+            }
         });
 
         db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
