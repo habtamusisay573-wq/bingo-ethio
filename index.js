@@ -36,56 +36,32 @@ const Game = {
   timer: null,
   drawer: null,
 
-  async startTimer(seconds) {
-    if (this.timer) return; // ቲመሩ አስቀድሞ እየሰራ ከሆነ በድጋሚ እንዳይጀምር
-
-    await db.ref('game').update({
-      status: 'waiting',
-      isTimerRunning: true,
-      timer: seconds,
-      drawn: []
-    });
-
-    console.log("⏳ የመጀመሪያው ተጫዋች ገብቷል - ቲመር ተጀምሯል...");
+  startTimer(seconds) {
+    this.stopAll();
+    db.ref('game/isTimerRunning').set(true);
 
     this.timer = setInterval(async () => {
       seconds--;
       await db.ref('game/timer').set(seconds);
 
       if (seconds <= 0) {
-        clearInterval(this.timer);
-        this.timer = null;
-
-        const boardsSnap = await db.ref('reserved_boards').get();
-        if (boardsSnap.exists()) {
-          await db.ref('game').update({
-            status: 'active',
-            isTimerRunning: false,
-            timer: 0,
-            lastDrawTime: Date.now()
-          });
-          this.startDrawing();
-        } else {
-          console.log("♻️ No boards bought. Resetting...");
-          this.forceReset();
-        }
+        this.stopAll();
+        await db.ref('game').update({
+          status: 'active',
+          isTimerRunning: false,
+          timer: 0
+        });
+        this.startDrawing();
       }
     }, 1000);
   },
 
   startDrawing() {
-    if (this.drawer) return;
-
     this.drawer = setInterval(async () => {
       const snap = await db.ref('game').get();
       const data = snap.val();
 
-      // ተጫዋች መኖሩን እና ጨዋታው መቀጠሉን ማረጋገጫ
-      const onlineSnap = await db.ref('online_players').get();
-      const onlineCount = onlineSnap.exists() ? Object.keys(onlineSnap.val()).length : 0;
-
-      if (onlineCount === 0 || !data || data.winner || data.status !== 'active') {
-        console.log("🛑 ተጫዋች ስለሌለ ወይም ጨዋታው ስላለቀ ቁጥር መጥራት ቆሟል");
+      if (!data || data.winner || data.status !== 'active') {
         return this.stopAll();
       }
 
@@ -101,9 +77,10 @@ const Game = {
 
       await db.ref('game').update({
         drawn,
-        lastDrawTime: Date.now()
+        lastDrawTime: Date.now() // 🔑 stalled game detection
       });
-    }, 3000); // ቁጥር መጥሪያ ፍጥነት (3 ሰከንድ)
+
+    }, 2000);
   },
 
   stopAll() {
@@ -113,27 +90,12 @@ const Game = {
     this.drawer = null;
   },
 
-  async forceReset() {
-    this.stopAll();
-    await db.ref('reserved_boards').remove();
-    await db.ref('game/winner_lock').remove();
-    await db.ref('game').set({
-      drawn: [],
-      status: 'idle',
-      winner: null,
-      timer: -1,
-      jackpot: 0,
-      isTimerRunning: false,
-      lastPlayerLeftAt: null,
-      lastDrawTime: null,
-      activeGameId: Date.now()
-    });
-    console.log("🧹 ጨዋታው ወደ መጀመሪያው ተመልሷል (Reset)");
-  },
 
+  // ===============================
   // AUTO RESET WATCHDOG (FIXED)
+  // ===============================
   checkAutoReset() {
-    const GRACE_TIME = 10000; // 10 ሰከንድ
+    const GRACE_TIME = 5000;
 
     setInterval(async () => {
       try {
@@ -141,15 +103,21 @@ const Game = {
         const game = gameSnap.val() || {};
 
         const playersSnap = await db.ref('online_players').get();
-        const onlineCount = playersSnap.exists() ? Object.keys(playersSnap.val()).length : 0;
+        const players = playersSnap.val() || {};
+        const onlineCount = Object.keys(players).length;
 
         const boardsSnap = await db.ref('reserved_boards').get();
-        const boardCount = boardsSnap.exists() ? Object.keys(boardsSnap.val()).length : 0;
+        const boards = boardsSnap.val() || {};
+        const boardCount = Object.keys(boards).length;
 
         const now = Date.now();
 
         // 1️⃣ waiting + no boards
-        if (game.status === 'waiting' && game.timer <= 0 && boardCount === 0) {
+        if (
+          game.status === 'waiting' &&
+          game.timer <= 0 &&
+          boardCount === 0
+        ) {
           console.log("♻️ Auto reset (waiting + no boards)");
           return this.forceReset();
         }
@@ -158,10 +126,12 @@ const Game = {
         if (game.status === 'active' && onlineCount === 0) {
           if (!game.lastPlayerLeftAt) {
             await db.ref('game/lastPlayerLeftAt').set(now);
+            console.log("⏳ All players left → grace started");
             return;
           }
+
           if (now - game.lastPlayerLeftAt >= GRACE_TIME) {
-            console.log("♻️ Auto reset (no players 10s)");
+            console.log("♻️ Auto reset (no players 5s)");
             return this.forceReset();
           }
           return;
@@ -170,10 +140,15 @@ const Game = {
         // 3️⃣ players came back
         if (onlineCount > 0 && game.lastPlayerLeftAt) {
           await db.ref('game/lastPlayerLeftAt').remove();
+          console.log("✅ Players back → cancel reset");
         }
 
         // 4️⃣ stalled game (drawer stopped)
-        if (game.status === 'active' && game.lastDrawTime && now - game.lastDrawTime > 20000) {
+        if (
+          game.status === 'active' &&
+          game.lastDrawTime &&
+          now - game.lastDrawTime > 15000
+        ) {
           console.log("♻️ Auto reset (stalled game)");
           return this.forceReset();
         }
@@ -181,7 +156,23 @@ const Game = {
       } catch (e) {
         console.error("AutoReset Error:", e);
       }
-    }, 5000);
+    }, 3000);
+  },
+
+  async forceReset() {
+    this.stopAll();
+    await db.ref('reserved_boards').remove();
+    await db.ref('game').set({
+      drawn: [],
+      status: 'idle',
+      winner: null,
+      timer: -1,
+      jackpot: 0,
+      isTimerRunning: false,
+      lastPlayerLeftAt: null,
+      lastDrawTime: null
+    });
+    console.log("🧹 Game Reset Done");
   }
 };
 
@@ -191,15 +182,8 @@ Game.checkAutoReset();
 // ===============================
 // 3. REALTIME LISTENERS
 // ===============================
-
-// የመጀመሪያው ሰው ቦርድ ሲገዛ ብቻ ቲመር እንዲጀምር የሚያደርግ
-db.ref('reserved_boards').on('value', async snap => {
-  const count = snap.numChildren();
-  const gameSnap = await db.ref('game').get();
-  const game = gameSnap.val() || {};
-
-  // ጨዋታው ዝግጁ (idle) ሆኖ ሳለ ቢያንስ 1 ሰው ካርቴላ ሲገዛ
-  if (count === 1 && (game.status === 'idle' || !game.status)) {
+db.ref('game/status').on('value', snap => {
+  if (snap.val() === 'waiting') {
     Game.startTimer(30);
   }
 });
@@ -250,7 +234,7 @@ db.ref('game/winner').on('value', async snap => {
   }
 
   await db.ref('game/winner/processed').set(true);
-  setTimeout(() => Game.forceReset(), 8000); // 8 ሰከንድ ቆይቶ Reset ያደርጋል
+  setTimeout(() => Game.forceReset(), 5000);
 });
 
 // ===============================
