@@ -354,30 +354,15 @@
     });
 
     // --- 9. BUY BOARD ---
-    // --- 9. BUY BOARD (LOCKED & FIXED) ---
-let isBuying = false; // ግዢው እስኪያልቅ ሌላ እንዳይነካ መከላከያ
-
-function buyBoard(id) {
-    // 1. ቦርድ አንዴ ብቻ እንዲገዛ፣ ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ እና ተደራራቢ ክሊክን ለመከላከል
-    if (isBuying || (typeof hasBoard !== 'undefined' && hasBoard)) return;
-
-    // ግዢ መጀመሩን Lock እናድርግ
-    isBuying = true;
-    
-    // UI ላይ ተጠቃሚው እንዳይነካው ምልክት መስጠት (Optional but good)
-    const boardListUI = document.getElementById('board-list');
-    if(boardListUI) boardListUI.style.pointerEvents = 'none';
+    function buyBoard(id) {
+    // 1. ቦርድ አንዴ ብቻ እንዲገዛ እና ብር ከአንድ ጊዜ በላይ እንዳይቆርጥ
+    if (typeof hasBoard !== 'undefined' && hasBoard) return;
 
     db.ref('game').once('value', gameSnap => { 
         const gameData = gameSnap.val() || {};
         
         // ጨዋታው ተጀምሮ ከሆነ አዲስ ቦርድ አይፈቅድም
-        if(gameData.status === 'active') {
-            alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
-            isBuying = false; // Lock ፍታ
-            if(boardListUI) boardListUI.style.pointerEvents = 'auto';
-            return;
-        }
+        if(gameData.status === 'active') return alert("ጨዋታው ተጀምሯል! ለሚቀጥለው ይጠብቁ።");
         
         db.ref('users/'+user.id+'/bal').transaction(current => {
             if (current >= currentBet) return current - currentBet;
@@ -409,7 +394,7 @@ function buyBoard(id) {
                     });
                 }
 
-                // Save for restore
+                // Save for restore (ምንም አልተቀነሰም - በረከቱ ይሄ ነው)
                 const restoreData = {
                     board: myBoard,
                     marked: markedCells,
@@ -417,27 +402,18 @@ function buyBoard(id) {
                     betAmount: currentBet
                 };
                 
-                // ዳታቤዝ ላይ መረጃውን ማስቀመጥ
-                const p1 = db.ref('player_boards/' + user.id).set(restoreData);
-                const p2 = db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
+                db.ref('player_boards/' + user.id).set(restoreData);
+                db.ref('reserved_boards/'+id).set({ userId: user.id, betAmount: currentBet });
+                addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
 
-                Promise.all([p1, p2]).then(() => {
-                    addHistory(user.id, "ካርቴላ " + id + " ተገዝቷል", currentBet, "MINUS");
-
-                    hasBoard = true; 
-                    isBuying = false; // ግዢው ተጠናቋል
-                    renderBingoUI();
-                    showP('game-page');
-                });
-
-            } else {
-                alert("በቂ ባላንስ የለም!");
-                isBuying = false; // ባላንስ ከሌለ Lock ፍታ
-                if(boardListUI) boardListUI.style.pointerEvents = 'auto';
-            }
+                hasBoard = true; 
+                renderBingoUI();
+                showP('game-page');
+            } else alert("በቂ ባላንስ የለም!");
         });
     });
 }
+
 
     // --- 10. BINGO CLAIM ---
     function checkBingoAndClaim() {
