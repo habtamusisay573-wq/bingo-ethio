@@ -80,7 +80,7 @@ const Game = {
         lastDrawTime: Date.now() // 🔑 stalled game detection
       });
 
-    }, 2000);
+    }, 3000);
   },
 
   stopAll() {
