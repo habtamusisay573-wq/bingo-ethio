@@ -705,23 +705,8 @@ function buyBoard(id) {
 
         db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
         
-        // Welcome Gift
-        db.ref('users/' + user.id).transaction(u => {
-            if (!u) u = {};
-            if (u.welcomeGiftGiven) return; 
-            u.bal = (u.bal || 0) + 20;
-            u.welcomeGiftGiven = true;
-            return u;
-        }, (err, committed) => {
-            if (committed) {
-                if (!sessionStorage.getItem("welcomeAlertShown")) {
-                    alert("🎉 እንኳን ደህና መጡ! 20 birr ተሰጥቶዎታል");
-                    sessionStorage.setItem("welcomeAlertShown", "1");
-                }
-                addHistory(user.id, "🎁 የመጀመሪያ ስጦታ", 20, "PLUS");
-            }
-        });
-    }, 2000);
+        
+        
 </script>
 </body>
 </html>
