@@ -678,17 +678,18 @@ function buyBoard(id) {
     }
 
     // --- 15. INITIALIZATION & RESTORE ---
+        // --- 15. INITIALIZATION & RESTORE ---
     setTimeout(() => { 
+        // ሎጎው ጠፍቶ ዋናው ገጽ እንዲመጣ
         document.getElementById('splash').style.display='none'; 
         document.getElementById('main-ui').style.display='block'; 
         
-        // Restore active game
+        // 1. የቆየ ጨዋታ ካለ መመለስ (Restore)
         db.ref('player_boards/' + user.id).once('value', snapshot => {
             const saved = snapshot.val();
             if(saved) {
                 db.ref('game').once('value', gameSnap => {
                     const g = gameSnap.val() || {};
-                    // ጨዋታው ካልተጀመረ ወይም እየተካሄደ ከሆነ እና የካርቴላው ID ካልተለወጠ ብቻ ይመልሰው
                     if((g.status === 'active' || g.status === 'waiting') && saved.gameId === g.activeGameId) {
                         myBoard = saved.board;
                         markedCells = saved.marked || [12];
@@ -696,39 +697,37 @@ function buyBoard(id) {
                         renderBingoUI();
                         showP('game-page');
                     } else {
-                        // ጨዋታው አልፎ ከሆነ የቆየውን ዳታ ያጠፋል
                         db.ref('player_boards/' + user.id).remove();
                     }
                 });
             }
         });
 
+        // 2. ተጫዋቹን መመዝገብ
         db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
         
-        
-    // Welcome Gift - ብር ሳይሰጥ ሰላምታ ብቻ
-    setTimeout(() => { 
+        // 3. Welcome ሰላምታ (ምንም ብር ሳይሰጥ)
         db.ref('users/' + user.id).transaction(u => {
             if (!u) u = {};
-            if (u.welcomeGiftGiven) return; // ቀደም ብሎ ሰላምታ ከተሰጠ ይለፈው
+            if (u.welcomeGiftGiven) return; 
             
-            // ብር አንሰጥም (0 ብር)
-            u.bal = (u.bal || 0) + 0; 
+            u.bal = (u.bal || 0) + 0; // ስጦታ 0 ብር
             u.welcomeGiftGiven = true;
-            u.hasDeposited = false; // ለወደፊቱ ዊዝድሮው ለመቆጣጠር
             return u;
         }, (err, committed) => {
             if (committed) {
                 if (!sessionStorage.getItem("welcomeAlertShown")) {
-                    // ብር ሳይጠቀስ የሚመጣ ሰላምታ
                     alert("🎉 እንኳን ደህና መጡ! መልካም የጨዋታ ጊዜ ይሁንልዎ።");
                     sessionStorage.setItem("welcomeAlertShown", "1");
                 }
-                // በታሪክ ማህደር ላይ ስጦታ ሳይሆን "ምዝገባ" ተብሎ ይመዘገባል
                 addHistory(user.id, "👤 መለያ ተፈጥሯል", 0, "PLUS");
             }
         });
-    }, 2000);
+    }, 2000); // 2 ሰከንድ ቆይቶ ሎጎው ይጠፋል
+</script>
+</body>
+</html>
+
 
         
 </script>
