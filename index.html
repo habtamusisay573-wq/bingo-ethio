@@ -705,7 +705,13 @@ function buyBoard(id) {
 
         db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
         
-        
+            if (committed) {
+        if (!sessionStorage.getItem("welcomeAlertShown")) {
+             alert("እንኳን ደህና መጡ! ጨዋታውን ለመጀመር እባክዎ ብር ያስገቡ። መልካም እድል!");
+             sessionStorage.setItem("welcomeAlertShown", "1");
+        }
+    }
+
         
 </script>
 </body>
