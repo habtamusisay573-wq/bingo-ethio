@@ -705,12 +705,30 @@ function buyBoard(id) {
 
         db.ref('users/' + user.id).update({ name: user.first_name, last_seen: Date.now() });
         
+        
+    // Welcome Gift - ብር ሳይሰጥ ሰላምታ ብቻ
+    setTimeout(() => { 
+        db.ref('users/' + user.id).transaction(u => {
+            if (!u) u = {};
+            if (u.welcomeGiftGiven) return; // ቀደም ብሎ ሰላምታ ከተሰጠ ይለፈው
+            
+            // ብር አንሰጥም (0 ብር)
+            u.bal = (u.bal || 0) + 0; 
+            u.welcomeGiftGiven = true;
+            u.hasDeposited = false; // ለወደፊቱ ዊዝድሮው ለመቆጣጠር
+            return u;
+        }, (err, committed) => {
             if (committed) {
-        if (!sessionStorage.getItem("welcomeAlertShown")) {
-             alert("እንኳን ደህና መጡ! ጨዋታውን ለመጀመር እባክዎ ብር ያስገቡ። መልካም እድል!");
-             sessionStorage.setItem("welcomeAlertShown", "1");
-        }
-    }
+                if (!sessionStorage.getItem("welcomeAlertShown")) {
+                    // ብር ሳይጠቀስ የሚመጣ ሰላምታ
+                    alert("🎉 እንኳን ደህና መጡ! መልካም የጨዋታ ጊዜ ይሁንልዎ።");
+                    sessionStorage.setItem("welcomeAlertShown", "1");
+                }
+                // በታሪክ ማህደር ላይ ስጦታ ሳይሆን "ምዝገባ" ተብሎ ይመዘገባል
+                addHistory(user.id, "👤 መለያ ተፈጥሯል", 0, "PLUS");
+            }
+        });
+    }, 2000);
 
         
 </script>
