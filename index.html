@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BINGO ቢንጎ 🇪🇹 🇬🇧</title>
+    <title>ESU BINGO ኢሱ ቢንጎ 🇪🇹 🇬🇧</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -13,13 +13,14 @@
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&family=Noto+Sans+Ethiopic:wght@400;700;900&display=swap');
         
         :root { 
-            --purple-dark: #090514;
-            --purple-panel: #160d2f;
-            --purple-card: #201343;
+            --purple-dark: #070311;
+            --purple-panel: #130a2a;
+            --purple-card: #1c0e3e;
             --gold: #fccd4d;
             --gold-gradient: linear-gradient(135deg, #ffe066 0%, #facc15 50%, #eab308 100%);
             --neon-pink: #ff2a85;
             --neon-green: #22c55e;
+            --neon-blue: #00d2ff;
             --text-light: #f8fafc;
             --font-primary: 'Poppins', 'Noto Sans Ethiopic', sans-serif;
         }
@@ -32,7 +33,7 @@
 
         body { 
             background: var(--purple-dark); 
-            background-image: radial-gradient(circle at top, #1e0b36, #090514); 
+            background-image: radial-gradient(circle at top, #1c0931, #070311); 
             color: var(--text-light); 
             margin: 0; 
             padding: 0; 
@@ -41,7 +42,7 @@
             min-height: 100vh;
         }
 
-        /* Splash Screen */
+        /* Video Splash Screen with Balls (2, 5, 7) */
         #splash { 
             position: fixed; 
             inset: 0; 
@@ -53,16 +54,73 @@
             align-items: center; 
             transition: opacity 0.5s ease-out;
         }
-        .logo-anim { 
-            font-size: 3.5rem; 
+        .logo-balls-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .logo-ball {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 900;
+            color: white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            position: relative;
+        }
+        .logo-ball::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            width: 15px;
+            height: 8px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 50%;
+            transform: rotate(-15deg);
+        }
+        .logo-ball.blue { background: radial-gradient(circle at 30% 30%, #00f2fe, #4facfe); }
+        .logo-ball.red { background: radial-gradient(circle at 30% 30%, #ff5e62, #ff9966); }
+        .logo-ball.green { background: radial-gradient(circle at 30% 30%, #00b09b, #96c93d); }
+        
+        .logo-text { 
+            font-size: 2.8rem; 
             font-weight: 900; 
             color: var(--gold);
-            text-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
-            animation: zoom 2s infinite; 
+            text-shadow: 0 0 20px rgba(250, 204, 21, 0.4);
+            letter-spacing: 2px;
+            margin: 0;
         }
-        @keyframes zoom { 
-            0%, 100% { transform: scale(1); } 
-            50% { transform: scale(1.05); } 
+        .splash-sub {
+            font-size: 14px;
+            color: #a78bfa;
+            letter-spacing: 1px;
+            margin-top: 5px;
+            margin-bottom: 25px;
+        }
+        .loader-bar {
+            width: 180px;
+            height: 5px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .loader-progress {
+            width: 0%;
+            height: 100%;
+            background: var(--gold-gradient);
+            border-radius: 10px;
+            animation: load 2s ease-in-out forwards;
+        }
+        @keyframes load {
+            0% { width: 0%; }
+            100% { width: 100%; }
         }
 
         /* Nav Header */
@@ -72,7 +130,7 @@
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            border-bottom: 2px solid rgba(250, 204, 21, 0.2); 
+            border-bottom: 2px solid rgba(250, 204, 21, 0.15); 
             position: sticky; 
             top: 0; 
             z-index: 100; 
@@ -80,7 +138,7 @@
 
         .header-btn {
             background: var(--purple-card);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.08);
             color: white;
             padding: 6px 14px;
             border-radius: 20px;
@@ -88,13 +146,16 @@
             font-weight: bold;
             cursor: pointer;
             transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .page { 
             display: none; 
             padding: 12px; 
             min-height: calc(100vh - 70px); 
-            animation: fadeIn 0.3s ease-out; 
+            animation: fadeIn 0.35s ease-out; 
         }
         .active { display: block; }
         @keyframes fadeIn { 
@@ -102,7 +163,7 @@
             to { opacity: 1; transform: translateY(0); } 
         }
 
-        /* Video Stats Widget Row */
+        /* Stats Widgets Block */
         .stats-container {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -112,9 +173,10 @@
         .stat-box {
             background: var(--purple-panel);
             border-radius: 12px;
-            padding: 8px;
+            padding: 10px 8px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
         .stat-title {
             font-size: 9px;
@@ -124,43 +186,41 @@
             letter-spacing: 0.5px;
         }
         .stat-val {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 900;
             color: white;
-            margin-top: 2px;
+            margin-top: 3px;
         }
 
         .timer-box {
-            background: var(--neon-pink);
-            border-radius: 12px;
-            padding: 10px;
+            background: rgba(255, 42, 133, 0.15);
+            border: 1px solid var(--neon-pink);
+            border-radius: 14px;
+            padding: 12px;
             text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
             color: white;
+            margin-bottom: 15px;
+            box-shadow: 0 0 15px rgba(255, 42, 133, 0.1);
         }
 
-        /* Main Multi-Card Grid Selector */
+        /* Dynamic Selector Card List Grid */
         .select-title {
             text-align: center;
             font-weight: 900;
             font-size: 1.1rem;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             margin: 10px 0;
-            text-transform: uppercase;
-            color: white;
+            color: var(--gold);
         }
         .selector-grid {
             display: grid;
             grid-template-columns: repeat(10, 1fr);
             gap: 6px;
-            max-height: 40vh;
+            max-height: 42vh;
             overflow-y: auto;
-            padding: 8px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 14px;
+            padding: 10px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 16px;
             border: 1px solid rgba(255,255,255,0.05);
         }
         .selector-cell {
@@ -179,17 +239,18 @@
         }
         .selector-cell.selected {
             background: var(--gold-gradient);
-            color: #1e1b4b;
-            box-shadow: 0 0 10px var(--gold);
+            color: #1e0b36;
+            box-shadow: 0 0 12px var(--gold);
             transform: scale(1.1);
+            border: none;
         }
 
-        /* Bottom Selected Cards Area */
+        /* Selected Purchased List Wrapper */
         .selected-list-wrapper {
             margin-top: 15px;
             background: var(--purple-panel);
             border-radius: 16px;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid rgba(255,255,255,0.05);
         }
         .cards-carousel {
@@ -201,18 +262,18 @@
         .mini-card {
             background: var(--purple-card);
             border-radius: 12px;
-            min-width: 110px;
-            max-width: 110px;
-            padding: 8px;
+            min-width: 115px;
+            max-width: 115px;
+            padding: 10px 8px;
             position: relative;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.08);
             text-align: center;
         }
         .mini-card-close {
             position: absolute;
             top: 4px;
             right: 4px;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             color: var(--neon-pink);
             border: none;
             border-radius: 50%;
@@ -225,23 +286,23 @@
         .mini-grid-preview {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 2px;
-            margin: 5px 0;
+            gap: 3px;
+            margin: 6px 0;
         }
         .mini-cell {
             aspect-ratio: 1;
-            background: rgba(255,255,255,0.05);
-            border-radius: 2px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 3px;
             font-size: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        /* Wallet Tabs */
+        /* Wallet Views */
         .wallet-balance-banner {
             text-align: center;
-            padding: 20px;
+            padding: 24px;
             background: var(--purple-panel);
             border-radius: 18px;
             margin-bottom: 15px;
@@ -283,79 +344,75 @@
         .tab-btn.active {
             background: var(--purple-card);
             color: white;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
         }
         .wallet-sub-tab { display: none; }
         .wallet-sub-tab.active { display: block; }
 
-        /* Game Page Layout (DERASH + BINGO CARDS) */
+        /* Game page double column architecture */
         .game-layout {
             display: grid;
-            grid-template-columns: 80px 1fr;
-            gap: 10px;
-            margin-top: 10px;
+            grid-template-columns: 85px 1fr;
+            gap: 12px;
+            margin-top: 12px;
         }
-        /* DERASH Left Panel */
         .derash-panel {
             background: var(--purple-panel);
-            border-radius: 14px;
-            padding: 6px;
+            border-radius: 16px;
+            padding: 8px 6px;
             border: 1px solid rgba(255,255,255,0.05);
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 70vh;
+            height: 72vh;
             overflow-y: auto;
         }
         .derash-title {
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 900;
             color: var(--gold);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
             text-align: center;
         }
         .derash-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 4px;
+            gap: 5px;
             width: 100%;
         }
         .derash-ball {
             aspect-ratio: 1;
             border-radius: 50%;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.04);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 9px;
             font-weight: bold;
             color: #a78bfa;
-            border: 1px solid rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.02);
         }
         .derash-ball.active {
             background: var(--gold-gradient);
-            color: #000;
-            box-shadow: 0 0 6px var(--gold);
+            color: #070311;
+            box-shadow: 0 0 8px var(--gold);
+            font-weight: 900;
         }
 
-        /* Right Play Area */
         .play-panel {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            height: 70vh;
+            gap: 12px;
+            height: 72vh;
             overflow-y: auto;
             padding-right: 2px;
         }
         .auto-toggle-container {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
             background: var(--purple-panel);
-            padding: 8px 12px;
+            padding: 10px 14px;
             border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.05);
         }
@@ -389,20 +446,20 @@
         input:checked + .slider { background-color: var(--neon-green); }
         input:checked + .slider:before { transform: translateX(22px); }
 
-        /* Game Card Widget */
+        /* Game Card structure */
         .active-game-card {
             background: var(--purple-panel);
             border-radius: 18px;
             padding: 12px;
             border: 1px solid rgba(255,255,255,0.05);
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .active-card-header {
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
             color: var(--gold);
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
         }
@@ -421,7 +478,7 @@
             align-items: center;
             justify-content: center;
             font-weight: 900;
-            font-size: 14px;
+            font-size: 15px;
             cursor: pointer;
             border: 1px solid rgba(255,255,255,0.05);
             transition: 0.15s;
@@ -436,11 +493,11 @@
             transform: scale(1.05);
         }
 
-        /* Interactive Standard Buttons */
+        /* Buttons styles */
         .btn { 
             background: var(--gold-gradient); 
             border: none; 
-            padding: 14px; 
+            padding: 15px; 
             border-radius: 12px; 
             font-weight: bold; 
             color: #1e0b36; 
@@ -450,17 +507,17 @@
             font-size: 13px; 
             text-transform: uppercase; 
             transition: 0.2s; 
-            box-shadow: 0 4px 10px rgba(250, 204, 21, 0.15);
+            box-shadow: 0 4px 12px rgba(250, 204, 21, 0.15);
         }
         .btn:active { transform: scale(0.98); }
         .btn-red { background: linear-gradient(135deg, #ff6b6b, var(--neon-pink)); color: white; box-shadow: none; }
         .btn-green { background: linear-gradient(135deg, #4ade80, var(--neon-green)); color: white; box-shadow: none; }
 
-        /* Custom Modal Dialog styles */
+        /* Custom alert dialogs */
         .custom-modal {
             position: fixed;
             inset: 0;
-            background: rgba(9, 5, 20, 0.9);
+            background: rgba(9, 5, 20, 0.92);
             backdrop-filter: blur(8px);
             z-index: 20000;
             display: none;
@@ -471,17 +528,16 @@
         .modal-content {
             background: var(--purple-panel);
             border: 2px solid var(--gold);
-            border-radius: 20px;
-            padding: 20px;
+            border-radius: 24px;
+            padding: 24px;
             max-width: 380px;
             width: 100%;
             text-align: center;
-            box-shadow: 0 0 25px rgba(250, 204, 21, 0.25);
+            box-shadow: 0 0 30px rgba(250, 204, 21, 0.2);
         }
-        .modal-title { font-size: 1.3rem; font-weight: 900; color: var(--gold); margin-bottom: 10px; }
-        .modal-text { font-size: 14px; opacity: 0.9; line-height: 1.5; margin-bottom: 15px; }
+        .modal-title { font-size: 1.4rem; font-weight: 900; color: var(--gold); margin-bottom: 12px; }
+        .modal-text { font-size: 14px; opacity: 0.9; line-height: 1.5; margin-bottom: 20px; }
 
-        /* Custom Toast Notification styles */
         #toast-container {
             position: fixed;
             top: 75px;
@@ -498,8 +554,8 @@
         .toast {
             background: var(--purple-panel);
             color: white;
-            padding: 10px 15px;
-            border-radius: 10px;
+            padding: 12px 16px;
+            border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             border-left: 4px solid var(--gold);
             font-size: 12px;
@@ -511,34 +567,79 @@
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.success { border-left-color: var(--neon-green); }
         .toast.error { border-left-color: var(--neon-pink); }
+
+        /* Video 3 Style Spectator Wait Panel */
+        .spectator-wait-container {
+            background: var(--purple-panel);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 18px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .wait-desc-banner {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #d8b4fe;
+            font-weight: bold;
+        }
+        .extra-banner-row {
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        .badge-info {
+            background: var(--purple-card);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-size: 11px;
+            font-weight: 900;
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
     </style>
 </head>
 <body>
 
 <div id="announcement-bar"></div>
 
-<!-- Splash Scren -->
+<!-- Custom Splash Screen Matching ESU BINGO video brand intro -->
 <div id="splash">
-    <div class="logo-anim">BINGO ቢንጎ</div>
-    <p style="opacity: 0.6; letter-spacing: 2px; font-weight: bold;" id="splash-sub">አዝናኝ እና አትራፊ! • FUN & PROFITABLE</p>
+    <div class="logo-balls-container">
+        <div class="logo-ball blue">2</div>
+        <div class="logo-ball red">5</div>
+        <div class="logo-ball green">7</div>
+    </div>
+    <h1 class="logo-text">ESU BINGO</h1>
+    <p class="splash-sub" id="splash-sub">Get ready to play!</p>
+    <div class="loader-bar">
+        <div class="loader-progress"></div>
+    </div>
 </div>
 
-<!-- Main UI Root Container -->
+<!-- Main Game UI -->
 <div id="main-ui" style="display:none;">
     
-    <!-- Navigation & Room Status Header -->
+    <!-- Top Header -->
     <div class="header">
         <button id="back-btn" class="header-btn" onclick="goBack()" style="display:none;" data-i18n="back">← Back</button>
         <div style="text-align: center; flex-grow: 1;">
-            <div id="room-title" style="font-weight: 900; color: var(--gold); font-size: 14px;">10.00 ETB Game</div>
+            <div id="room-title" style="font-weight: 900; color: var(--gold); font-size: 15px; letter-spacing: 0.5px;">20.00 ETB Game</div>
             <div id="game-sub-status" style="font-size: 9px; opacity: 0.6; letter-spacing: 1px;" data-i18n="waiting">WAITING</div>
         </div>
-        <button class="header-btn" onclick="toggleLanguage()" id="lang-switch-btn">🇬🇧 EN</button>
+        <div style="display: flex; gap: 8px;">
+            <button class="header-btn" onclick="toggleMute()" id="mute-btn">🔊 ON</button>
+            <button class="header-btn" onclick="toggleLanguage()" id="lang-switch-btn">🇬🇧 EN</button>
+        </div>
     </div>
 
-    <!-- MAIN HOME / SELECT CARDS PAGE -->
+    <!-- MAIN HOME / CARD SELECT PAGE -->
     <div id="home-page" class="page active">
-        <!-- Stats summary panel -->
+        <!-- Live Stats Container -->
         <div class="stats-container">
             <div class="stat-box" onclick="showP('wallet-page')">
                 <div class="stat-title" data-i18n="balance">BALANCE</div>
@@ -557,41 +658,41 @@
         <!-- Timer element widget -->
         <div class="timer-box" id="timer-box-widget">
             <div style="font-size: 10px; font-weight: bold; letter-spacing: 1px;" data-i18n="game_starts_in">GAME STARTS IN</div>
-            <div id="live-timer-text" style="font-size: 20px; font-weight: 900; margin-top: 2px;">--:--</div>
+            <div id="live-timer-text" style="font-size: 22px; font-weight: 900; margin-top: 3px;">--:--</div>
         </div>
 
         <button id="adm-gate" class="btn btn-red" style="display:none; margin-bottom: 12px;" onclick="showP('admin-page')">⚙️ DASHBOARD / ዳሽቦርድ</button>
 
         <div class="select-title" data-i18n="select_your_cards">Select Your Cards</div>
         
-        <!-- Multi-card picker selector grid -->
+        <!-- Grid for multi-card purchase selector (1 to 200) -->
         <div class="selector-grid" id="selector-grid-list"></div>
 
-        <!-- Carousel Area for selected cards -->
+        <!-- Selected cards carousel drawer -->
         <div class="selected-list-wrapper">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:6px;">
                 <span style="font-size:11px; font-weight:bold; color:#a78bfa;" data-i18n="selected_cards">Your Purchased Cards</span>
                 <span id="carousel-status-info" style="font-size:11px; font-weight:900; color:var(--gold);">0 / 100</span>
             </div>
             <div class="cards-carousel" id="active-purchased-carousel"></div>
         </div>
 
-        <!-- Standard Action Controllers -->
+        <!-- Wallet and selection controllers -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <button class="btn btn-green" onclick="showP('wallet-page')" data-i18n="wallet">➕ WALLET / ቦርሳ</button>
             <button class="btn btn-red" onclick="clearSelectedCards()" id="clear-btn" data-i18n="clear_cards">🗑️ CLEAR / አጥፋ</button>
         </div>
     </div>
 
-    <!-- IMMERSIVE ACTIVE BINGO GAME SCREEN -->
+    <!-- PLAYING GAME SCREEN -->
     <div id="game-page" class="page">
-        <!-- Top status strip bar -->
-        <div style="background:var(--purple-panel); border-radius:12px; padding:10px; display:flex; justify-content:space-between; align-items:center; border:1px solid rgba(255,255,255,0.05);">
-            <div style="font-size:10px;">
+        <!-- Top Status Bar -->
+        <div style="background:var(--purple-panel); border-radius:12px; padding:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid rgba(255,255,255,0.05);">
+            <div style="font-size:11px;">
                 <span data-i18n="players">PLAYERS</span>: <span id="game-players-count" style="font-weight:bold; color:var(--gold);">0</span> | 
                 <span data-i18n="stake">STAKE</span>: <span id="game-stake-value" style="font-weight:bold; color:var(--neon-green);">0 ETB</span>
             </div>
-            <div style="font-size:10px; text-align:right;">
+            <div style="font-size:11px; text-align:right;">
                 <span data-i18n="call">CALL</span>: <span id="balls-out-count" style="font-weight:bold; color:var(--gold);">0</span>/75
             </div>
         </div>
@@ -603,7 +704,7 @@
                 <div class="derash-grid" id="derash-grid-container"></div>
             </div>
 
-            <!-- Right hand side Bingo Cards list area -->
+            <!-- Right hand side Bingo playing boards & wait screens -->
             <div class="play-panel">
                 <div class="auto-toggle-container">
                     <span style="font-size:11px; font-weight:bold;" data-i18n="auto_daub">AUTO MARK</span>
@@ -613,16 +714,16 @@
                     </label>
                 </div>
 
-                <!-- Live Called ball preview block -->
-                <div style="display: flex; align-items: center; justify-content: space-between; background:var(--purple-panel); border-radius:14px; padding:10px; border:1px solid rgba(255,255,255,0.05);">
-                    <div id="current-ball">?</div>
-                    <div style="flex-grow:1; margin-left:10px;">
+                <!-- Live Called Ball Display Frame -->
+                <div style="display: flex; align-items: center; justify-content: space-between; background:var(--purple-panel); border-radius:14px; padding:12px; border:1px solid rgba(255,255,255,0.05);">
+                    <div id="current-ball" style="font-size:36px; font-weight:900; color:var(--gold); border:3px solid var(--gold); border-radius:50%; width:70px; height:70px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(250,204,21,0.2);">?</div>
+                    <div style="flex-grow:1; margin-left:14px;">
                         <div style="font-size:9px; color:#a78bfa; font-weight:bold;" data-i18n="called_history">CALLED HISTORY</div>
-                        <div id="ball-history" style="font-size:12px; color:var(--gold); font-weight:bold; margin-top:2px; height:20px; overflow:hidden;"></div>
+                        <div id="ball-history" style="font-size:12px; color:var(--gold); font-weight:bold; margin-top:3px; height:20px; overflow:hidden;"></div>
                     </div>
                 </div>
 
-                <!-- Dynamic container list for active playing boards -->
+                <!-- Dynamic game playing cards list or spectator waiting block -->
                 <div id="game-boards-render-list"></div>
             </div>
         </div>
@@ -632,7 +733,7 @@
     <div id="wallet-page" class="page">
         <div class="wallet-balance-banner">
             <div style="font-size:11px; color:#a78bfa; font-weight:bold;" data-i18n="current_balance">Current Balance</div>
-            <div id="wallet-balance-display" style="font-size: 2rem; font-weight: 900; color: var(--neon-green); margin-top:5px;">0.00 ETB</div>
+            <div id="wallet-balance-display" style="font-size: 2.2rem; font-weight: 900; color: var(--neon-green); margin-top:6px;">0.00 ETB</div>
         </div>
 
         <div class="wallet-stats-row">
@@ -646,28 +747,28 @@
             </div>
         </div>
 
-        <!-- Navigation Tabs inside Wallet -->
+        <!-- Navigation tabs in wallet -->
         <div class="tab-btn-group">
             <button class="tab-btn active" onclick="switchWalletTab('deposit-tab')" data-i18n="deposit">Deposit</button>
             <button class="tab-btn" onclick="switchWalletTab('withdraw-tab')" data-i18n="withdraw">Withdraw</button>
             <button class="tab-btn" onclick="switchWalletTab('history-tab')" data-i18n="history">History</button>
         </div>
 
-        <!-- Deposit View Segment -->
+        <!-- Deposit view section -->
         <div id="deposit-tab" class="wallet-sub-tab active">
-            <p style="font-size: 12px; opacity:0.8; line-height:1.5; margin-bottom:12px;" data-i18n="wallet_instructions">
+            <p style="font-size: 12px; opacity:0.8; line-height:1.6; margin-bottom:14px;" data-i18n="wallet_instructions">
                 Send via Telebirr, Safaricom M-Pesa, or CBE using the numbers below, then submit your amount and transaction ID.
             </p>
             <div style="background:rgba(255, 42, 133, 0.1); border:1px solid var(--neon-pink); border-radius:12px; padding:12px; text-align:center; margin-bottom:15px;">
                 <span id="display-adm-phone" style="font-weight:900; color:var(--neon-pink);">09...</span>
-                <button onclick="copyPhone()" style="background:var(--neon-pink); color:white; border:none; padding:4px 10px; border-radius:8px; cursor:pointer; font-size:10px; font-weight:bold; margin-left:8px;" data-i18n="copy">COPY</button>
+                <button onclick="copyPhone()" style="background:var(--neon-pink); color:white; border:none; padding:4px 12px; border-radius:8px; cursor:pointer; font-size:10px; font-weight:bold; margin-left:8px;" data-i18n="copy">COPY</button>
             </div>
             <input type="number" id="dep-amt" placeholder="Amount (min 20 ETB)">
             <input type="text" id="dep-trx" placeholder="Transaction ID (TID)">
             <button class="btn btn-green" onclick="reqFinance('DEP')" data-i18n="submit_dep">Submit Request</button>
         </div>
 
-        <!-- Withdraw View Segment -->
+        <!-- Withdraw view section -->
         <div id="withdraw-tab" class="wallet-sub-tab">
             <h4 style="margin:0 0 10px 0; font-size:14px;" data-i18n="wit_title">Withdraw Cash (Min 100 ETB)</h4>
             <input type="number" id="wit-amt" placeholder="Amount">
@@ -675,13 +776,13 @@
             <button class="btn btn-red" onclick="reqFinance('WIT')" data-i18n="submit_wit">Submit Cashout</button>
         </div>
 
-        <!-- Transactions history log View Segment -->
+        <!-- Transactions history logs view section -->
         <div id="history-tab" class="wallet-sub-tab">
-            <div id="hist-list" style="max-height: 40vh; overflow-y: auto;"></div>
+            <div id="hist-list" style="max-height: 42vh; overflow-y: auto;"></div>
         </div>
     </div>
 
-    <!-- ADMIN PANEL DASHBOARD -->
+    <!-- ADMIN DASHBOARD PANEL -->
     <div id="admin-page" class="page">
         <h4 style="border-bottom: 2px solid var(--gold); padding-bottom: 6px; margin-top:0;" data-i18n="adm_settings">የአስተዳዳሪ ማስተካከያ</h4>
         <div style="background: var(--purple-panel); padding: 14px; border-radius: 16px; margin-bottom: 15px; border:1px solid rgba(255,255,255,0.05);">
@@ -715,8 +816,8 @@
 </div>
 
 <!-- WIN POP-UP OVERLAY -->
-<div id="win-overlay" style="position:fixed; inset:0; background:rgba(9, 5, 20, 0.98); z-index:20000; display:none; flex-direction:column; justify-content:center; align-items:center;">
-    <h1 id="win-name" style="color: var(--gold); font-size: 2.5rem; text-align:center; line-height:1.3;">BINGO! 🏆</h1>
+<div id="win-overlay" style="position:fixed; inset:0; background:rgba(7, 3, 17, 0.98); z-index:20000; display:none; flex-direction:column; justify-content:center; align-items:center;">
+    <h1 id="win-name" style="color: var(--gold); font-size: 2.5rem; text-align:center; line-height:1.3; font-weight: 900;">BINGO! 🏆</h1>
 </div>
 
 <!-- Custom Dialog Container Modal -->
@@ -734,7 +835,6 @@
 <div id="toast-container"></div>
 
 <script>
-    // System Translations dictionary block
     const i18n = {
         am: {
             players: "ተጫዋቾች",
@@ -780,7 +880,10 @@
             deposited: "የገባው",
             withdrawn: "የወጣው",
             current_balance: "ያለዎት ባላንስ",
-            cannot_select_started: "ጨዋታው ተጀምሯል! አሁን መግዛት አይችሉም።"
+            cannot_select_started: "ጨዋታው ተጀምሯል! አሁን መግዛት አይችሉም።",
+            spectator_title: "የዚህ ዙር ጨዋታ ተጀምሯል። እባክዎ ይህ ዙር እስኪያልቅ ድረስ እዚህ ይጠብቁ።",
+            schedule_info: "ሁልጊዜ ማታ h2:30 እኩለ ሌሊት",
+            jackpot_info: "1000 ያህል ብር"
         },
         en: {
             players: "Players",
@@ -826,7 +929,10 @@
             deposited: "Deposited",
             withdrawn: "Withdrawn",
             current_balance: "Current Balance",
-            cannot_select_started: "Game is active! You cannot buy cards right now."
+            cannot_select_started: "Game is active! You cannot buy cards right now.",
+            spectator_title: "This round of game has already started. Please wait here until the next round starts.",
+            schedule_info: "Every night h2:30 Midnight",
+            jackpot_info: "Around 1000 Birr"
         }
     };
 
@@ -847,9 +953,112 @@
     let isBuying = false;
     let adminPhone = "";
     let autoDaubEnabled = true;
+    let isMuted = false;
     let activePageHistory = ['home-page'];
 
-    // UI Translation trigger
+    // --- Gemini Text To Speech System Integration ---
+    const apiKey = ""; // Runtime config overrides this
+    
+    async function playTTS(textToSpeak) {
+        if (isMuted) return;
+
+        // Construct bilingual text for standard speaking logic
+        let spokenText = textToSpeak;
+        if (currentLang === 'am') {
+            const letter = textToSpeak.charAt(0);
+            const num = textToSpeak.substring(1);
+            let letterAm = letter;
+            if (letter === 'B') letterAm = 'ቢ';
+            if (letter === 'I') letterAm = 'አይ';
+            if (letter === 'N') letterAm = 'ኤን';
+            if (letter === 'G') letterAm = 'ጂ';
+            if (letter === 'O') letterAm = 'ኦ';
+            spokenText = `${letterAm} ${num}`;
+        }
+
+        // Exponential backoff runner implementation
+        const maxRetries = 5;
+        let delay = 1000;
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Say warmly and clearly: ${spokenText}` }] }],
+                        generationConfig: { 
+                            responseModalities: ["AUDIO"], 
+                            speechConfig: { 
+                                voiceConfig: { 
+                                    prebuiltVoiceConfig: { 
+                                        voiceName: "Fenrir" // Rich premium male voice configuration
+                                    } 
+                                } 
+                            } 
+                        },
+                        model: "gemini-2.5-flash-preview-tts"
+                    })
+                });
+                
+                if (!response.ok) throw new Error("TTS Request Failed");
+                const result = await response.json();
+                const base64Pcm = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                if (base64Pcm) {
+                    const audioUrl = pcmToWav(base64Pcm, 24000);
+                    const audio = new Audio(audioUrl);
+                    audio.play();
+                    return; // Success
+                }
+            } catch (err) {
+                // Silent catch, exponential wait retry execution
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+        }
+        // Fallback Web Speech Synthesis if all API attempts are depleted
+        playWebSpeechSynthesisFallback(spokenText);
+    }
+
+    function pcmToWav(base64Pcm, sampleRate = 24000) {
+        const buffer = Uint8Array.from(atob(base64Pcm), c => c.charCodeAt(0)).buffer;
+        const wavHeader = new ArrayBuffer(44);
+        const view = new DataView(wavHeader);
+        view.setUint32(0, 0x52494646, false);
+        view.setUint32(4, 36 + buffer.byteLength, true);
+        view.setUint32(8, 0x57415645, false);
+        view.setUint32(12, 0x666d7420, false);
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * 1 * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        view.setUint32(36, 0x64617461, false);
+        view.setUint32(40, buffer.byteLength, true);
+
+        const blob = new Blob([wavHeader, buffer], { type: 'audio/wav' });
+        return URL.createObjectURL(blob);
+    }
+
+    function playWebSpeechSynthesisFallback(txt) {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(txt);
+            utterance.lang = currentLang === 'am' ? 'am-ET' : 'en-US';
+            const voices = window.speechSynthesis.getVoices();
+            // Look for male voice fallback
+            const maleVoice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('google us english'));
+            if (maleVoice) utterance.voice = maleVoice;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    function toggleMute() {
+        isMuted = !isMuted;
+        document.getElementById('mute-btn').innerText = isMuted ? '🔇 OFF' : '🔊 ON';
+        document.getElementById('mute-btn').style.background = isMuted ? '#451a03' : 'var(--purple-card)';
+    }
+
     function updateLanguageUI() {
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
@@ -868,9 +1077,12 @@
         currentLang = currentLang === 'am' ? 'en' : 'am';
         updateLanguageUI();
         renderPurchasedCarousel();
+        // Update game screen if active
+        if (document.getElementById('game-page').classList.contains('active')) {
+            renderActiveGameCards();
+        }
     }
 
-    // Custom Toast notifications generator
     function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -884,7 +1096,6 @@
         }, 3500);
     }
 
-    // Custom Confirm Dialog implementation
     function showCustomConfirm(title, text, onConfirm) {
         const modal = document.getElementById('custom-modal-container');
         document.getElementById('custom-modal-title').innerText = title;
@@ -900,7 +1111,6 @@
         };
     }
 
-    // Navigation stack architecture
     function showP(id) {
         if(id === 'home-page') {
             activePageHistory = ['home-page'];
@@ -927,20 +1137,18 @@
         }
     }
 
-    // --- Core Multi-Card Game Logic ---
+    // --- Core Betting Room Settings ---
     function setRoom(amt) {
         db.ref('settings/active_room').set(amt);
         showToast(i18n[currentLang].room_open_alert + amt + " ETB", "success");
     }
 
-    // Realtime listeners for Active Room Settings
     db.ref('settings/active_room').on('value', (snap) => {
         activeRoomAmt = snap.val() || 10;
         document.getElementById('room-title').innerText = activeRoomAmt.toFixed(2) + " ETB Game";
-        clearSelectedCards();
+        clearSelectedCardsImmediate();
     });
 
-    // Populate Selection Selector Grid (1 to 200 Cards)
     function buildCardSelectorGrid() {
         const container = document.getElementById('selector-grid-list');
         container.innerHTML = "";
@@ -954,7 +1162,6 @@
         }
     }
 
-    // Select or Unselect a specific card
     function toggleSelectCard(cardId) {
         db.ref('game/status').once('value', gameStatusSnap => {
             if(gameStatusSnap.val() === 'active') {
@@ -963,7 +1170,6 @@
             }
 
             if(selectedCards[cardId]) {
-                // Delete / Refund
                 db.ref('users/'+user.id+'/bal').transaction(current => {
                     return (current || 0) + activeRoomAmt;
                 }, (err, committed) => {
@@ -976,11 +1182,9 @@
                     }
                 });
             } else {
-                // Buy card
                 if(myBal < activeRoomAmt) {
                     showToast(i18n[currentLang].insufficient_balance, "error");
-                    // Trigger wallet redirect modal
-                    showCustomConfirm("Boss Bingo", "Your balance is not enough for this cartela. Required: " + activeRoomAmt + " ETB. Open Wallet?", () => {
+                    showCustomConfirm("Esu Bingo", "Your balance is not enough for this cartela. Required: " + activeRoomAmt + " ETB. Open Wallet?", () => {
                         showP('wallet-page');
                     });
                     return;
@@ -991,7 +1195,6 @@
                     return undefined;
                 }, (err, committed) => {
                     if(committed) {
-                        // Generate random 5x5 board numbers
                         let nums = [];
                         while(nums.length < 24){ 
                             let r = Math.floor(Math.random()*75)+1; 
@@ -1006,7 +1209,6 @@
                             marked: [12]
                         };
 
-                        // Store in firebase immediately
                         db.ref('player_boards/' + user.id + '/cards/' + cardId).set({
                             board: board,
                             marked: [12],
@@ -1031,26 +1233,29 @@
         if(ids.length === 0) return;
 
         showCustomConfirm("Clear Cards", "Are you sure you want to clear all purchased cards and get refunds?", () => {
-            ids.forEach(cardId => {
-                db.ref('users/'+user.id+'/bal').transaction(current => {
-                    return (current || 0) + activeRoomAmt;
-                }, (err, committed) => {
-                    if(committed) {
-                        db.ref('player_boards/' + user.id + '/cards/' + cardId).remove();
-                        db.ref('reserved_boards/' + cardId).remove();
-                    }
-                });
-            });
-            selectedCards = {};
-            allGeneratedBoards = {};
-            updateLocalCardDisplays();
+            clearSelectedCardsImmediate();
         });
     }
 
+    function clearSelectedCardsImmediate() {
+        const ids = Object.keys(selectedCards);
+        ids.forEach(cardId => {
+            db.ref('users/'+user.id+'/bal').transaction(current => {
+                return (current || 0) + activeRoomAmt;
+            }, (err, committed) => {
+                if(committed) {
+                    db.ref('player_boards/' + user.id + '/cards/' + cardId).remove();
+                    db.ref('reserved_boards/' + cardId).remove();
+                }
+            });
+        });
+        selectedCards = {};
+        allGeneratedBoards = {};
+        updateLocalCardDisplays();
+    }
+
     function updateLocalCardDisplays() {
-        // Clear old states
         document.querySelectorAll('.selector-cell').forEach(el => el.classList.remove('selected'));
-        
         const activeIds = Object.keys(selectedCards);
         activeIds.forEach(id => {
             const cell = document.getElementById(`grid-cell-${id}`);
@@ -1074,7 +1279,6 @@
             const cardDiv = document.createElement('div');
             cardDiv.className = 'mini-card';
             
-            // X close button
             const closeBtn = document.createElement('button');
             closeBtn.className = 'mini-card-close';
             closeBtn.innerHTML = 'X';
@@ -1110,7 +1314,7 @@
         });
     }
 
-    // --- DERASH & Active Game Implementation ---
+    // --- DERASH Matrix builder ---
     function buildDerashPanel() {
         const derashCont = document.getElementById('derash-grid-container');
         derashCont.innerHTML = "";
@@ -1127,14 +1331,31 @@
         autoDaubEnabled = document.getElementById('auto-daub-checkbox').checked;
     }
 
-    // Draw active running cards onto the Game View Screen
     function renderActiveGameCards() {
         const renderList = document.getElementById('game-boards-render-list');
         renderList.innerHTML = "";
 
         const cardIds = Object.keys(selectedCards);
+        
+        // Match Video 3 spectator/waiting layout exactly if card size is 0
         if(cardIds.length === 0) {
-            renderList.innerHTML = `<p style="text-align:center; font-size:12px; opacity:0.6;">No cards purchased for this round.</p>`;
+            renderList.innerHTML = `
+                <div class="spectator-wait-container">
+                    <div class="wait-desc-banner" data-i18n="spectator_title">
+                        ${i18n[currentLang].spectator_title}
+                    </div>
+                    <div class="extra-banner-row">
+                        <div class="badge-info">2 <span data-i18n="cards">ካርቴላ</span></div>
+                        <button class="btn" style="width:auto; min-width:140px; margin-top:0;" onclick="location.reload()" data-i18n="refresh">REFRESH</button>
+                        <div style="font-size:12px; color:#c084fc; font-weight:bold; margin-top:5px;" data-i18n="schedule_info">
+                            ${i18n[currentLang].schedule_info}
+                        </div>
+                        <div style="font-size:15px; color:var(--gold); font-weight:900;" data-i18n="jackpot_info">
+                            ${i18n[currentLang].jackpot_info}
+                        </div>
+                    </div>
+                </div>
+            `;
             return;
         }
 
@@ -1167,7 +1388,6 @@
                         if(!cardObj.marked.includes(idx)) {
                             cardObj.marked.push(idx);
                             cell.classList.add('marked');
-                            // Save marked progress 
                             db.ref(`player_boards/${user.id}/cards/${cardId}/marked`).set(cardObj.marked);
                         }
                     }
@@ -1178,7 +1398,7 @@
 
             const bingoBtn = document.createElement('button');
             bingoBtn.className = 'btn btn-red';
-            bingoBtn.style.marginTop = '8px';
+            bingoBtn.style.marginTop = '10px';
             bingoBtn.innerText = 'BINGO!';
             bingoBtn.onclick = () => checkCardBingo(cardId);
 
@@ -1189,7 +1409,6 @@
         });
     }
 
-    // Process local auto daubing logic
     function autoMarkDrawnBall(ball) {
         if(!autoDaubEnabled) return;
         Object.keys(selectedCards).forEach(cardId => {
@@ -1208,7 +1427,6 @@
         });
     }
 
-    // --- Bingo Winning Claim Validations ---
     function checkCardBingo(cardId) {
         const cardObj = allGeneratedBoards[cardId];
         if(!cardObj) return;
@@ -1238,7 +1456,7 @@
         }
     }
 
-    // --- Firebase Sync Connections ---
+    // --- Realtime Firebase Sync System ---
     db.ref('reserved_boards').on('value', snap => {
         let total = 0;
         snap.forEach(child => { total += Number(child.val().betAmount || 0); });
@@ -1255,10 +1473,9 @@
             hint.innerHTML = `<span style="color:var(--neon-pink); font-size: 24px;">⏳ ${timerVal}s</span>`;
             gameSub.innerText = i18n[currentLang].waiting;
         } else if (timerVal === 0) {
-            hint.innerHTML = `<span style="color:var(--neon-green)">🚀 STARTING</span>`;
+            hint.innerHTML = `<span style="color:var(--neon-green)">🚀 ACTIVE</span>`;
             gameSub.innerText = i18n[currentLang].game_started;
             
-            // Build and load the actual game components
             renderActiveGameCards();
             showP('game-page');
         } else {
@@ -1267,28 +1484,49 @@
         }
     });
 
-    // Realtime called drawn numbers sync listeners
     db.ref('game/drawn').on('value', snap => {
         drawn = snap.val() || [];
         document.getElementById('balls-out-count').innerText = drawn.length;
+        
+        // Extract the last drawn ball, identify letter category B-I-N-G-O
         const last = drawn[drawn.length - 1];
-        document.getElementById('current-ball').innerText = last || "?";
-        document.getElementById('ball-history').innerText = drawn.slice(-8).join(" - ");
+        let displayBall = "?";
+        if (last) {
+            let letter = "B";
+            if (last >= 16 && last <= 30) letter = "I";
+            if (last >= 31 && last <= 45) letter = "N";
+            if (last >= 46 && last <= 60) letter = "G";
+            if (last >= 61 && last <= 75) letter = "O";
+            displayBall = `${letter}${last}`;
+            
+            // Speak standard ball drawn with beautiful male voice Fenrir
+            playTTS(displayBall);
+        }
 
-        // Reflect ball changes onto Derash panel
+        document.getElementById('current-ball').innerText = displayBall;
+        
+        // Convert array to display string list
+        const textHistory = drawn.map(num => {
+            let letter = "B";
+            if (num >= 16 && num <= 30) letter = "I";
+            if (num >= 31 && num <= 45) letter = "N";
+            if (num >= 46 && num <= 60) letter = "G";
+            if (num >= 61 && num <= 75) letter = "O";
+            return `${letter}${num}`;
+        });
+        document.getElementById('ball-history').innerText = textHistory.slice(-8).join(" - ");
+
         document.querySelectorAll('.derash-ball').forEach(ball => ball.classList.remove('active'));
         drawn.forEach(num => {
             const dBall = document.getElementById(`derash-ball-${num}`);
             if(dBall) dBall.classList.add('active');
         });
 
-        // Trigger auto marking daubing
         if(last) {
             autoMarkDrawnBall(last);
         }
     });
 
-    // Online players analytics counts
     const onlineRef = db.ref('online_players/' + user.id);
     onlineRef.set(Date.now());
     setInterval(() => onlineRef.set(Date.now()), 5000);
@@ -1301,14 +1539,12 @@
         document.getElementById('game-players-count').innerText = count;
     });
 
-    // Sync Live Users Balance
     db.ref('users/' + user.id + '/bal').on('value', s => { 
         myBal = s.val() || 0; 
         document.getElementById('u-bal').innerText = myBal.toFixed(2) + " ETB";
         document.getElementById('wallet-balance-display').innerText = myBal.toFixed(2) + " ETB";
     });
 
-    // Winner Overlay state Sync
     db.ref('game/winner').on('value', s => {
         const w = s.val();
         if(w) {
@@ -1333,13 +1569,12 @@
             
             setTimeout(() => {
                 document.getElementById('win-overlay').style.display = 'none';
-                clearSelectedCards();
+                clearSelectedCardsImmediate();
                 showP('home-page');
             }, 8000); 
         }
     });
 
-    // Reset listener for active games
     db.ref('game/status').on('value', snap => {
         if(snap.val() === 'idle') {
             if(document.getElementById('game-page').classList.contains('active')) {
@@ -1348,7 +1583,7 @@
         }
     });
 
-    // --- 13. FINANCE & WALLET SYSTEM ---
+    // --- 13. FINANCE & WALLET ARCHITECTURE ---
     function switchWalletTab(tabId) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.wallet-sub-tab').forEach(pane => pane.classList.remove('active'));
@@ -1390,10 +1625,9 @@
                 uid: user.id, name: user.first_name, type: type, amt: amt, info: info, status: 'pending'
             });
             const typeLabel = type === 'DEP' ? '💰 Deposit' : '💸 Withdraw';
-            const botMsg = `🔔 *New Transaction Request*\n━━━━━━━━━━━━━\n👤 *User:* ${user.first_name}\n💵 *Amount:* ${amt} ETB\n📝 *Type:* ${typeLabel}\nℹ️ *Info:* ${info}\n━━━━━━━━━━━━━`;
+            const botMsg = `🔔 *New Request*\n━━━━━━━━━━━━━\n👤 *User:* ${user.first_name}\n💵 *Amt:* ${amt} ETB\n📝 *Type:* ${typeLabel}\nℹ *Info:* ${info}\n━━━━━━━━━━━━━`;
             fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${MY_CHAT_ID}&text=${encodeURIComponent(botMsg)}&parse_mode=Markdown`);
             
-            // Log local user database history
             addHistory(user.id, `${typeLabel} Submitted`, amt, type === 'DEP' ? 'PLUS_PENDING' : 'MINUS_PENDING');
 
             showToast(i18n[currentLang].request_sent, "success");
@@ -1433,11 +1667,11 @@
                 let color = '#ef4444';
                 if(h.mode.includes('PLUS')) color = '#22c55e';
                 list.innerHTML += `
-                    <div class="hist-card">
-                        <span class="hist-date">${h.date}</span>
-                        <span class="hist-amt" style="color:${color}">
+                    <div class="hist-card" style="background:rgba(255,255,255,0.02); padding:10px; border-radius:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05);">
+                        <span class="hist-date" style="font-size:10px; opacity:0.6;">${h.date}</span>
+                        <span class="hist-amt" style="color:${color}; font-weight:bold; float:right;">
                             ${h.mode.includes('PLUS') ? '+' : '-'}${h.amt} ETB
-                        </span><br><small>${h.type}</small>
+                        </span><br><small style="color:var(--gold); font-weight:bold;">${h.type}</small>
                     </div>`;
             });
             if(hists.length === 0) list.innerHTML = `<p style='text-align:center; opacity:0.5;'>${i18n[currentLang].no_history}</p>`;
@@ -1458,7 +1692,7 @@
         });
     }
 
-    // --- Admin Utility Triggers ---
+    // --- Admin Control Utilities ---
     db.ref('settings/broadcast').on('value', s => {
         const msg = s.val();
         const bar = document.getElementById('announcement-bar');
@@ -1493,13 +1727,12 @@
         });
     }
 
-    // Admin users controller monitor
     if(user.id == ADMIN_ID) {
         db.ref('users').on('value', s => {
             const monitor = document.getElementById('admin-user-monitor'); monitor.innerHTML = "";
             s.forEach(child => {
                 const u = child.val();
-                monitor.innerHTML += `<div class="user-card"><span>${u.name || 'Unknown'}</span><span style="color:#facc15;">${(u.bal || 0).toFixed(2)}</span></div>`;
+                monitor.innerHTML += `<div class="user-card" style="background:rgba(255,255,255,0.02); padding:8px; border-radius:8px; margin-bottom:5px; display:flex; justify-content:space-between;"><span>${u.name || 'Unknown'}</span><span style="color:#facc15;">${(u.bal || 0).toFixed(2)}</span></div>`;
             });
         });
         db.ref('requests').on('value', s => {
